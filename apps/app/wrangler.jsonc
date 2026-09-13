@@ -39,9 +39,16 @@
   ],
   "env": {
     "staging": {
+      "name": "delulu-web-staging",
+      "workers_dev": true,
+      "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "delulu-web-staging" }],
+      "r2_buckets": [{ "binding": "DELULU_SOCIAL_BUCKET", "bucket_name": "delulu-staging-assets" }],
+      "kv_namespaces": [{ "binding": "DELULU_FACEBOOK_PAGES", "id": "3cf83d1a675b45f39790f0ee9be53499" }],
       "vars": {
-        "NEXT_PUBLIC_API_URL": "https://api-next.delulu.social",
-        "NEXT_PUBLIC_APP_URL": "https://solulu.delulu.social",
+        "MAINTENANCE_MODE": "false",
+        "NEXT_PUBLIC_API_URL": "https://delulu-staging.whizzy.workers.dev",
+        "NEXT_PUBLIC_ANALYTICS_DISABLED": "true",
+        "NEXT_PUBLIC_APP_URL": "https://delulu-web-staging.whizzy.workers.dev",
         "NEXT_PUBLIC_WEB_URL": "https://delulu.social",
         "NEXT_PUBLIC_DOCS_URL": "https://docs.delulu.social",
         "NEXT_PUBLIC_POSTHOG_KEY": "phc_A5NWdEHAyUyzoUUSKnemshpamt3MCdbh9ztSxH0RvQV",

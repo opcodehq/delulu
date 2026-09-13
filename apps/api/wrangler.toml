@@ -144,19 +144,36 @@ id = "0fa4faf775ec4ab28e259c8a5503dc3c"
 [env.staging]
 name = "delulu-staging"
 workers_dev = true
-hyperdrive = []
-kv_namespaces = []
 send_email = []
+
+[[env.staging.hyperdrive]]
+binding = "HYPERDRIVE"
+id = "49dd12df9a5044c0a739bc47bf0a2a54"
+
+[[env.staging.kv_namespaces]]
+binding = "AUTOMATION_KV"
+id = "3cf83d1a675b45f39790f0ee9be53499"
+
+[[env.staging.kv_namespaces]]
+binding = "EDGE_CACHE_KV"
+id = "0e82d75918e549ab81d47ffd46abcdc8"
+
+[env.staging.ai]
+binding = "AGENT_MEDIA_AI"
 
 [env.staging.vars]
 ENVIRONMENT = "staging"
 AS_ISSUER = "https://delulu-staging.whizzy.workers.dev"
+AS_SIGNING_KID = "delulu-staging-v1"
 API_RESOURCE = "https://delulu-staging.whizzy.workers.dev"
-APP_BASE_URL = "http://localhost:3000"
+APP_BASE_URL = "https://delulu-web-staging.whizzy.workers.dev"
+CLERK_ISSUER = "https://rapid-doe-87.clerk.accounts.dev"
+R2_ACCOUNT_ID = "40dd16663d44dc635537be6d183af841"
+R2_BUCKET_NAME = "delulu-staging-assets"
 DODO_PAYMENTS_ENVIRONMENT = "test_mode"
 WHATSAPP_INGRESS_ENABLED = "false"
 TELEGRAM_INGRESS_ENABLED = "true"
-TELEGRAM_ACCOUNT_LINKING_ENABLED = "false"
+TELEGRAM_ACCOUNT_LINKING_ENABLED = "true"
 TELEGRAM_ALLOWED_USER_ID = "1343034850"
 TELEGRAM_MONTHLY_TURN_LIMIT = "1000"
 WHATSAPP_PHONE_NUMBER_ID = "1235417779664941"
@@ -177,6 +194,10 @@ class_name = "TelegramAdmission"
 name = "TELEGRAM_LINKED_CONVERSATIONS"
 class_name = "TelegramLinkedConversation"
 
+[[env.staging.durable_objects.bindings]]
+name = "JOBS"
+class_name = "JobExecutor"
+
 [env.staging.triggers]
 crons = []
 
@@ -192,8 +213,33 @@ new_sqlite_classes = ["TelegramConversation", "TelegramAdmission"]
 tag = "v3-telegram-account-linking"
 new_sqlite_classes = ["TelegramLinkedConversation"]
 
-[env.staging.unsafe]
-bindings = []
+[[env.staging.migrations]]
+tag = "v4-staging-jobs"
+new_sqlite_classes = ["JobExecutor"]
+
+[[env.staging.unsafe.bindings]]
+name = "RL_API_20"
+type = "ratelimit"
+namespace_id = "2001"
+simple = { limit = 20, period = 60 }
+
+[[env.staging.unsafe.bindings]]
+name = "RL_API_60"
+type = "ratelimit"
+namespace_id = "2002"
+simple = { limit = 60, period = 60 }
+
+[[env.staging.unsafe.bindings]]
+name = "RL_API_120"
+type = "ratelimit"
+namespace_id = "2003"
+simple = { limit = 120, period = 60 }
+
+[[env.staging.unsafe.bindings]]
+name = "RL_SESSION_300"
+type = "ratelimit"
+namespace_id = "2004"
+simple = { limit = 300, period = 60 }
 
 [[env.staging.services]]
 binding = "AGENT_RUNTIME"

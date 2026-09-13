@@ -34,7 +34,7 @@ The legacy pilot routes a bot/user pair to one persistent chat. The account-link
 
 ## Account-linked Telegram beta (gated)
 
-`TELEGRAM_ACCOUNT_LINKING_ENABLED` remains false until staging acceptance passes. When enabled, unlinked users receive a Clerk-backed connection link, then must confirm the account in their originating private Telegram chat. Challenges are hashed, single-use, and expire after ten minutes. Numeric Telegram IDs establish identity; guest conversations are never imported.
+`TELEGRAM_ACCOUNT_LINKING_ENABLED` is enabled only in staging for invited-account acceptance testing. Production remains disabled. Unlinked users receive a Clerk-backed connection link, then must confirm the account in their originating private Telegram chat. Challenges are hashed, single-use, and expire after ten minutes. Numeric Telegram IDs establish identity; guest conversations are never imported.
 
 The implementation includes workspace switching, new chats, cancellation, action buttons, instruction-skill management, confirmed memory context, incoming media processing, and authenticated link-management APIs. The content connector obtains workspace scope from the trusted runtime rather than the prompt. Channel grants are checked again for content access and writes. Disconnect revokes the account link before asynchronous cancellation recovery.
 
@@ -42,13 +42,30 @@ Channel messages, challenges, operational receipts, and reply recovery stay in D
 
 Before enabling staging, configure an isolated Postgres database (`DATABASE_URL` or `HYPERDRIVE`), Clerk test instance (`CLERK_ISSUER`, `CLERK_JWT_KEY`, `CLERK_SECRET_KEY`), authenticated staging web origin (`APP_BASE_URL` and web build-time `NEXT_PUBLIC_API_URL`), private R2 storage credentials/bucket, and the `AGENT_MEDIA_AI` Workers AI binding. The database-less guest pilot is not sufficient. Do not reuse production data or authentication configuration.
 
-Rollout blockers still outstanding: strict dollar admission at every model/media invocation (the current $0.25 reservation is not a hard per-call spending cap), outbound generated-file delivery, bounded active-receipt indexing/retention, and live end-to-end acceptance including web authentication and one approved test action. Do not enable the flag merely because the Worker bundles successfully.
+Deploy from the repository root. Set `STAGING_CLERK_PUBLISHABLE_KEY` and `STAGING_CLERK_SECRET_KEY` in your local environment from the Clerk **test** instance first; never commit them. The web build requires these values as well as the deployed Worker secrets. Always rebuild before deploying so browser code cannot retain a production API origin:
+
+```sh
+NEXT_PUBLIC_API_URL=https://delulu-staging.whizzy.workers.dev \
+NEXT_PUBLIC_APP_URL=https://delulu-web-staging.whizzy.workers.dev \
+NEXT_PUBLIC_ANALYTICS_DISABLED=true \
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="${STAGING_CLERK_PUBLISHABLE_KEY:?Set the test publishable key}" \
+CLERK_SECRET_KEY="${STAGING_CLERK_SECRET_KEY:?Set the test secret key}" \
+pnpm --filter app exec opennextjs-cloudflare build --env staging
+pnpm --filter app exec opennextjs-cloudflare deploy --env staging
+pnpm --filter @delulu/http-api run deploy:staging
+```
+
+API deployment must use `wrangler deploy`, not a versions-only upload, when applying a new Durable Object migration. Staging has its own `JobExecutor` for approved scheduled actions. Provider OAuth credentials and redirect registrations must also be configured for staging before connecting real social accounts; production connections are not available here.
+
+Public rollout blockers still outstanding: strict dollar admission at every model/media invocation (the current $0.25 reservation is not a hard per-call spending cap), outbound generated-file delivery, bounded active-receipt indexing/retention, and live end-to-end acceptance including web authentication and one approved test action. Staging invitations are an explicit testing grant, not a production-readiness guarantee.
 
 ## Staging pilot boundaries
 
-Telegram currently supports private text messages under an isolated guest runtime identity. It does not link that identity to a verified Delulu account. WhatsApp uses an explicitly configured test sender and is disabled in the staging configuration. Both transports persist their inbox/outbox in Durable Objects, not Postgres, and retain message IDs for deduplication after clearing terminal delivery payloads. Provider rate-limit deadlines survive restarts and new incoming events.
+Staging uses `delulu-staging` for the API and `delulu-web-staging` for authenticated onboarding. Both are environments of the normal applications, not separate implementations. Hyperdrive `delulu-staging-db` connects to the dedicated `delulu_staging` database, with caching disabled. Assets use the private `delulu-staging-assets` bucket and cache namespaces are isolated from production. Clerk uses a test instance. Telegram account access requires an active database beta invitation; the legacy single-user allowlist applies only when account linking is disabled.
 
-Successful channel replies verify transport and inference only. Verified account linking, user-facing transcript exports, canonical memory extraction, media ingress, and production ritual delivery still require end-to-end acceptance. The staging API has no production database bindings, so it cannot provide canonical content capabilities. Unknown or expired external-effect execution outcomes require reconciliation; never retry them merely because a lease is old.
+WhatsApp is disabled in staging. Both transports persist their inbox/outbox in Durable Objects, not Postgres, and retain message IDs for deduplication after clearing terminal delivery payloads. Provider rate-limit deadlines survive restarts and new incoming events.
+
+Successful channel replies verify transport and inference only. Verified account linking, user-facing transcript exports, canonical memory extraction, media ingress, and production ritual delivery still require end-to-end acceptance. Staging starts with an empty, independently migrated content database; production accounts and content are not copied. Unknown or expired external-effect execution outcomes require reconciliation; never retry them merely because a lease is old.
 
 The Workshop Worker exposes `ExternalMessageGateway` to the Delulu API only through a service binding with `{ "source": "delulu" }` props. Bind the API Worker back to itself as `AGENT_RUNTIME_BRIDGE` with entrypoint `AgentRuntimeBridge` so persistent response targets survive Worker restarts. After the runtime exists, redeploy `apps/api` so its `AGENT_RUNTIME` binding resolves.
 

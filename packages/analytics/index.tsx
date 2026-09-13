@@ -15,12 +15,15 @@ const { NEXT_PUBLIC_GA_MEASUREMENT_ID } = keys();
 export const AnalyticsProvider = ({
   children,
   platform,
-}: AnalyticsProviderProps) => (
-  <PostHogProvider platform={platform}>
-    {children}
-    <VercelAnalytics />
-    {NEXT_PUBLIC_GA_MEASUREMENT_ID && (
-      <GoogleAnalytics gaId={NEXT_PUBLIC_GA_MEASUREMENT_ID} />
-    )}
-  </PostHogProvider>
-);
+}: AnalyticsProviderProps) =>
+  keys().NEXT_PUBLIC_ANALYTICS_DISABLED === "true" ? (
+    children
+  ) : (
+    <PostHogProvider platform={platform}>
+      {children}
+      <VercelAnalytics />
+      {NEXT_PUBLIC_GA_MEASUREMENT_ID && (
+        <GoogleAnalytics gaId={NEXT_PUBLIC_GA_MEASUREMENT_ID} />
+      )}
+    </PostHogProvider>
+  );
