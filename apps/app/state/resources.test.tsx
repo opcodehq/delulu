@@ -14,6 +14,7 @@ import {
   ResourceBoundary,
   useMutationAtom,
   useResourceAtom,
+  useResourceRegistry,
 } from "./resources";
 
 afterEach(() => {
@@ -22,6 +23,53 @@ afterEach(() => {
 });
 
 describe("Effect Atom resources", () => {
+  it("publishes fetched data to every retry-policy variant", async () => {
+    let value = "expired";
+    const descriptor = resourceEffect({
+      queryKey: ["test", "policy-variants"] as const,
+      effect: () => Effect.sync(() => value),
+    });
+    const Probe = ({ retry }: { retry: number }) => {
+      const query = useResourceAtom({
+        ...descriptor,
+        retry,
+        staleTime: Number.POSITIVE_INFINITY,
+      });
+      return (
+        <div>
+          {retry}:{query.data}
+        </div>
+      );
+    };
+    const Refresh = () => {
+      const registry = useResourceRegistry();
+      return (
+        <button
+          onClick={async () => {
+            value = "renewed";
+            await registry.fetchResource(descriptor);
+          }}
+          type="button"
+        >
+          refresh all
+        </button>
+      );
+    };
+    render(
+      <AppStateProvider>
+        <ResourceBoundary fallback={<div>loading</div>}>
+          <Probe retry={0} />
+          <Probe retry={2} />
+          <Refresh />
+        </ResourceBoundary>
+      </AppStateProvider>
+    );
+    await screen.findByText("0:expired");
+    await screen.findByText("2:expired");
+    fireEvent.click(screen.getByText("refresh all"));
+    await screen.findByText("0:renewed");
+    await screen.findByText("2:renewed");
+  });
   it("suspends an initial read and renders its value", async () => {
     const descriptor = resourceEffect({
       queryKey: ["test", "read"] as const,

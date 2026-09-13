@@ -35,6 +35,25 @@ const accounts = [
 describe("connection reconciliation lifecycle", () => {
   beforeEach(() => vi.clearAllMocks());
 
+  it("waits for renewed expiry instead of accepting an already-visible expired account", async () => {
+    const stale = { ...accounts[0], expiresAt: "2020-01-01T00:00:00.000Z" };
+    const renewed = { ...accounts[0], expiresAt: "2099-01-01T00:00:00.000Z" };
+    mocks.registry.fetchResource
+      .mockResolvedValueOnce({ data: [stale] })
+      .mockResolvedValue({ data: [renewed] });
+    const { result } = renderHook(() =>
+      useConnectionReconciliation({
+        enabled: true,
+        provider: "linkedin",
+        callbackProfileId: accounts[0].profileId,
+        callbackUsername: "Company Page",
+        workspaceId: "workspace-1",
+      })
+    );
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(mocks.registry.fetchResource).toHaveBeenCalledTimes(2);
+  });
+
   it("finishes after React replays the effect in Strict Mode", async () => {
     mocks.registry.fetchResource.mockResolvedValue({ data: accounts });
     const { result } = renderHook(
@@ -80,6 +99,27 @@ describe("connection reconciliation lifecycle", () => {
 });
 
 describe("connectionIsVisible", () => {
+  it("accepts refreshable accounts without a reauthorization deadline", () => {
+    expect(
+      connectionIsVisible(
+        [{ ...accounts[0], expiresAt: null }],
+        "linkedin",
+        accounts[0].profileId,
+        null
+      )
+    ).toBe(true);
+  });
+
+  it("rejects an invalid expiry instead of reporting success", () => {
+    expect(
+      connectionIsVisible(
+        [{ ...accounts[0], expiresAt: "invalid" }],
+        "linkedin",
+        accounts[0].profileId,
+        null
+      )
+    ).toBe(false);
+  });
   it("matches the callback provider and identity without handle punctuation", () => {
     expect(
       connectionIsVisible(accounts, "linkedin", null, "@company-page")

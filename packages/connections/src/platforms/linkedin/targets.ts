@@ -18,6 +18,7 @@ export interface LinkedInTarget {
 }
 
 interface LinkedInSelection extends LinkedInTarget {
+  readonly profileImage?: string;
   readonly accessToken: string;
   readonly refreshToken?: string;
   readonly expiresIn?: number;
@@ -29,6 +30,7 @@ const LinkedInSelections = Schema.Array(
     id: Schema.String,
     name: Schema.String,
     username: Schema.optional(Schema.String),
+    profileImage: Schema.optional(Schema.String),
     type: Schema.Literals(["member", "organization"]),
     accessToken: Schema.String,
     refreshToken: Schema.optional(Schema.String),
@@ -169,9 +171,6 @@ export async function discoverLinkedInOrganizations(
     start < urns.length;
     start += ORGANIZATION_LOOKUP_CONCURRENCY
   ) {
-    if (Date.now() >= deadline) {
-      break;
-    }
     const batch = urns.slice(start, start + ORGANIZATION_LOOKUP_CONCURRENCY);
     const settled = await Promise.allSettled(
       batch.map(async (urn) => {
@@ -201,11 +200,20 @@ export async function discoverLinkedInOrganizations(
         } satisfies LinkedInTarget;
       })
     );
-    for (const result of settled) {
+    for (const [index, result] of settled.entries()) {
       if (result.status === "fulfilled") {
         targets.push(result.value);
       } else {
         console.error("LinkedIn Page metadata lookup failed:", result.reason);
+        const urn = batch[index];
+        const id = urn ? organizationId(urn) : undefined;
+        if (urn && id) {
+          targets.push({
+            id: urn,
+            name: `LinkedIn Page ${id}`,
+            type: "organization",
+          });
+        }
       }
     }
   }
@@ -291,6 +299,7 @@ export async function connectLinkedInTarget(input: {
     profileId: target.id,
     username: target.username,
     fullName: target.name,
+    profileImage: target.profileImage,
     metadata: { linkedinTargetType: target.type },
   });
   await input.temporaryStore.delete(
