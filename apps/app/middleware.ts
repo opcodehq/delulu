@@ -15,6 +15,7 @@ const publicRoutes = createRouteMatcher([
   "/mcp(.*)",
   "/auth.md",
   "/connect/telegram",
+  "/connect/account",
   "/.well-known(.*)",
 ]);
 
@@ -28,7 +29,10 @@ const onboardingRoute = createRouteMatcher(["/onboarding(.*)"]);
 /** Allow the automation builder while onboarding is in progress. */
 const onboardingAutomationRoute = createRouteMatcher(["/automations(.*)"]);
 const oauthDeviceRoute = createRouteMatcher(["/oauth/device(.*)"]);
-const agentConnectionRoute = createRouteMatcher(["/connect/telegram(.*)"]);
+const agentConnectionRoute = createRouteMatcher([
+  "/connect/telegram(.*)",
+  "/connect/account",
+]);
 /** OAuth consent must stay reachable for signed-in users pre-onboarding. */
 const oauthConsentRoute = createRouteMatcher(["/oauth/consent(.*)"]);
 const connectionResultRoute = createRouteMatcher(["/connection-result(.*)"]);
