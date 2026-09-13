@@ -35,6 +35,10 @@ export class AgentChannelService extends Context.Service<
     resolve(
       address: ChannelAddress
     ): Effect.Effect<ChannelPrincipal | null, Denied>;
+    owned(
+      address: ChannelAddress,
+      userId: string
+    ): Effect.Effect<ChannelPrincipal | null, Denied>;
     connect(
       input: ChannelAddress & {
         userId: string;
@@ -170,6 +174,12 @@ export class AgentChannelService extends Context.Service<
         return rows[0];
       });
       return AgentChannelService.of({
+        owned: (address, userId) =>
+          find(address).pipe(
+            Effect.map(
+              (rows) => rows.find((row) => row.userId === userId) ?? null
+            )
+          ),
         eligible,
         resolve,
         connect,
@@ -192,6 +202,14 @@ export interface ChannelLinkOffer {
 export class ChannelLinkGateway extends Context.Service<
   ChannelLinkGateway,
   {
+    readonly environment: string;
+    readonly botId: string;
     offer(input: ChannelLinkOffer): Effect.Effect<void, ConflictError>;
+    manage(input: {
+      sender: string;
+      userId: string;
+      connectionId: string;
+      workspaceId?: string;
+    }): Effect.Effect<void, ConflictError>;
   }
 >()("@delulu/services/ChannelLinkGateway") {}

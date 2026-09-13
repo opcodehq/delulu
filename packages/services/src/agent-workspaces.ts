@@ -641,8 +641,9 @@ export class AgentWorkspaceService extends Context.Service<
                 FROM agent_usage_ledger
                 WHERE billing_owner_user_id = ${input.billingOwnerUserId}`;
               const activeRows = yield* sql<Row>`SELECT count(*)::text AS count
-                FROM agent_runs WHERE agent_workspace_id = ${String(workspace.id)}
-                  AND status IN ('queued', 'submitted', 'running',
+                FROM agent_runs r JOIN workspaces w ON w.id = r.workspace_id
+                WHERE w.billing_owner_user_id = ${input.billingOwnerUserId}
+                  AND r.status IN ('queued', 'submitted', 'running',
                     'waiting_approval', 'interrupting')`;
               const channelRows = yield* sql<Row>`SELECT count(*)::text AS count
                 FROM agent_channel_turns WHERE billing_owner_user_id = ${input.billingOwnerUserId} AND state = 'active'`;

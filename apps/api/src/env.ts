@@ -117,6 +117,12 @@ export interface Env {
         id: string,
         response: import("@delulu/services").AgentRuntimeResponse
       ): Promise<void>;
+      manageConnection(input: {
+        sender: string;
+        userId: string;
+        connectionId: string;
+        workspaceId?: string;
+      }): Promise<void>;
     };
   };
   readonly TELEGRAM_ALLOWED_USER_ID?: string;

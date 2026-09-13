@@ -13,6 +13,37 @@ export const InstructionSkillView = Schema.Struct({
 
 export const AgentChannelsGroup = HttpApiGroup.make("agentChannels")
   .add(
+    HttpApiEndpoint.get("links", "/v1/agent/channels/telegram", {
+      success: Schema.Array(
+        Schema.Struct({
+          id: Schema.String,
+          workspaceId: Schema.String,
+          providerUserId: Schema.String,
+        })
+      ),
+      error: [ConflictErrorResponse, ForbiddenErrorResponse],
+    })
+  )
+  .add(
+    HttpApiEndpoint.delete("disconnect", "/v1/agent/channels/telegram/:id", {
+      params: { id: Schema.String },
+      success: Schema.Struct({ updated: Schema.Boolean }),
+      error: [ConflictErrorResponse, ForbiddenErrorResponse],
+    })
+  )
+  .add(
+    HttpApiEndpoint.patch(
+      "selectWorkspace",
+      "/v1/agent/channels/telegram/:id/workspace",
+      {
+        params: { id: Schema.String },
+        payload: Schema.Struct({ workspaceId: Schema.String }),
+        success: Schema.Struct({ updated: Schema.Boolean }),
+        error: [ConflictErrorResponse, ForbiddenErrorResponse],
+      }
+    )
+  )
+  .add(
     HttpApiEndpoint.get("workspaces", "/v1/agent/channels/workspaces", {
       success: Schema.Array(
         Schema.Struct({ workspaceId: Schema.String, name: Schema.String })

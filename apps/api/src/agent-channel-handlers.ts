@@ -40,7 +40,48 @@ export const AgentChannelHandlers = HttpApiBuilder.group(
       }
       return auth;
     });
+    const manage = (id: string, workspaceId?: string) =>
+      Effect.gen(function* () {
+        const auth = yield* session;
+        const links = yield* sql<{
+          providerUserId: string;
+        }>`SELECT provider_user_id FROM agent_channel_identities
+        WHERE id = ${id} AND user_id = ${auth.userId} AND environment = ${gateway.environment}
+          AND channel = 'telegram' AND provider_account_id = ${gateway.botId} AND disconnected_at IS NULL`.pipe(
+          Effect.orDie
+        );
+        if (!links[0]) {
+          return yield* new ForbiddenError({
+            message: "Connection unavailable",
+          });
+        }
+        yield* gateway.manage({
+          sender: links[0].providerUserId,
+          userId: auth.userId,
+          connectionId: id,
+          workspaceId,
+        });
+        return { updated: true };
+      });
     return handlers
+      .handle("links", () =>
+        Effect.gen(function* () {
+          const auth = yield* session;
+          return yield* sql<{
+            id: string;
+            workspaceId: string;
+            providerUserId: string;
+          }>`SELECT id, workspace_id, provider_user_id FROM agent_channel_identities
+          WHERE user_id = ${auth.userId} AND environment = ${gateway.environment} AND channel = 'telegram'
+            AND provider_account_id = ${gateway.botId} AND disconnected_at IS NULL`.pipe(
+            Effect.orDie
+          );
+        })
+      )
+      .handle("disconnect", ({ params }) => manage(params.id))
+      .handle("selectWorkspace", ({ params, payload }) =>
+        manage(params.id, payload.workspaceId)
+      )
       .handle("skills", ({ params }) =>
         Effect.gen(function* () {
           return yield* listInstructionSkills(

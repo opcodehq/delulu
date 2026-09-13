@@ -5,6 +5,25 @@ import type { Env } from "./env";
 
 export const channelLinkGatewayLayer = (env: Env) =>
   Layer.succeed(ChannelLinkGateway, {
+    environment: env.ENVIRONMENT ?? "production",
+    botId: env.TELEGRAM_BOT_TOKEN?.split(":")[0] ?? "",
+    manage: (input) =>
+      Effect.tryPromise({
+        try: async () => {
+          if (!(env.TELEGRAM_LINKED_CONVERSATIONS && env.TELEGRAM_BOT_TOKEN)) {
+            throw new Error("Unavailable");
+          }
+          await env.TELEGRAM_LINKED_CONVERSATIONS.getByName(
+            `telegram-linked:${env.TELEGRAM_BOT_TOKEN.split(":")[0]}:${input.sender}`
+          ).manageConnection(input);
+        },
+        catch: () =>
+          new ConflictError({
+            message:
+              "Connection could not be updated. Stop any active task and retry.",
+            resource: "agent-channel",
+          }),
+      }),
     offer: (input) =>
       Effect.tryPromise({
         try: async () => {

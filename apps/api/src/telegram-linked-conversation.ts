@@ -9,6 +9,7 @@ import {
   type ChannelAddress,
   type ChannelLinkOffer,
   type ChannelPrincipal,
+  channelUsagePercent,
   readAgentKnowledge,
   reserveChannelTurn,
   settleChannelTurn,
@@ -98,6 +99,10 @@ export class TelegramLinkedConversation extends ChannelConversation {
   protected responseText(text: string) {
     return text;
   }
+  protected resumableDelivery() {
+    // Per-part receipts distinguish completed parts from uncertain sends.
+    return true;
+  }
   protected async prompt(record: MessageRecord) {
     const principal = await this.service((s) =>
       s.resolve(this.address(record.sender))
@@ -155,6 +160,10 @@ export class TelegramLinkedConversation extends ChannelConversation {
       throw new Error("Connection required");
     }
     const route = await this.route(message.sender);
+    await this.ctx.storage.put(`admission:${message.id}`, {
+      turnId: this.turnId({ ...message, route }),
+    });
+    await this.ctx.storage.setAlarm(Date.now() + 30_000);
     const admissionError = await Effect.runPromise(
       reserveChannelTurn(principal, this.turnId({ ...message, route })).pipe(
         Effect.match({
@@ -260,6 +269,30 @@ export class TelegramLinkedConversation extends ChannelConversation {
     await this.completeResponse(id, { text });
   }
   async alarm(): Promise<void> {
+    if (await this.ctx.storage.get("disconnect-intent")) {
+      await this.finishDisconnect();
+    }
+    for (const [key, intent] of await this.ctx.storage.list<{ turnId: string }>(
+      { prefix: "admission:" }
+    )) {
+      if (
+        !(await this.ctx.storage.get(
+          `message:${key.slice("admission:".length)}`
+        ))
+      ) {
+        await Effect.runPromise(
+          settleChannelTurn(intent.turnId, {
+            provider: "none",
+            model: "not-invoked",
+            costMicros: 0,
+            inputTokens: 0,
+            outputTokens: 0,
+            cachedInputTokens: 0,
+          }).pipe(Effect.provide(makePgLayer(this.env)))
+        );
+      }
+      await this.ctx.storage.delete(key);
+    }
     const pending = await this.ctx.storage.list<number>({ prefix: "pending:" });
     for (const [key, expiresAt] of pending) {
       if (expiresAt > Date.now()) {
@@ -397,6 +430,89 @@ export class TelegramLinkedConversation extends ChannelConversation {
         r.state === "sending"
     );
   }
+  private async cancelRecord(record: MessageRecord) {
+    if (record.route) {
+      for (const [key, approval] of await this.ctx.storage.list<{
+        state: string;
+      }>({ prefix: `approval:${record.id}:` })) {
+        if (approval.state !== "pending") {
+          continue;
+        }
+        await this.env.AGENT_RUNTIME!.resolveExternalAction({
+          callerEmail: record.route.callerEmail,
+          gadgetKey: record.route.gadgetKey,
+          actionId: key.slice(`approval:${record.id}:`.length),
+          decision: "rejected",
+        });
+        await this.ctx.storage.put(key, { ...approval, state: "rejected" });
+      }
+      await this.env.AGENT_RUNTIME!.interruptExternalRun({
+        ...record.route,
+        messageKey: record.id,
+      });
+    }
+    await this.abandoned(record);
+    await this.ctx.storage.put(`message:${record.id}`, {
+      ...record,
+      state: "failed",
+      text: "",
+      response: undefined,
+    });
+    await this.ctx.storage.delete(`pending:${record.id}`);
+  }
+  private async beginDisconnect(sender: string, userId: string) {
+    await this.ctx.storage.put("disconnect-intent", { sender, userId });
+    await this.ctx.storage.setAlarm(Date.now() + 1000);
+    // Revoke the capability before attempting any remote cleanup.
+    await this.service((s) => s.disconnect(this.address(sender), userId));
+    await this.ctx.storage.delete("principal");
+  }
+  private async finishDisconnect() {
+    const intent = await this.ctx.storage.get<{
+      sender: string;
+      userId: string;
+    }>("disconnect-intent");
+    if (!intent) {
+      return;
+    }
+    await this.service((s) =>
+      s.disconnect(this.address(intent.sender), intent.userId)
+    );
+    for (const record of await this.active()) {
+      await this.cancelRecord(record);
+    }
+    await this.ctx.storage.delete("principal");
+    await this.ctx.storage.delete("disconnect-intent");
+  }
+  async manageConnection(input: {
+    sender: string;
+    userId: string;
+    connectionId: string;
+    workspaceId?: string;
+  }) {
+    await this.ctx.blockConcurrencyWhile(async () => {
+      if ((await this.ctx.storage.get("sender")) !== input.sender) {
+        throw new Error("Wrong sender");
+      }
+      const principal = await this.service((s) =>
+        s.owned(this.address(input.sender), input.userId)
+      );
+      if (!principal || principal.id !== input.connectionId) {
+        throw new Error("Connection unavailable");
+      }
+      const active = await this.active();
+      if (input.workspaceId !== undefined) {
+        if (active.length) {
+          throw new Error("Stop the active task before switching workspaces");
+        }
+        await this.service((s) =>
+          s.select(this.address(input.sender), input.userId, input.workspaceId!)
+        );
+      } else {
+        await this.beginDisconnect(input.sender, input.userId);
+      }
+    });
+  }
   private async welcome(sender: string) {
     const last = (await this.ctx.storage.get<number>("welcome-at")) ?? 0;
     if (Date.now() - last < 15_000) {
@@ -472,6 +588,13 @@ export class TelegramLinkedConversation extends ChannelConversation {
         throw new Error("Wrong sender");
       }
       await this.ctx.storage.put("sender", message.sender);
+      if (await this.ctx.storage.get("disconnect-intent")) {
+        await this.reply(
+          message.sender,
+          "Your account is disconnected. Previous tasks are being stopped; please try connecting again shortly."
+        );
+        return;
+      }
       if (await this.ctx.storage.get(`control:${message.id}`)) {
         return;
       }
@@ -561,6 +684,7 @@ export class TelegramLinkedConversation extends ChannelConversation {
       if (!command) {
         try {
           await super.enqueue(message);
+          await this.ctx.storage.delete(`admission:${message.id}`);
         } catch (error) {
           if (!(error instanceof ChannelInputError)) {
             throw error;
@@ -629,10 +753,6 @@ export class TelegramLinkedConversation extends ChannelConversation {
         }
         return;
       }
-      await this.ctx.storage.put(`control:${message.id}`, Date.now());
-      if (message.callback) {
-        await this.ctx.storage.delete(`button:${message.callback.data}`);
-      }
       const active = await this.active();
       if (["new", "workspace", "select"].includes(command) && active.length) {
         await this.reply(
@@ -644,10 +764,10 @@ export class TelegramLinkedConversation extends ChannelConversation {
       }
       if (command === "new") {
         const key = `session:${principal.generation}:${principal.workspaceId}`;
-        await this.ctx.storage.put(
-          key,
-          ((await this.ctx.storage.get<number>(key)) ?? 1) + 1
-        );
+        await this.ctx.storage.transaction(async (storage) => {
+          await storage.put(key, ((await storage.get<number>(key)) ?? 1) + 1);
+          await storage.put(`control:${message.id}`, Date.now());
+        });
         await this.reply(
           message.sender,
           "New chat started. Your workspace memory and skills are unchanged.",
@@ -686,32 +806,18 @@ export class TelegramLinkedConversation extends ChannelConversation {
         return;
       }
       if (command === "stop" || command === "disconnect-confirm") {
-        for (const record of active) {
-          if (record.route && record.state === "running") {
-            await this.env.AGENT_RUNTIME!.interruptExternalRun({
-              ...record.route,
-              messageKey: record.id,
-            });
-          }
-          await this.ctx.storage.put(`message:${record.id}`, {
-            ...record,
-            state: "failed",
-            text: "",
-            response: undefined,
-          });
-          await this.ctx.storage.delete(`pending:${record.id}`);
-          await this.abandoned(record);
-        }
         if (command === "disconnect-confirm") {
-          await this.service((s) =>
-            s.disconnect(this.address(message.sender), principal!.userId)
-          );
-          await this.ctx.storage.delete("principal");
+          await this.beginDisconnect(message.sender, principal.userId);
+          await this.ctx.storage.put(`control:${message.id}`, Date.now());
           await this.reply(
             message.sender,
             "Disconnected. Your Delulu memory and files have not been deleted."
           );
         } else {
+          for (const record of active) {
+            await this.cancelRecord(record);
+          }
+          await this.ctx.storage.put(`control:${message.id}`, Date.now());
           await this.reply(
             message.sender,
             "Stopped. Any external action already submitted may still need reconciliation.",
@@ -721,9 +827,14 @@ export class TelegramLinkedConversation extends ChannelConversation {
         return;
       }
       if (command === "settings" || command === "disconnect") {
+        const usage = await Effect.runPromise(
+          channelUsagePercent(principal).pipe(
+            Effect.provide(makePgLayer(this.env))
+          )
+        );
         await this.reply(
           message.sender,
-          `Connected as ${principal.verifiedEmail}.`,
+          `Connected as ${principal.verifiedEmail}.\nMonthly agent allowance: ${usage}% used (including reserved tasks).`,
           {
             inline_keyboard: [
               [

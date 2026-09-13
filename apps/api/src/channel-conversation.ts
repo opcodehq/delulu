@@ -81,6 +81,9 @@ export class ChannelConversation extends DurableObject<Env> {
   protected responseText(text: string): string {
     return text.slice(0, 3900);
   }
+  protected resumableDelivery(): boolean {
+    return false;
+  }
   protected async prompt(record: MessageRecord): Promise<string> {
     return record.text;
   }
@@ -139,6 +142,9 @@ export class ChannelConversation extends DurableObject<Env> {
   }
 
   async enqueue(message: ChannelMessage): Promise<void> {
+    if (await this.ctx.storage.get(`message:${message.id}`)) {
+      return;
+    }
     if (!(this.authorized(message.sender) && this.email(message.sender))) {
       throw new Error("Channel identity is not authorized");
     }
@@ -251,14 +257,18 @@ export class ChannelConversation extends DurableObject<Env> {
       const key = `message:${record.id}`;
       await this.ctx.storage.setAlarm(Date.now() + 30_000);
       if (record.state === "sending") {
-        // A crash after Meta accepted a send is ambiguous; never double-send it.
-        await this.ctx.storage.put(key, {
-          ...record,
-          state: "failed",
-          text: "",
-          response: undefined,
-        });
-        continue;
+        if (this.resumableDelivery()) {
+          record.state = "ready";
+        } else {
+          // A crash after Meta accepted a send is ambiguous; never double-send it.
+          await this.ctx.storage.put(key, {
+            ...record,
+            state: "failed",
+            text: "",
+            response: undefined,
+          });
+          continue;
+        }
       }
       if (record.state === "ready") {
         if (record.nextSendAt && record.nextSendAt > Date.now()) {

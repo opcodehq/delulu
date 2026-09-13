@@ -30,7 +30,19 @@ Keep the token in the runtime Worker only; it must never be placed in a user wor
 
 External turns are capped at four model steps, a 32k-token input window, and 4k output tokens per step. The authenticated workspace API reserves $0.50 of internal budget before dispatch and reconciles reported usage afterward. This is separate from the direct channel pilot: its admission is count-based, not dollar-based metering. Telegram permits only `TELEGRAM_ALLOWED_USER_ID`, with `TELEGRAM_MONTHLY_TURN_LIMIT` turns per UTC month (1,000 in staging; missing/invalid values default to ten). Reservations and message deduplication are atomic in the conversation; failed runs still count. Exhaustion sends a durable notice without inference. The retired lifetime admission object remains for storage compatibility but is no longer called. WhatsApp retains its ten-turn monthly allowance.
 
-Telegram currently routes every message from the same bot/user pair to the same persistent runtime chat. Idle time and Worker restarts do not create new sessions; there is no `/new` command yet. Changing session routing must preserve the workspace and handle pending callbacks explicitly.
+The legacy pilot routes a bot/user pair to one persistent chat. The account-linked beta uses a separate Durable Object namespace and versioned workspace chats: `/new` changes the session without deleting memory. Idle time does not reset either mode.
+
+## Account-linked Telegram beta (gated)
+
+`TELEGRAM_ACCOUNT_LINKING_ENABLED` remains false until staging acceptance passes. When enabled, unlinked users receive a Clerk-backed connection link, then must confirm the account in their originating private Telegram chat. Challenges are hashed, single-use, and expire after ten minutes. Numeric Telegram IDs establish identity; guest conversations are never imported.
+
+The implementation includes workspace switching, new chats, cancellation, action buttons, instruction-skill management, confirmed memory context, incoming media processing, and authenticated link-management APIs. The content connector obtains workspace scope from the trusted runtime rather than the prompt. Channel grants are checked again for content access and writes. Disconnect revokes the account link before asynchronous cancellation recovery.
+
+Channel messages, challenges, operational receipts, and reply recovery stay in Durable Objects. Migration `0026_agent_channel_identity.sql` adds account links, beta invitations, versioned skills, content-free turn reservations, and personal/workspace memory scope. Apply it only to the intended database using the normal migration workflow.
+
+Before enabling staging, configure an isolated Postgres database (`DATABASE_URL` or `HYPERDRIVE`), Clerk test instance (`CLERK_ISSUER`, `CLERK_JWT_KEY`, `CLERK_SECRET_KEY`), authenticated staging web origin (`APP_BASE_URL` and web build-time `NEXT_PUBLIC_API_URL`), private R2 storage credentials/bucket, and the `AGENT_MEDIA_AI` Workers AI binding. The database-less guest pilot is not sufficient. Do not reuse production data or authentication configuration.
+
+Rollout blockers still outstanding: strict dollar admission at every model/media invocation (the current $0.25 reservation is not a hard per-call spending cap), outbound generated-file delivery, bounded active-receipt indexing/retention, and live end-to-end acceptance including web authentication and one approved test action. Do not enable the flag merely because the Worker bundles successfully.
 
 ## Staging pilot boundaries
 

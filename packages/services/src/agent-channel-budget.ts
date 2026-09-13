@@ -5,6 +5,33 @@ import type { ChannelPrincipal } from "./agent-channels";
 import type { AgentRuntimeUsage } from "./agent-runtime";
 
 const RESERVATION = 250_000;
+export const channelUsagePercent = Effect.fn("channelUsagePercent")(function* (
+  principal: ChannelPrincipal
+) {
+  const sql = yield* SqlClient.SqlClient;
+  const rows = yield* sql<{ used: string; allowance: string }>`SELECT
+    COALESCE((SELECT SUM(CASE entry_type WHEN 'release' THEN -cost_micros ELSE cost_micros END)
+      FROM agent_usage_ledger WHERE billing_owner_user_id = w.billing_owner_user_id
+        AND created_at >= date_trunc('month', now())), 0)::text AS used,
+    LEAST(5000000, COALESCE(aw.monthly_budget_micros, 5000000))::text AS allowance
+    FROM workspaces w JOIN workspace_members wm ON wm.workspace_id = w.id AND wm.user_id = ${principal.userId}
+    LEFT JOIN agent_workspaces aw ON aw.workspace_id = w.id AND aw.user_id = wm.user_id AND aw.deleted_at IS NULL
+    WHERE w.id = ${principal.workspaceId} AND w.deleted_at IS NULL`.pipe(
+    Effect.orDie
+  );
+  if (!rows[0]) {
+    return 100;
+  }
+  return Math.min(
+    100,
+    Math.max(
+      0,
+      Math.ceil(
+        (Number(rows[0].used) / Math.max(1, Number(rows[0].allowance))) * 100
+      )
+    )
+  );
+});
 export const lockAgentBudget = Effect.fn("lockAgentBudget")(function* (
   billingOwnerUserId: string
 ) {
@@ -45,6 +72,13 @@ export const reserveChannelTurn = Effect.fn("reserveChannelTurn")(function* (
           ) {
             return yield* new ForbiddenError({
               message: "Turn owner mismatch",
+            });
+          }
+          if (prior[0].state !== "active") {
+            return yield* new ConflictError({
+              message:
+                "This interrupted turn is closed. Send a new message to try again.",
+              resource: "agent-run",
             });
           }
           return;

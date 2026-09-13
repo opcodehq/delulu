@@ -106,6 +106,10 @@ it("links through a private confirmation, routes authenticated chats, resets ses
     chatKey: string;
   }> = [];
   const jobs: Promise<unknown>[] = [];
+  const storage = new Storage();
+  let requireApproval = false;
+  let interruptFailures = 0;
+  const decisions: unknown[] = [];
   let actor: TelegramLinkedConversation;
   const fullEnv = {
     ...env,
@@ -123,6 +127,9 @@ it("links through a private confirmation, routes authenticated chats, resets ses
         submissions.push(input);
         await input.chatGatewayRpcTarget.onGadgetResponse({
           text: "Hello from your workspace.",
+          actions: requireApproval
+            ? [{ id: "17", summary: "Schedule a test draft" }]
+            : [],
           usage: {
             provider: "test",
             model: "test",
@@ -134,13 +141,19 @@ it("links through a private confirmation, routes authenticated chats, resets ses
         });
         return { accepted: true, chatPath: "/chat" };
       },
-      interruptExternalRun: async () => undefined,
-      resolveExternalAction: async () => undefined,
+      interruptExternalRun: async () => {
+        if (interruptFailures-- > 0) {
+          throw new Error("Transient runtime failure");
+        }
+      },
+      resolveExternalAction: async (input: unknown) => {
+        decisions.push(input);
+      },
     },
   } as Env;
   actor = new TelegramLinkedConversation(
     {
-      storage: new Storage(),
+      storage,
       blockConcurrencyWhile: (work: () => Promise<unknown>) => work(),
       waitUntil: (work: Promise<unknown>) => jobs.push(work),
       exports: {
@@ -206,4 +219,42 @@ it("links through a private confirmation, routes authenticated chats, resets ses
   await expect(
     actor.offerLink({ challenge, candidate: identity })
   ).rejects.toThrow();
+  requireApproval = true;
+  await actor.enqueue({ id: "7", sender: "123", text: "schedule a draft" });
+  await drain();
+  expect(await storage.get("pending:7")).toBeDefined();
+  interruptFailures = 1;
+  await expect(
+    actor.enqueue({ id: "8", sender: "123", text: "/stop" })
+  ).rejects.toThrow("Transient runtime failure");
+  expect(await storage.get("control:8")).toBeUndefined();
+  await actor.enqueue({ id: "8", sender: "123", text: "/stop" });
+  expect(await storage.get("control:8")).toBeDefined();
+  expect(await storage.get("pending:7")).toBeUndefined();
+  expect(decisions).toHaveLength(1);
+  const connectionId = await Effect.runPromise(
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      const rows = yield* sql<{
+        id: string;
+      }>`SELECT id FROM agent_channel_identities WHERE user_id = ${identity.userId} AND environment = ${env.ENVIRONMENT}`;
+      yield* sql`UPDATE agent_beta_invites SET revoked_at = now() WHERE user_id = ${identity.userId}`;
+      return rows[0]!.id;
+    }).pipe(Effect.provide(makePgLayer(env)))
+  );
+  await expect(
+    actor.manageConnection({
+      sender: "123",
+      userId: "wrong-user",
+      connectionId,
+    })
+  ).rejects.toThrow();
+  await actor.manageConnection({
+    sender: "123",
+    userId: identity.userId,
+    connectionId,
+  });
+  await actor.enqueue({ id: "9", sender: "123", text: "hello again" });
+  await drain();
+  expect(submissions).toHaveLength(3);
 });
