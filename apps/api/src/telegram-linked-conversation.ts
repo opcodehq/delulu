@@ -3,19 +3,22 @@ import {
   splitTelegramText,
   telegramCall,
 } from "@delulu/communication-telegram";
+import { type AuthContext, UserId, WorkspaceId } from "@delulu/core";
 import {
   AgentChannelService,
   type AgentRuntimeResponse,
   type ChannelAddress,
   type ChannelLinkOffer,
   type ChannelPrincipal,
+  ConnectionsService,
   channelUsagePercent,
   readAgentKnowledge,
   reserveChannelTurn,
   settleChannelTurn,
+  WorkspaceAccessService,
 } from "@delulu/services";
-import { Effect, Layer } from "effect";
-import { makePgLayer } from "./base-layer";
+import { Effect, Layer, Schema } from "effect";
+import { makeBaseLayer, makePgLayer } from "./base-layer";
 import {
   ChannelConversation,
   ChannelInputError,
@@ -64,6 +67,63 @@ const hash = async (value: string) =>
 
 /** A new namespace deliberately keeps legacy guest history out of linked accounts. */
 export class TelegramLinkedConversation extends ChannelConversation {
+  private async directConnectionButtons(
+    sender: string,
+    links: readonly { text: string; url: string }[]
+  ) {
+    const principal = await this.service((s) =>
+      s.resolve(this.address(sender))
+    );
+    if (!principal) {
+      throw new ChannelAccessDenied();
+    }
+    return Effect.runPromise(
+      Effect.gen(function* () {
+        const connections = yield* ConnectionsService;
+        const workspaces = yield* WorkspaceAccessService;
+        const userId = yield* Schema.decodeUnknownEffect(UserId)(
+          principal.userId
+        );
+        const workspaceId = yield* Schema.decodeUnknownEffect(WorkspaceId)(
+          principal.workspaceId
+        );
+        const auth: AuthContext = {
+          userId,
+          credential: "session",
+          scopes: "full",
+          boundWorkspaceId: workspaceId,
+        };
+        const access = yield* workspaces.require({
+          workspaceId,
+          auth,
+          scope: "accounts:write",
+        });
+        const buttons: { text: string; url: string }[] = [];
+        for (const link of links) {
+          const target = new URL(link.url);
+          if (target.searchParams.get("workspaceId") !== workspaceId) {
+            throw new ChannelAccessDenied();
+          }
+          const platform = target.searchParams.get("platform");
+          if (platform !== "LINKEDIN" && platform !== "TWITTER") {
+            throw new ChannelAccessDenied();
+          }
+          const result = yield* connections.mint(
+            access.workspaceId,
+            platform,
+            auth,
+            true,
+            "cli"
+          );
+          if (new URL(result.url).protocol !== "https:") {
+            throw new Error("Invalid authorization URL");
+          }
+          buttons.push({ text: link.text, url: result.url });
+        }
+        return buttons;
+      }).pipe(Effect.provide(makeBaseLayer(this.env)))
+    );
+  }
   private service<A, E>(
     work: (service: AgentChannelService["Service"]) => Effect.Effect<A, E>
   ): Promise<A> {
@@ -226,6 +286,13 @@ export class TelegramLinkedConversation extends ChannelConversation {
         record.route!.gadgetKey.slice("workspace:".length)
       )
     );
+    if (presentation.rows.length) {
+      const buttons = await this.directConnectionButtons(
+        record.sender,
+        presentation.rows.flat()
+      );
+      presentation.rows = buttons.map((button) => [button]);
+    }
     let replyMarkup: unknown = presentation.rows.length
       ? { inline_keyboard: presentation.rows }
       : undefined;
@@ -856,7 +923,10 @@ export class TelegramLinkedConversation extends ChannelConversation {
           `Connected as ${principal.verifiedEmail}.\nMonthly agent allowance: ${usage}% used (including reserved tasks).`,
           {
             inline_keyboard: [
-              connectionButtons(this.env.APP_BASE_URL!, principal.workspaceId),
+              await this.directConnectionButtons(
+                message.sender,
+                connectionButtons(this.env.APP_BASE_URL!, principal.workspaceId)
+              ),
               [
                 await this.button("Workspace", "workspace", principal),
                 await this.button("Tasks", "tasks", principal),

@@ -18,6 +18,7 @@ const patchFiles = [
   join(root, "patches", "0006-persistent-response-bindings.patch"),
   join(root, "patches", "0007-external-approval-continuations.patch"),
   join(root, "patches", "0008-content-workspace-scope.patch"),
+  join(root, "patches", "0009-external-tool-bindings.patch"),
 ];
 
 const run = (command, args, cwd = root) => {
