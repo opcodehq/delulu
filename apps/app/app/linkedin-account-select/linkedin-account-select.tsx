@@ -234,6 +234,20 @@ export function LinkedInAccountSelect() {
         {error && targets.length > 0 ? (
           <p className="text-destructive text-sm">{error}</p>
         ) : null}
+        {!loading &&
+        targets.length > 0 &&
+        !targets.some((target) => target.type === "organization") ? (
+          <output className="block space-y-2 rounded-xl border p-4 text-sm">
+            <p>
+              {searchParams.get("pages") === "unavailable"
+                ? "We couldn't load your LinkedIn Pages. You can continue with your profile, or go back and reconnect to try again."
+                : "LinkedIn returned no eligible Pages for this account. Check that you have permission to publish on the Page, or reconnect with the account that manages it."}
+            </p>
+            <a className="flex min-h-11 items-center underline" href="/socials">
+              Back to Connected Accounts
+            </a>
+          </output>
+        ) : null}
         <Button
           className="min-h-11 w-full"
           disabled={loading || submitting || !selected}

@@ -530,16 +530,13 @@ export function useResourceRegistry(): ResourceRegistry {
       },
       fetchResource: async <A, E>(options: ResourceEffect<A, E>) => {
         const data = await Effect.runPromise(options.effect());
-        const atom = store.query(options, {
+        store.query(options, {
           staleTime: 0,
           retry: 0,
           retryDelayMs: 0,
         });
-        const entry = store.exact(options.queryKey)[0];
-        if (entry) {
+        for (const entry of store.exact(options.queryKey)) {
           registry.set(entry.atom, AsyncResult.success(data));
-        } else {
-          registry.refresh(atom);
         }
         return data;
       },

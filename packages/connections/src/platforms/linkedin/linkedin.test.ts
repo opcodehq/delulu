@@ -20,6 +20,32 @@ afterEach(() => {
 });
 
 describe("LinkedIn current API contract", () => {
+  it("keeps an authorized Page selectable when its display metadata is unavailable", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          Response.json({
+            elements: [
+              {
+                organization: "urn:li:organization:123",
+                role: "ADMINISTRATOR",
+                state: "APPROVED",
+              },
+            ],
+          })
+        )
+        .mockResolvedValueOnce(new Response(null, { status: 403 }))
+    );
+    await expect(discoverLinkedInOrganizations("access")).resolves.toEqual([
+      {
+        id: "urn:li:organization:123",
+        name: "LinkedIn Page 123",
+        type: "organization",
+      },
+    ]);
+  });
   it("requests current member and organization publishing scopes", async () => {
     vi.stubEnv("LINKEDIN_CLIENT_ID", "client");
     vi.stubEnv("LINKEDIN_CALLBACK_URL", "https://app.test/callback");
@@ -226,21 +252,39 @@ describe("LinkedIn current API contract", () => {
         )
     );
     const upsert = vi.fn().mockResolvedValue({ status: "created" });
-
-    await linkedinAuth.handleCallback({
+    const values = new Map<string, string>();
+    const temporaryStore = {
+      get: vi.fn(async (key: string) => values.get(key) ?? null),
+      put: vi.fn(async (key: string, value: string) => {
+        values.set(key, value);
+      }),
+      delete: vi.fn(async (key: string) => {
+        values.delete(key);
+      }),
+    };
+    const cipher = makeTokenCipher("injected test secret");
+    const before = Date.now();
+    const response = await linkedinAuth.handleCallback({
+      tokenCipher: cipher,
       code: "authorization-code",
       error: null,
       errorReason: null,
       state: "signed-state",
       userId: "user_1",
       upsert,
-      temporaryStore: {
-        get: vi.fn().mockResolvedValue(null),
-        put: vi.fn().mockResolvedValue(undefined),
-        delete: vi.fn().mockResolvedValue(undefined),
-      },
+      temporaryStore,
     });
-
+    const location = new URL(response.headers.get("Location") ?? "");
+    expect(location.pathname).toBe("/linkedin-account-select");
+    expect(upsert).not.toHaveBeenCalled();
+    await connectLinkedInTarget({
+      cipher,
+      userId: "user_1",
+      selectionId: location.searchParams.get("selection") ?? "",
+      targetId: "member_1",
+      temporaryStore,
+      upsert,
+    });
     expect(upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         socialType: "LINKEDIN",
@@ -255,6 +299,12 @@ describe("LinkedIn current API contract", () => {
     expect(vi.mocked(fetch).mock.calls[1]?.[0]).toBe(
       "https://api.linkedin.com/v2/userinfo"
     );
+    expect(upsert.mock.calls[0]?.[0].expiresIn).toBeGreaterThanOrEqual(
+      before + 3_600_000
+    );
+    expect(
+      upsert.mock.calls[0]?.[0].refreshTokenExpiresIn
+    ).toBeGreaterThanOrEqual(before + 7_200_000);
   });
 
   it("keeps personal connection available when Page discovery fails", async () => {
@@ -296,15 +346,13 @@ describe("LinkedIn current API contract", () => {
       },
     });
 
-    expect(upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        profileId: "member_1",
-        metadata: { linkedinTargetType: "member" },
-      })
-    );
+    expect(upsert).not.toHaveBeenCalled();
     expect(new URL(response.headers.get("Location") ?? "").pathname).toBe(
-      "/socials"
+      "/linkedin-account-select"
     );
+    expect(
+      new URL(response.headers.get("Location") ?? "").searchParams.get("pages")
+    ).toBe("unavailable");
   });
 
   it("offers the member and managed Pages before persisting a target", async () => {

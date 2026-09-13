@@ -1,8 +1,5 @@
 import { Effect } from "effect";
-import {
-  callbackRedirect,
-  transferRequiredRedirect,
-} from "../../callback-response";
+import { callbackRedirect } from "../../callback-response";
 import { type ConnectionError, networkError, tokenExpired } from "../../errors";
 import type {
   CallbackContext,
@@ -131,19 +128,20 @@ export const linkedinAuth: PlatformAuth = {
       const userObject = (await userResponse.json()) as LinkedInUserResponse;
 
       // LinkedIn's API exposes no public @handle, so we don't fabricate one —
-      // the account surfaces under its full name only. (`expiresIn` is the
-      // access-token expiry; LinkedIn issues no refresh token here, so this is
-      // the genuine re-auth deadline.)
+      // the account surfaces under its full name only. Preserve both provider
+      // expiry values; approved partners may also receive a refresh token.
       const fullName =
         userObject.name ||
         `${userObject.given_name ?? ""} ${userObject.family_name ?? ""}`.trim();
 
       // Page discovery is additive. A transient organization API failure must
       // never prevent a member from connecting their personal profile.
+      let pageDiscoveryFailed = false;
       const organizations = await discoverLinkedInOrganizations(
         access_token
       ).catch((cause) => {
         console.error("LinkedIn Page discovery failed:", cause);
+        pageDiscoveryFailed = true;
         return [];
       });
       const memberConnection = {
@@ -160,18 +158,6 @@ export const linkedinAuth: PlatformAuth = {
         metadata: { linkedinTargetType: "member" },
       } as const;
 
-      // Most members have no Page to manage. Keep that path one-step and fast.
-      if (organizations.length === 0) {
-        const result = await ctx.upsert(memberConnection);
-
-        if (result.status === "transfer_required") {
-          return transferRequiredRedirect({ platform: "linkedin", ...result });
-        }
-
-        ctx.onConnected?.({ provider: "linkedin", username: fullName });
-        return callbackRedirect("/socials");
-      }
-
       if (!ctx.tokenCipher) {
         throw new Error("LinkedIn target encryption is unavailable");
       }
@@ -183,6 +169,7 @@ export const linkedinAuth: PlatformAuth = {
           {
             id: userObject.sub,
             name: fullName,
+            profileImage: memberConnection.profileImage,
             type: "member",
             accessToken: access_token,
             refreshToken: refresh_token,
@@ -200,7 +187,7 @@ export const linkedinAuth: PlatformAuth = {
       });
 
       return callbackRedirect(
-        `/linkedin-account-select?selection=${encodeURIComponent(selectionId)}&state=${encodeURIComponent(ctx.state ?? "")}`
+        `/linkedin-account-select?selection=${encodeURIComponent(selectionId)}&state=${encodeURIComponent(ctx.state ?? "")}${pageDiscoveryFailed ? "&pages=unavailable" : ""}`
       );
     } catch (error) {
       console.error("LinkedIn callback error:", error);

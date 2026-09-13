@@ -80,7 +80,7 @@ export const socialDisplayNames = {
 
 export const socialDescriptions = {
   TWITTER: 'Connect your X account',
-  LINKEDIN: 'Connect your LinkedIn profile',
+  LINKEDIN: 'Connect your profile or a Page',
   INSTAGRAM: 'Connect your Instagram profile',
   YOUTUBE: 'Connect your YouTube channel',
   TIKTOK: 'Connect your TikTok profile',
@@ -100,4 +100,4 @@ export const sizeClasses = {
   xl: 'h-7 w-7',
 } as const;
 
-export type SocialIconSize = keyof typeof sizeClasses; 
+export type SocialIconSize = keyof typeof sizeClasses;

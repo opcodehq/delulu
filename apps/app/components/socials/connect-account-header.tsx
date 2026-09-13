@@ -154,7 +154,7 @@ export function ConnectAccountDialog() {
           Connect Account
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Connect Social Account</DialogTitle>
           <DialogDescription>
