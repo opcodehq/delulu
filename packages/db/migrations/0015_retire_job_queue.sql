@@ -1,4 +1,4 @@
--- deployment-safe-contract: paused cutover with acknowledged DO transfer and guarded retirement; see apps/api/SCHEDULING.md
+-- deployment-safe-contract: paused cutover with acknowledged DO transfer and guarded retirement
 -- The one-time transfer must acknowledge every outstanding deadline before
 -- destructive retirement. Empty installations need no transfer.
 DO $$

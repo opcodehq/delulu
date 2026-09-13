@@ -2,6 +2,7 @@
 /* tslint:disable */
 /* eslint-disable */
 /* deno-fmt-ignore-file */
+/* biome-ignore-all lint: auto-generated */
 
 declare module "sst" {
   export interface Resource {
@@ -13,34 +14,13 @@ declare module "sst" {
       "type": "sst.sst.Secret"
       "value": string
     }
-    "ENCRYPTION_SECRET": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
     "GROQ_API_KEY": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "LAMBDA_SECRET_KEY": {
       "type": "sst.sst.Secret"
       "value": string
     }
     "POSTGRES_DATABASE_URL": {
       "type": "sst.sst.Secret"
       "value": string
-    }
-    "PostgresSocialPostsDLQ": {
-      "type": "sst.aws.Queue"
-      "url": string
-    }
-    "PostgresSocialPostsQueue": {
-      "type": "sst.aws.Queue"
-      "url": string
-    }
-    "PostgresTriggerSqsFunction": {
-      "name": string
-      "type": "sst.aws.Function"
-      "url": string
     }
     "TranscriptionFunction": {
       "name": string

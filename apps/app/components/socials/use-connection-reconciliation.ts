@@ -16,6 +16,7 @@ export const connectionIsVisible = (
     readonly profileId: string;
     readonly username: string | null;
     readonly displayName: string | null;
+    readonly expiresAt?: string | null;
   }[],
   provider: string,
   callbackProfileId: string | null,
@@ -24,6 +25,12 @@ export const connectionIsVisible = (
   const expected = callbackUsername?.replace(LEADING_AT, "").toLowerCase();
   return accounts.some((account) => {
     if (account.platform.toLowerCase() !== provider.toLowerCase()) {
+      return false;
+    }
+    if (
+      account.expiresAt != null &&
+      !(Date.parse(account.expiresAt) > Date.now())
+    ) {
       return false;
     }
     if (callbackProfileId) {

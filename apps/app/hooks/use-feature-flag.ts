@@ -13,7 +13,7 @@ type FeatureFlag = "affiliates" | "twitter" | "analytics";
 
 const FLAG_CONFIG: Record<FeatureFlag, { adminOnly: boolean }> = {
   affiliates: { adminOnly: true },
-  twitter: { adminOnly: true },
+  twitter: { adminOnly: false },
   analytics: { adminOnly: true },
 };
 

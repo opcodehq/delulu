@@ -122,6 +122,7 @@ export interface Env {
   readonly WHATSAPP_VERIFY_TOKEN?: string;
   readonly WHATSAPP_APP_SECRET?: string;
   readonly WHATSAPP_ACCESS_TOKEN?: string;
+  readonly API_MAINTENANCE?: string;
   readonly DATABASE_URL?: string;
   readonly HYPERDRIVE?: Hyperdrive;
   readonly DELULU_DEPLOYMENT_MODE?: "hosted" | "self_hosted";

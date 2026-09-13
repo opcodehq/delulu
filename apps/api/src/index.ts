@@ -17,7 +17,7 @@ import { DurableJobObject, type JobState } from "./durable-job";
 import { appOrigins, type Env, type ExecutionContext } from "./env";
 import { executeJob, failJob } from "./execute-job";
 import { makeJobRuntime, sendIntent } from "./job-runtime";
-import { runMaintenance } from "./maintenance";
+import { maintenanceResponse, runMaintenance } from "./maintenance";
 import { handleProviderIngress } from "./provider-ingress";
 
 export {
@@ -403,6 +403,10 @@ export default {
     env: Env,
     ctx: ExecutionContext
   ): Promise<Response> {
+    const maintenance = maintenanceResponse(request, env.API_MAINTENANCE);
+    if (maintenance) {
+      return maintenance;
+    }
     if (new URL(request.url).pathname === "/internal/jobs") {
       if (
         !(env.JOBS && env.SCHEDULER_SECRET) ||
