@@ -91,17 +91,7 @@ name = "EMAIL"
 remote = true
 allowed_sender_addresses = ["welcome@mail.delulu.social"]
 
-# Private RPC trust boundary between the product API and durable agent runtime.
-[[services]]
-binding = "AGENT_RUNTIME"
-service = "delulu-agent-runtime"
-entrypoint = "ExternalMessageGateway"
-props = { source = "delulu" }
-
-[[services]]
-binding = "AGENT_RUNTIME_BRIDGE"
-service = "delulu-api-next"
-entrypoint = "AgentRuntimeBridge"
+# Agent RPC bindings are staging-only until the production runtime is provisioned.
 
 # Postgres via Hyperdrive. In production `id` points at the real Hyperdrive
 # config (fill after `wrangler hyperdrive create`). In local `wrangler dev`,
