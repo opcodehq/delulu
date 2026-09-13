@@ -114,7 +114,7 @@ export class MessagingService extends Context.Service<
       readonly replyTo?: string;
       readonly idempotencyKey: string;
       readonly metadata?: Readonly<Record<string, unknown>>;
-    }) => Effect.Effect<{ readonly sent: boolean }>;
+    }) => Effect.Effect<{ readonly status: "queued" }>;
     readonly deliver: (messageId: string) => Effect.Effect<void>;
   }
 >()("@delulu/services/MessagingService") {
@@ -129,6 +129,16 @@ export class MessagingService extends Context.Service<
       const ensurePreferences = (userId: string) =>
         sql`INSERT INTO email_preferences (user_id) VALUES (${userId})
           ON CONFLICT (user_id) DO NOTHING`.pipe(Effect.orDie);
+      const deliveryExists = (idempotencyKey: string | undefined) =>
+        idempotencyKey
+          ? sql<{ present: boolean }>`SELECT EXISTS(
+              SELECT 1 FROM message_deliveries
+              WHERE idempotency_key = ${idempotencyKey}
+            ) AS present`.pipe(
+              Effect.map((rows) => rows[0]?.present ?? false),
+              Effect.orDie
+            )
+          : Effect.succeed(false);
       const enqueue = (input: {
         userId: string;
         idempotencyKey: string;
@@ -170,12 +180,17 @@ export class MessagingService extends Context.Service<
       const preferences = Effect.fn("MessagingService.preferences")(function* (
         userId: string
       ) {
-        yield* ensurePreferences(userId);
-        const rows = yield* sql<{
-          productLifecycleEnabled: boolean;
-          marketingEnabled: boolean;
-        }>`SELECT product_lifecycle_enabled, marketing_enabled
+        const load = () =>
+          sql<{
+            productLifecycleEnabled: boolean;
+            marketingEnabled: boolean;
+          }>`SELECT product_lifecycle_enabled, marketing_enabled
           FROM email_preferences WHERE user_id = ${userId}`.pipe(Effect.orDie);
+        let rows = yield* load();
+        if (!rows[0]) {
+          yield* ensurePreferences(userId);
+          rows = yield* load();
+        }
         return {
           productLifecycleEnabled: rows[0]?.productLifecycleEnabled ?? true,
           marketingEnabled: rows[0]?.marketingEnabled ?? false,
@@ -188,7 +203,9 @@ export class MessagingService extends Context.Service<
           readonly attributes: Readonly<Record<string, unknown>>;
           readonly idempotencyKey?: string;
         }) {
-          yield* ensurePreferences(input.userId);
+          if (yield* deliveryExists(input.idempotencyKey)) {
+            return;
+          }
           yield* enqueue({
             userId: input.userId,
             idempotencyKey: input.idempotencyKey ?? randomKey("identify"),
@@ -206,6 +223,9 @@ export class MessagingService extends Context.Service<
         readonly properties?: Readonly<Record<string, unknown>>;
         readonly idempotencyKey?: string;
       }) {
+        if (yield* deliveryExists(input.idempotencyKey)) {
+          return;
+        }
         const preference = yield* preferences(input.userId);
         const payload: DeliveryPayload = {
           kind: "track",
@@ -226,6 +246,9 @@ export class MessagingService extends Context.Service<
             ? "cancellation_pending"
             : null
           : "product_lifecycle_disabled";
+        if (suppressionReason) {
+          return;
+        }
         yield* enqueue({
           userId: input.userId,
           idempotencyKey: input.idempotencyKey ?? randomKey(input.event),
@@ -233,8 +256,6 @@ export class MessagingService extends Context.Service<
           messageType: input.event,
           provider: lifecycleProvider.name,
           payload,
-          status: suppressionReason ? "suppressed" : "queued",
-          suppressionReason: suppressionReason ?? undefined,
         });
       });
       const updatePreferences = Effect.fn("MessagingService.updatePreferences")(
@@ -292,6 +313,9 @@ export class MessagingService extends Context.Service<
           readonly idempotencyKey: string;
           readonly metadata?: Readonly<Record<string, unknown>>;
         }) {
+          if (yield* deliveryExists(input.idempotencyKey)) {
+            return { status: "queued" as const };
+          }
           yield* enqueue({
             userId: input.userId,
             idempotencyKey: input.idempotencyKey,
@@ -308,7 +332,7 @@ export class MessagingService extends Context.Service<
             },
             metadata: input.metadata,
           });
-          return { sent: true };
+          return { status: "queued" as const };
         }
       );
       const deliver = Effect.fn("MessagingService.deliver")(function* (

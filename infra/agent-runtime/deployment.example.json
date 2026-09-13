@@ -1,0 +1,19 @@
+{
+  "accountId": "<cloudflare-account-id>",
+  "workshopWorker": "delulu-agent-runtime",
+  "contentGatekeeperWorker": "delulu-content-gatekeeper",
+  "contextWorker": "delulu-agent-context",
+  "schedulerWorker": "delulu-agent-scheduler",
+  "apiWorker": "delulu-api-next",
+  "source": "delulu",
+  "siteName": "Delulu Content HQ",
+  "advancedCodeMode": false,
+  "passwordLogin": false,
+  "aiGateway": {
+    "name": "delulu-agent-models",
+    "provider": "openrouter",
+    "routineModel": "gpt-5.6-luna",
+    "defaultModel": "gpt-5.6-luna",
+    "escalationModel": "gpt-5.6-sol"
+  }
+}

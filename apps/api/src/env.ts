@@ -1,21 +1,87 @@
+import { ProviderUnavailableError } from "@delulu/contracts";
 import type {
+  AgentApprovalDecision,
+  AgentRuntimeResponse,
   CfRateLimiter,
   KeyValueCacheBinding,
+  SubmitExternalAgentMessageResult,
   WorkersKvNamespace,
 } from "@delulu/services";
 import {
+  AgentRuntimeProvider,
   AuthConfig,
   ClerkAdminConfig,
   ConnectionStateConfig,
   PostHogConfig,
   R2Config,
 } from "@delulu/services";
-import { Layer } from "effect";
+import { Effect, Layer } from "effect";
 import type { JobNamespace } from "./job-runtime";
 
 /** Cloudflare Hyperdrive binding (Postgres connection pooler). */
 export interface Hyperdrive {
   readonly connectionString: string;
+}
+
+export interface AgentRuntimeBridgeBinding {
+  readonly ensureExternalUser: (input: {
+    readonly email: string;
+    readonly displayName: string;
+  }) => Promise<void>;
+  readonly submitExternalMessage: (input: {
+    readonly correlationId: string;
+    readonly callerEmail: string;
+    readonly displayName: string;
+    readonly gadgetKey: string;
+    readonly chatKey: string;
+    readonly messageKey: string;
+    readonly gadgetTitle: string;
+    readonly prompt: string;
+  }) => Promise<SubmitExternalAgentMessageResult>;
+  readonly interruptExternalRun: (input: {
+    readonly callerEmail: string;
+    readonly gadgetKey: string;
+    readonly chatKey: string;
+    readonly messageKey: string;
+  }) => Promise<void>;
+  readonly resolveExternalAction: (input: {
+    readonly callerEmail: string;
+    readonly gadgetKey: string;
+    readonly actionId: string;
+    readonly decision: AgentApprovalDecision;
+  }) => Promise<void>;
+}
+
+export interface AgentRuntimeGatewayBinding {
+  readonly ensureExternalUser: (input: {
+    readonly email: string;
+    readonly displayName: string;
+  }) => Promise<void>;
+  readonly submitExternalMessage: (input: {
+    readonly callerEmail: string;
+    readonly gadgetKey: string;
+    readonly chatKey: string;
+    readonly messageKey: string;
+    readonly gadgetTitle: string;
+    readonly prompt: string;
+    readonly chatGatewayRpcTarget: {
+      readonly onGadgetResponse: (
+        response: AgentRuntimeResponse
+      ) => Promise<void>;
+    };
+  }) => Promise<SubmitExternalAgentMessageResult>;
+  readonly interruptExternalRun: (input: {
+    readonly callerEmail: string;
+    readonly gadgetKey: string;
+    readonly chatKey: string;
+    readonly messageKey: string;
+  }) => Promise<void>;
+  readonly resolveExternalAction: (input: {
+    readonly callerEmail: string;
+    readonly gadgetKey: string;
+    readonly actionId: string;
+    readonly decision: AgentApprovalDecision;
+  }) => Promise<void>;
 }
 
 /**
@@ -28,6 +94,34 @@ export interface Env {
   readonly SCHEDULER_URL?: string;
   readonly SCHEDULER_SECRET?: string;
   readonly SCHEDULER_PAUSED?: string;
+  readonly WHATSAPP_INGRESS_ENABLED?: string;
+  readonly TELEGRAM_BOT_TOKEN?: string;
+  readonly TELEGRAM_WEBHOOK_SECRET?: string;
+  readonly TELEGRAM_SETUP_TOKEN?: string;
+  readonly TELEGRAM_INGRESS_ENABLED?: string;
+  readonly TELEGRAM_ALLOWED_USER_ID?: string;
+  readonly TELEGRAM_MONTHLY_TURN_LIMIT?: string;
+  readonly TELEGRAM_CONVERSATIONS?: {
+    getByName(
+      name: string
+    ): import("./channel-conversation").ConversationBinding;
+  };
+  readonly TELEGRAM_ADMISSION?: {
+    getByName(name: string): {
+      reserve(id: string, sender: string): Promise<boolean>;
+    };
+  };
+  readonly WHATSAPP_PHONE_NUMBER_ID?: string;
+  readonly WHATSAPP_TEST_SENDER?: string;
+  readonly WHATSAPP_TEST_EMAIL?: string;
+  readonly WHATSAPP_CONVERSATIONS?: {
+    getByName(
+      name: string
+    ): import("./whatsapp-conversation").ConversationBinding;
+  };
+  readonly WHATSAPP_VERIFY_TOKEN?: string;
+  readonly WHATSAPP_APP_SECRET?: string;
+  readonly WHATSAPP_ACCESS_TOKEN?: string;
   readonly API_MAINTENANCE?: string;
   readonly DATABASE_URL?: string;
   readonly HYPERDRIVE?: Hyperdrive;
@@ -52,8 +146,12 @@ export interface Env {
   readonly R2_BUCKET_NAME?: string;
   readonly R2_PUBLIC_BASE_URL?: string;
   readonly ENCRYPTION_SECRET?: string;
+  readonly SQS_INGRESS_URL?: string;
+  readonly SQS_INGRESS_SECRET?: string;
   readonly EDGE_CACHE_KV?: KeyValueCacheBinding;
   readonly AUTOMATION_KV?: WorkersKvNamespace;
+  readonly AGENT_RUNTIME?: AgentRuntimeGatewayBinding;
+  readonly AGENT_RUNTIME_BRIDGE?: AgentRuntimeBridgeBinding;
   readonly META_APP_SECRET?: string;
   readonly META_VERIFY_TOKEN?: string;
   readonly CLERK_WEBHOOK_SECRET?: string;
@@ -165,3 +263,51 @@ export const domainConfigLayers = (env: Env) =>
       })
     ),
   ] as const;
+
+export const agentRuntimeProviderLayer = (env: Env) => {
+  const bridge = env.AGENT_RUNTIME_BRIDGE;
+  const attempt = <A>(operation: () => Promise<A>) =>
+    Effect.tryPromise({
+      try: operation,
+      catch: () =>
+        new ProviderUnavailableError({
+          message: "Agent runtime is unavailable",
+          provider: "agent-runtime",
+          retryable: true,
+        }),
+    });
+  if (!bridge) {
+    const unavailable = () =>
+      Effect.fail(
+        new ProviderUnavailableError({
+          message: "Agent runtime service binding is not configured",
+          provider: "agent-runtime",
+          retryable: false,
+        })
+      );
+    return Layer.succeed(
+      AgentRuntimeProvider,
+      AgentRuntimeProvider.of({
+        configured: false,
+        ensureExternalUser: unavailable,
+        submitExternalMessage: unavailable,
+        interruptExternalRun: unavailable,
+        resolveExternalAction: unavailable,
+      })
+    );
+  }
+  return Layer.succeed(
+    AgentRuntimeProvider,
+    AgentRuntimeProvider.of({
+      configured: true,
+      ensureExternalUser: (input) =>
+        attempt(() => bridge.ensureExternalUser(input)),
+      submitExternalMessage: ({ responseTarget: _, ...input }) =>
+        attempt(() => bridge.submitExternalMessage(input)),
+      interruptExternalRun: (input) =>
+        attempt(() => bridge.interruptExternalRun(input)),
+      resolveExternalAction: (input) =>
+        attempt(() => bridge.resolveExternalAction(input)),
+    })
+  );
+};

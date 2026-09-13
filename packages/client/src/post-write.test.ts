@@ -1,7 +1,7 @@
 import { PostGroupId } from "@delulu/core";
 import { Schema } from "effect";
 import { describe, expect, it } from "vitest";
-import { makeSimplePostWrite } from "./post-write.js";
+import { makeComposerPostWrite, makeSimplePostWrite } from "./post-write.js";
 
 describe("makeSimplePostWrite", () => {
   it("generates group ids accepted by the backend domain schema", () => {
@@ -87,5 +87,49 @@ describe("makeSimplePostWrite", () => {
 
     expect(post.intent).toBe("publish_now");
     expect(post.externalSubmissionId).toBe("agent-run-123");
+  });
+});
+
+describe("makeComposerPostWrite", () => {
+  it("preserves ordered default and connection-specific thread segments", () => {
+    const post = makeComposerPostWrite({
+      segments: [
+        { text: "Default one", media: [] },
+        { text: "Default two", media: [] },
+      ],
+      connections: [
+        { id: "connection_aaaaaaaaaaaa", platform: "TWITTER" },
+        {
+          id: "connection_bbbbbbbbbbbb",
+          platform: "THREADS",
+          segments: [
+            { text: "Threads one", media: [] },
+            { text: "Threads two", media: [] },
+          ],
+        },
+      ],
+      intent: "draft",
+      source: "app",
+    });
+
+    expect(post.groups).toHaveLength(2);
+    expect(post.groups.find((group) => group.isDefault)?.segments).toEqual([
+      { text: "Default one", media: [] },
+      { text: "Default two", media: [] },
+    ]);
+
+    const threadsTarget = post.targets.find(
+      (target) => target.connectionId === "connection_bbbbbbbbbbbb"
+    );
+    const threadsGroup = post.groups.find(
+      (group) => group.id === threadsTarget?.groupId
+    );
+    expect(threadsGroup?.isDefault).toBe(false);
+    expect(threadsGroup?.segments).toEqual([
+      { text: "Threads one", media: [] },
+      { text: "Threads two", media: [] },
+    ]);
+    expect(post.source).toBe("app");
+    expect(post.intent).toBe("draft");
   });
 });

@@ -1,0 +1,99 @@
+diff --git a/packages/workshop-shared/src/external-message-gateway.ts b/packages/workshop-shared/src/external-message-gateway.ts
+index 3d19c45..1d62ef0 100644
+--- a/packages/workshop-shared/src/external-message-gateway.ts
++++ b/packages/workshop-shared/src/external-message-gateway.ts
+@@ -65,7 +65,7 @@ export type SubmitExternalMessageInput = {
+   // User text sent to Gadgets.
+   prompt: string;
+   // Persistent target invoked when the Gadget response is ready.
+-  chatGatewayRpcTarget: RpcStub<ChatGatewayRpcTarget>;
++  chatGatewayRpcTarget: RpcStub<ChatGatewayRpcTarget> | (Fetcher & Pick<ChatGatewayRpcTarget, "onGadgetResponse">);
+ };
+ 
+ /** Submission result returned by the backend gateway. */
+diff --git a/packages/workshop-backend/src/overseer.ts b/packages/workshop-backend/src/overseer.ts
+index 708c9f4..df7df40 100644
+--- a/packages/workshop-backend/src/overseer.ts
++++ b/packages/workshop-backend/src/overseer.ts
+@@ -520,11 +520,11 @@ type ExternalMessageRecord = {
+ } & (
+   | {
+       status: "waiting";
+-      chatGatewayRpcTarget: NativeRpcStub<ChatGatewayRpcTarget>;
++      chatGatewayRpcTarget: NativeRpcStub<ChatGatewayRpcTarget> | (Fetcher & Pick<ChatGatewayRpcTarget, "onGadgetResponse">);
+     }
+   | {
+       status: "ready";
+-      chatGatewayRpcTarget: NativeRpcStub<ChatGatewayRpcTarget>;
++      chatGatewayRpcTarget: NativeRpcStub<ChatGatewayRpcTarget> | (Fetcher & Pick<ChatGatewayRpcTarget, "onGadgetResponse">);
+       responseText: string;
+     }
+   | {
+@@ -535,7 +535,7 @@ type ExternalMessageRecord = {
+ 
+ type ExternalMessageResponseTargetRegistration = {
+   idempotencyKey: string;
+-  chatGatewayRpcTarget: NativeRpcStub<ChatGatewayRpcTarget>;
++  chatGatewayRpcTarget: NativeRpcStub<ChatGatewayRpcTarget> | (Fetcher & Pick<ChatGatewayRpcTarget, "onGadgetResponse">);
+ };
+ 
+ type ExternalMessageResponseTargetRegistrationDecision =
+@@ -552,7 +552,7 @@ type ExternalMessageSubmitInput = {
+   externalChatKey: string;
+   idempotencyKey: string;
+   prompt: string;
+-  chatGatewayRpcTarget: NativeRpcStub<ChatGatewayRpcTarget>;
++  chatGatewayRpcTarget: NativeRpcStub<ChatGatewayRpcTarget> | (Fetcher & Pick<ChatGatewayRpcTarget, "onGadgetResponse">);
+   title: string;
+ };
+ 
+@@ -1240,7 +1240,9 @@ class OverseerImpl implements AgentHooks {
+   #deleteExternalMessageResponseDeliveryRecord(record: ExternalMessageRecord): void {
+     this.storage.gadgetResponseDeliveries.delete(record.idempotencyKey);
+     if (record.status !== "delivered") {
+-      record.chatGatewayRpcTarget[Symbol.dispose]();
++      if (record.chatGatewayRpcTarget instanceof NativeRpcStub) {
++        (record.chatGatewayRpcTarget as NativeRpcStub<ChatGatewayRpcTarget>)[Symbol.dispose]();
++      }
+     }
+   }
+ 
+@@ -3569,12 +3571,14 @@ class OverseerImpl implements AgentHooks {
+     idempotencyKey: string,
+     chatId: number,
+     promptSequence: number,
+-    chatGatewayRpcTarget: NativeRpcStub<ChatGatewayRpcTarget>,
++    chatGatewayRpcTarget: NativeRpcStub<ChatGatewayRpcTarget> | (Fetcher & Pick<ChatGatewayRpcTarget, "onGadgetResponse">),
+   ): void {
+     if (this.storage.gadgetResponseDeliveries.undeliveredByChatId.get(chatId)) {
+       throw new Error("This chat already has an undelivered workspace response target.");
+     }
+-    chatGatewayRpcTarget = chatGatewayRpcTarget.dup();
++    if (chatGatewayRpcTarget instanceof NativeRpcStub) {
++      chatGatewayRpcTarget = (chatGatewayRpcTarget as NativeRpcStub<ChatGatewayRpcTarget>).dup();
++    }
+     try {
+       this.storage.gadgetResponseDeliveries.put({
+         idempotencyKey,
+@@ -3585,7 +3589,9 @@ class OverseerImpl implements AgentHooks {
+         status: "waiting",
+       });
+     } catch (err) {
+-      chatGatewayRpcTarget[Symbol.dispose]();
++      if (chatGatewayRpcTarget instanceof NativeRpcStub) {
++        (chatGatewayRpcTarget as NativeRpcStub<ChatGatewayRpcTarget>)[Symbol.dispose]();
++      }
+       throw err;
+     }
+   }
+@@ -3691,7 +3697,9 @@ class OverseerImpl implements AgentHooks {
+       createdAt: record.createdAt,
+       deliveredAt: Date.now(),
+     });
+-    record.chatGatewayRpcTarget[Symbol.dispose]();
++    if (record.chatGatewayRpcTarget instanceof NativeRpcStub) {
++      (record.chatGatewayRpcTarget as NativeRpcStub<ChatGatewayRpcTarget>)[Symbol.dispose]();
++    }
+   }
+ 
+   async deliverReadyExternalMessageResponses(): Promise<void> {

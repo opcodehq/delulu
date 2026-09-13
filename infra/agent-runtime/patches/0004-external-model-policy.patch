@@ -1,0 +1,36 @@
+diff --git a/packages/workshop-backend/src/user.ts b/packages/workshop-backend/src/user.ts
+--- a/packages/workshop-backend/src/user.ts
++++ b/packages/workshop-backend/src/user.ts
+@@ -705,9 +705,12 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
+
+   async getExternalMessageChatContext(existingChatModelId: string | null): Promise<UserChatContext> {
+     let models = await this.listModels();
+-    // Prefer the existing chat's model, then the user's preferred model, then the first available model.
++    let externalDefault = (this.env as Cloudflare.Env & {EXTERNAL_DEFAULT_MODEL?: string})
++        .EXTERNAL_DEFAULT_MODEL;
++    // Existing conversations stay stable; new external chats use the deployment-owned policy.
+     let selectedModel = models.find(model => model.id === existingChatModelId)
++      ?? models.find(model => model.id === externalDefault)
+       ?? models.find(model => model.id === this.storage.preferredModel.get())
+       ?? models[0];
+
+diff --git a/packages/workshop-backend/src/agent.ts b/packages/workshop-backend/src/agent.ts
+--- a/packages/workshop-backend/src/agent.ts
++++ b/packages/workshop-backend/src/agent.ts
+@@ -2203,7 +2203,10 @@ async function runAgentTurn(
+
+   // Some models charge their response to the same window as the prompt, so the reservation is both
+   // withheld from the prompt's budget and sent as the response cap -- the two can't disagree.
+-  let {inputBudget, maxOutputTokens} = getModelTokenLimits(compaction.modelConfig);
++  let modelLimits = getModelTokenLimits(compaction.modelConfig);
++  let inputBudget = Math.min(modelLimits.inputBudget, 32_000);
++  let maxOutputTokens = Math.min(modelLimits.maxOutputTokens ?? 4096, 4096);
++
+
+   let projection: CompactionProjectionMessage[] = modelMessages.map((message, index) => ({
+@@ -3045,5 +3048,5 @@
+           abortSignal.aborted ||
+           // Hard cap on turns, as before.
+-          ++turnCount >= 30 ||
++          ++turnCount >= 4 ||
+           // End the turn once the agent has successfully requested a connection: it must wait

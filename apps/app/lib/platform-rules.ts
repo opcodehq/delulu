@@ -187,6 +187,28 @@ export function shouldDefaultUseMultiPostLayout(
 }
 
 /**
+ * Determines whether the active composer can safely create an ordered thread.
+ * Platform-specific editors support threads directly. Shared content only does
+ * when every destination still using it supports multiple ordered posts.
+ */
+export function shouldUseMultiPostLayout(
+  socialType: SocialType,
+  platformsInDefault: SocialType[]
+): boolean {
+  if (
+    socialType === SocialTypes.TWITTER ||
+    socialType === SocialTypes.THREADS
+  ) {
+    return true;
+  }
+
+  return (
+    socialType === SocialTypes.DEFAULT &&
+    shouldDefaultUseMultiPostLayout(platformsInDefault)
+  );
+}
+
+/**
  * Gets the most restrictive character limit from platforms in default
  */
 export function getDefaultCharacterLimit(

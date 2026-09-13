@@ -18,6 +18,17 @@ The current release requires operator-owned Clerk and Cloudflare R2 projects. Ge
 
 Optional integrations remain inactive when their credentials are absent.
 
+Content HQ requires the independently deployed durable agent runtime described
+in `infra/agent-runtime`. The normal API carries no full-machine SDK or secret.
+Rare Linux, native-binary, or full-browser tasks belong in a separately
+deployed, default-disabled administrative runner with workspace-scoped
+credentials, hard runtime and idle limits, and explicit artifact export.
+
+Content HQ currently ships with its authenticated web conversation surface.
+External communication channels are separate provider adapters that normalize
+messages into the runtime's trusted service-binding gateway. No third-party
+communication gateway credential is required by the core deployment.
+
 ## Install
 
 ```bash
@@ -59,6 +70,12 @@ docker compose up -d --build --wait
 - `migrate`: one-shot schema migration before application services start.
 - `postgres`: authoritative state in a persistent volume.
 - `proxy`: optional automatic TLS termination with Caddy.
+
+Agent workspace metadata, run history, approvals, memory and rituals live in
+PostgreSQL. Durable chat state lives in the independently deployed runtime.
+User files live as private R2 objects and are downloaded through one-hour signed
+URLs; a file marked `private` is visible only to its owner, while a `workspace`
+file follows workspace membership and scopes.
 
 ## Backup and restore
 
@@ -115,6 +132,10 @@ Validate the API and scheduler Worker versions against the recovered SQL and DO
 state, remove the database fence, then deploy `SCHEDULER_PAUSED="false"` and
 resume application traffic. Verify a controlled scheduled operation before
 reopening writes to users.
+R2 objects and execution-provider filesystems are not included in the database
+backup. Enable bucket versioning or maintain an independent object backup, and
+use your execution provider's backup facilities when recovery must include
+installed tools and working files.
 
 ## Upgrade
 

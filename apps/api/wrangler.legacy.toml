@@ -1,0 +1,8 @@
+name = "delulu-whatsapp-staging"
+main = "src/legacy-webhook.ts"
+compatibility_date = "2026-08-14"
+workers_dev = true
+
+[[services]]
+binding = "STAGING"
+service = "delulu-staging"

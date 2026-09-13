@@ -70,6 +70,7 @@ interface PostActions {
       id: string;
       workspaceId: string;
       groups: readonly {
+        readonly id: string;
         readonly isDefault: boolean;
         readonly segments: readonly {
           readonly text: string;
@@ -83,6 +84,7 @@ interface PostActions {
       }[];
       targets: readonly {
         readonly connectionId: string;
+        readonly groupId: string;
         readonly scheduledAt: string | null;
         readonly settings: {
           readonly platform: ProviderSetting["type"];
@@ -90,7 +92,14 @@ interface PostActions {
         };
       }[];
     },
-    mediaById: ReadonlyMap<string, EditorMediaDetail>
+    mediaById: ReadonlyMap<string, EditorMediaDetail>,
+    connections?: readonly {
+      readonly id: string;
+      readonly platform: string;
+      readonly displayName: string | null;
+      readonly username: string | null;
+      readonly profileId: string;
+    }[]
   ) => void;
   cleanupDeletedProviders: (validProviderIds: string[]) => void;
   reset: () => void;
@@ -244,14 +253,46 @@ const actions: PostActions = {
         },
       };
     }),
-  loadPost: (postData, mediaById) => {
+  loadPost: (postData, mediaById, connections = []) => {
     const defaultGroup =
       postData.groups.find((group) => group.isDefault) ?? postData.groups[0];
+    const groupById = new Map(
+      postData.groups.map((group) => [group.id, group])
+    );
+    const hydrateGroup = (
+      group: (typeof postData.groups)[number] | undefined,
+      name: string,
+      socialId?: string
+    ) =>
+      (group?.segments ?? []).map((segment, order) => ({
+        title: "",
+        text: segment.text,
+        media: hydrateEditorMedia(segment.media, mediaById),
+        name: order === 0 ? name : `PART_${order + 1}`,
+        order,
+        tags: [],
+        socialId,
+      }));
     const scheduledAt =
       postData.targets.find((target) => target.scheduledAt)?.scheduledAt ??
       null;
     const scheduledDate = scheduledAt ? new Date(scheduledAt) : undefined;
     const providerSettings: Record<string, ProviderSetting> = {};
+    const connectionById = new Map(
+      connections.map((connection) => [connection.id, connection])
+    );
+    const socialProviderFor = (target: (typeof postData.targets)[number]) => {
+      const connection = connectionById.get(target.connectionId);
+      return {
+        socialId: target.connectionId,
+        name:
+          connection?.displayName ??
+          connection?.username ??
+          connection?.profileId ??
+          target.connectionId,
+        socialType: target.settings.platform,
+      };
+    };
     for (const target of postData.targets) {
       providerSettings[target.connectionId] = {
         socialProviderId: target.connectionId,
@@ -259,22 +300,33 @@ const actions: PostActions = {
         settings: target.settings.values,
       } as ProviderSetting;
     }
+    const selectedSocialProviders = postData.targets.map(socialProviderFor);
+    const alternativeContent = postData.targets.flatMap((target) => {
+      const group = groupById.get(target.groupId);
+      if (!group || group.id === defaultGroup?.id) {
+        return [];
+      }
+      const socialProvider = socialProviderFor(target);
+      return [
+        {
+          socialProvider,
+          content: hydrateGroup(
+            group,
+            socialProvider.name,
+            target.connectionId
+          ),
+        },
+      ];
+    });
     setState({
       post: {
         id: postData.id,
-        content: (defaultGroup?.segments ?? []).map((segment, order) => ({
-          title: "",
-          text: segment.text,
-          media: hydrateEditorMedia(segment.media, mediaById),
-          name: order === 0 ? "DEFAULT" : `PART_${order + 1}`,
-          order,
-          tags: [],
-        })),
-        alternativeContent: [],
+        content: hydrateGroup(defaultGroup, "DEFAULT"),
+        alternativeContent,
         scheduledTime: scheduledDate,
         orgId: postData.workspaceId,
       },
-      selectedSocialProviders: [],
+      selectedSocialProviders,
       date: scheduledDate,
       time: scheduledDate
         ? `${scheduledDate.getHours().toString().padStart(2, "0")}:${scheduledDate.getMinutes().toString().padStart(2, "0")}`

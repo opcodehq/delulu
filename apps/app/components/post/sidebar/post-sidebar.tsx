@@ -1,11 +1,5 @@
 "use client";
 
-import {
-  AnimatedTabs as Tabs,
-  AnimatedTabsContent as TabsContent,
-  AnimatedTabsList as TabsList,
-  AnimatedTabsTrigger as TabsTrigger,
-} from "@delulu/design-system/components/ui/animated-tabs";
 import { CardContent } from "@delulu/design-system/components/ui/card";
 import { DottedSeparator } from "@delulu/design-system/components/ui/dotted-separator";
 import {
@@ -23,109 +17,100 @@ import { PlatformPreview } from "./previews";
 interface PostSidebarProps {
   postId?: string;
   organizationId?: string;
+  view?: "controls" | "preview";
+  onOpenPreview?: () => void;
+  showPreviewAction?: boolean;
 }
 
-export function PostSidebar({ postId, organizationId }: PostSidebarProps) {
+export function PostSidebar({
+  postId,
+  organizationId,
+  view = "controls",
+  onOpenPreview,
+  showPreviewAction = false,
+}: PostSidebarProps) {
   const socialProviders = useSelectedSocialProviders();
   const [activePreviewPlatform, setActivePreviewPlatform] =
     useState<SupportedSocialPlatform | null>(null);
 
-  const hasProviders = socialProviders.length > 0;
-  const showActivity = !!postId && !!organizationId;
+  if (view === "controls") {
+    return (
+      <div className="h-full overflow-y-auto bg-background">
+        <BasicSettings
+          onOpenPreview={onOpenPreview}
+          showPreviewAction={showPreviewAction}
+        />
+      </div>
+    );
+  }
 
-  // Default to first selected provider if none active
+  const hasProviders = socialProviders.length > 0;
   const currentPlatform =
     activePreviewPlatform &&
-    socialProviders.some((p) => p.socialType === activePreviewPlatform)
+    socialProviders.some(
+      (provider) => provider.socialType === activePreviewPlatform
+    )
       ? activePreviewPlatform
       : ((socialProviders[0]?.socialType as
           | SupportedSocialPlatform
           | undefined) ?? null);
 
-  const tabClass =
-    "rounded-none border-0 border-transparent border-b-2 bg-transparent px-0 py-2 font-medium text-muted-foreground text-sm data-[state=active]:border-current data-[state=active]:bg-transparent data-[state=active]:text-current";
+  if (!(hasProviders && currentPlatform)) {
+    return (
+      <div className="flex h-full items-center justify-center px-6 text-center">
+        <div>
+          <p className="font-medium text-sm">No preview yet</p>
+          <p className="mt-1 text-muted-foreground text-xs">
+            Choose an account above the editor to preview this post.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-full w-full flex-col bg-card lg:w-[420px] lg:border-border/60 lg:border-l">
-      <Tabs
-        className="flex min-h-0 w-full flex-1 flex-col"
-        defaultValue="basic"
-      >
-        <TabsList
-          className={cn(
-            "grid w-full shrink-0 rounded-none bg-transparent px-3 pt-1",
-            showActivity ? "grid-cols-3" : "grid-cols-2"
-          )}
-        >
-          <TabsTrigger className={tabClass} value="basic">
-            Basic
-          </TabsTrigger>
-          <TabsTrigger
-            className={tabClass}
-            disabled={!hasProviders}
-            value="preview"
-          >
-            Preview
-          </TabsTrigger>
-          {showActivity && (
-            <TabsTrigger className={tabClass} value="activity">
-              Activity
-            </TabsTrigger>
-          )}
-        </TabsList>
-        <DottedSeparator className="-mt-px shrink-0" />
+    <div className="h-full overflow-y-auto bg-background">
+      {socialProviders.length > 1 && (
+        <div className="flex flex-wrap gap-1.5 border-border/80 border-b px-4 py-3">
+          {socialProviders.map((provider) => {
+            const platform = provider.socialType as SupportedSocialPlatform;
+            const IconComponent = socialIcons[platform];
+            const isActive = platform === currentPlatform;
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <TabsContent className="mt-0 space-y-0" value="basic">
-            <BasicSettings />
-          </TabsContent>
-
-          <TabsContent className="mt-0 space-y-0" value="preview">
-            {hasProviders && currentPlatform && (
-              <>
-                {/* Platform selector pills */}
-                {socialProviders.length > 1 && (
-                  <div className="flex flex-wrap gap-1.5 px-3 pt-3">
-                    {socialProviders.map((provider) => {
-                      const platform =
-                        provider.socialType as SupportedSocialPlatform;
-                      const IconComponent = socialIcons[platform];
-                      const isActive = platform === currentPlatform;
-                      return (
-                        <button
-                          className={cn(
-                            "flex items-center gap-1.5 rounded-md px-2.5 py-1 font-medium text-xs transition-colors",
-                            isActive
-                              ? "bg-accent text-foreground"
-                              : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
-                          )}
-                          key={provider.socialId}
-                          onClick={() => setActivePreviewPlatform(platform)}
-                          type="button"
-                        >
-                          {IconComponent && (
-                            <IconComponent className="h-3.5 w-3.5" />
-                          )}
-                          {socialDisplayNames[platform] || platform}
-                        </button>
-                      );
-                    })}
-                  </div>
+            return (
+              <button
+                aria-pressed={isActive}
+                className={cn(
+                  "flex min-h-11 items-center gap-1.5 rounded-lg px-3 font-medium text-xs transition-colors",
+                  isActive
+                    ? "bg-accent text-foreground"
+                    : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
                 )}
-                <PlatformPreview socialType={currentPlatform} />
-              </>
-            )}
-          </TabsContent>
-
-          {showActivity && (
-            <TabsContent className="mt-0" value="activity">
-              <CardContent className="px-1 pt-4">
-                <ReviewActivity postId={postId} />
-              </CardContent>
-            </TabsContent>
-          )}
+                key={provider.socialId}
+                onClick={() => setActivePreviewPlatform(platform)}
+                type="button"
+              >
+                {IconComponent && <IconComponent className="size-4" />}
+                {socialDisplayNames[platform] || platform}
+              </button>
+            );
+          })}
         </div>
-      </Tabs>
+      )}
+
+      <PlatformPreview socialType={currentPlatform} />
+
+      {postId && organizationId && (
+        <>
+          <DottedSeparator />
+          <div className="px-4 pt-4">
+            <h3 className="font-medium text-sm">Activity</h3>
+          </div>
+          <CardContent className="px-1 pt-2">
+            <ReviewActivity postId={postId} />
+          </CardContent>
+        </>
+      )}
     </div>
   );
 }

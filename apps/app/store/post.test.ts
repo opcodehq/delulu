@@ -76,3 +76,73 @@ describe("post draft persistence", () => {
     expect(useStore.getState().post.content[0]?.text).toBe("");
   });
 });
+
+describe("post graph hydration", () => {
+  beforeEach(() => {
+    useStore.getState().reset();
+  });
+
+  it("restores ordered default and connection-specific thread content", () => {
+    useStore.getState().loadPost(
+      {
+        id: "post_thread",
+        workspaceId: "workspace_test",
+        groups: [
+          {
+            id: "post_group_default",
+            isDefault: true,
+            segments: [
+              { text: "Default one", media: [] },
+              { text: "Default two", media: [] },
+            ],
+          },
+          {
+            id: "post_group_threads",
+            isDefault: false,
+            segments: [
+              { text: "Threads one", media: [] },
+              { text: "Threads two", media: [] },
+            ],
+          },
+        ],
+        targets: [
+          {
+            connectionId: "connection_threads",
+            groupId: "post_group_threads",
+            scheduledAt: null,
+            settings: {
+              platform: "THREADS",
+              values: { replyControl: "everyone" },
+            },
+          },
+        ],
+      },
+      new Map(),
+      [
+        {
+          id: "connection_threads",
+          platform: "THREADS",
+          displayName: "Product Notes",
+          username: "product-notes",
+          profileId: "profile_threads",
+        },
+      ]
+    );
+
+    const state = useStore.getState();
+    expect(state.post.content.map((item) => item.text)).toEqual([
+      "Default one",
+      "Default two",
+    ]);
+    expect(
+      state.post.alternativeContent[0]?.content.map((item) => item.text)
+    ).toEqual(["Threads one", "Threads two"]);
+    expect(state.selectedSocialProviders).toEqual([
+      {
+        socialId: "connection_threads",
+        name: "Product Notes",
+        socialType: "THREADS",
+      },
+    ]);
+  });
+});

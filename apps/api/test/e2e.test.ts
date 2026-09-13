@@ -16,7 +16,7 @@ import { Effect, String as EffectString, Layer, Redacted } from "effect";
 import { SqlClient } from "effect/unstable/sql";
 import { beforeAll, describe, expect, it } from "vitest";
 import { buildWebHandler } from "../src/app";
-import { makeBaseLayer } from "../src/index";
+import { makeBaseLayer } from "../src/base-layer";
 
 const ISSUER = "http://localhost:8787";
 const DEV_SUB = `clerk_e2e_${crypto.randomUUID()}`;
@@ -276,6 +276,8 @@ describe("apps/api worker (e2e over toWebHandler)", () => {
       deploymentMode: "hosted",
       billingEnabled: true,
       registrationEnabled: true,
+      agentComputerEnabled: false,
+      workspaceFilesEnabled: false,
       version: "development",
     });
   });

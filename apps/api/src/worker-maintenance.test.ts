@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import worker from "./index";
 
+// These tests exercise fetch routing, not Cloudflare's runtime entrypoints.
+vi.mock("cloudflare:workers", () => ({
+  WorkerEntrypoint: class {},
+  DurableObject: class {},
+}));
+
 describe("Worker maintenance boundary", () => {
   it("short-circuits public handlers without starting database work", async () => {
     const waitUntil = vi.fn();

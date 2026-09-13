@@ -1,4 +1,5 @@
 export * from "./context";
+export * from "./domain/agent-computer";
 export * from "./domain/analytics";
 export * from "./domain/api-key";
 export * from "./domain/auth";
@@ -24,6 +25,7 @@ export * from "./domain/transcription";
 export * from "./domain/user";
 export * from "./domain/webhook-delivery";
 export * from "./domain/workspace";
+export * from "./domain/workspace-file";
 export * from "./domain/workspace-member";
 export * from "./kernel/boundary";
 export * from "./kernel/ids";

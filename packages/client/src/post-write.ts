@@ -15,6 +15,27 @@ export interface SimplePostMedia {
   readonly thumbnailTimestamp?: number;
 }
 
+export interface SimplePostSegment {
+  readonly text: string;
+  readonly media?: readonly SimplePostMedia[];
+  readonly delayMinutes?: number;
+}
+
+export interface ComposerPostConnection extends SimplePostConnection {
+  /** Ordered content used only by this connection. Omit to use the default. */
+  readonly segments?: readonly SimplePostSegment[];
+}
+
+export interface ComposerPostInput {
+  readonly segments: readonly SimplePostSegment[];
+  readonly connections: readonly ComposerPostConnection[];
+  readonly intent?: "draft" | "schedule" | "publish_now";
+  readonly idempotencyKey?: string;
+  readonly scheduledAt?: string | null;
+  readonly source?: "app" | "api" | "automation";
+  readonly privacy?: string;
+}
+
 export interface SimplePostInput {
   readonly caption: string;
   readonly connections: readonly SimplePostConnection[];
@@ -99,12 +120,8 @@ const settingsFor = (platform: string, privacy?: string) => {
   }
 };
 
-export const makeSimplePostWrite = (
-  input: SimplePostInput
-): typeof PostWrite.Type => {
-  const groupId = makeId(PostGroupId);
-  const media: readonly SimplePostMedia[] =
-    input.media ?? (input.mediaIds ?? []).map((id) => ({ id }));
+const validateMedia = (segments: readonly SimplePostSegment[]) => {
+  const media = segments.flatMap((segment) => segment.media ?? []);
   if (
     media.some(
       (item) =>
@@ -117,28 +134,69 @@ export const makeSimplePostWrite = (
       "Selected media is not ready. Remove it and add it to the post again."
     );
   }
+};
+
+const makeGroup = (
+  segments: readonly SimplePostSegment[],
+  isDefault: boolean
+) => ({
+  id: makeId(PostGroupId),
+  isDefault,
+  segments: segments.map((segment) => ({
+    text: segment.text,
+    media: segment.media ?? [],
+    ...(segment.delayMinutes === undefined
+      ? {}
+      : { delayMinutes: segment.delayMinutes }),
+  })),
+});
+
+/** Builds a post graph with ordered segments and optional per-target content. */
+export const makeComposerPostWrite = (
+  input: ComposerPostInput
+): typeof PostWrite.Type => {
+  const allSegments = [
+    ...input.segments,
+    ...input.connections.flatMap((connection) => connection.segments ?? []),
+  ];
+  validateMedia(allSegments);
+
+  const defaultGroup = makeGroup(input.segments, true);
+  const customGroups = new Map(
+    input.connections.flatMap((connection) =>
+      connection.segments === undefined
+        ? []
+        : [[connection.id, makeGroup(connection.segments, false)] as const]
+    )
+  );
+
   return Schema.decodeUnknownSync(PostWrite)({
-    groups: [
-      {
-        id: groupId,
-        isDefault: true,
-        segments: [
-          {
-            text: input.caption,
-            media,
-          },
-        ],
-      },
-    ],
+    groups: [defaultGroup, ...customGroups.values()],
     targets: input.connections.map((connection) => ({
       connectionId: connection.id,
-      groupId,
+      groupId: customGroups.get(connection.id)?.id ?? defaultGroup.id,
       settings:
         connection.settings ?? settingsFor(connection.platform, input.privacy),
       scheduledAt: input.scheduledAt ?? null,
     })),
     intent: input.intent,
     externalSubmissionId: input.idempotencyKey,
+    source: input.source ?? "app",
+  });
+};
+
+export const makeSimplePostWrite = (
+  input: SimplePostInput
+): typeof PostWrite.Type => {
+  const media: readonly SimplePostMedia[] =
+    input.media ?? (input.mediaIds ?? []).map((id) => ({ id }));
+  return makeComposerPostWrite({
+    segments: [{ text: input.caption, media }],
+    connections: input.connections,
+    intent: input.intent,
+    idempotencyKey: input.idempotencyKey,
+    scheduledAt: input.scheduledAt,
     source: "api",
+    privacy: input.privacy,
   });
 };

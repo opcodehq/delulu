@@ -59,6 +59,8 @@ export const decodePostTargetSettingsForView = (
     });
   }
 };
+export const postRequiresTarget = (intent: PostWriteInput["intent"]): boolean =>
+  intent !== "draft";
 
 export interface PostActor {
   readonly memberId: string;
@@ -320,7 +322,7 @@ export class PostService extends Context.Service<
         const issues = [
           ...validateContentGraph({ groups: value.groups }, value.targets),
         ];
-        if (value.targets.length === 0) {
+        if (value.targets.length === 0 && postRequiresTarget(value.intent)) {
           issues.push({
             path: "targets",
             message: "At least one target is required",

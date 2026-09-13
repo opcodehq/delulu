@@ -1,4 +1,5 @@
 export * from "./admin.js";
+export * from "./agent.js";
 export * from "./analytics.js";
 export * from "./automations.js";
 export * from "./billing.js";
@@ -11,6 +12,7 @@ export * from "./reviews.js";
 export * from "./shared.js";
 
 import { createAdminEffects } from "./admin.js";
+import { createAgentEffects } from "./agent.js";
 import { createAnalyticsEffects } from "./analytics.js";
 import { createAutomationEffects } from "./automations.js";
 import { createBillingEffects } from "./billing.js";
@@ -30,6 +32,7 @@ export const createResourceEffects = defineResourceEffects((runtime) => ({
   media: createMediaEffects(runtime),
   connections: createConnectionEffects(runtime),
   admin: createAdminEffects(runtime),
+  agent: createAgentEffects(runtime),
   analytics: createAnalyticsEffects(runtime),
   automations: createAutomationEffects(runtime),
   billing: createBillingEffects(runtime),

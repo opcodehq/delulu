@@ -2,8 +2,12 @@
 # existing secrets, Hyperdrive, KV, and rate-limit bindings stay attached.
 name = "delulu-api-next"
 main = "src/index.ts"
-compatibility_date = "2026-07-15"
-compatibility_flags = ["nodejs_compat", "nodejs_compat_populate_process_env"]
+compatibility_date = "2026-08-14"
+compatibility_flags = ["nodejs_compat", "nodejs_compat_populate_process_env", "allow_irrevocable_stub_storage"]
+
+[[migrations]]
+tag = "jobs-v1"
+new_sqlite_classes = ["JobExecutor"]
 
 # Local `wrangler dev` server. Wrangler's default 8787 is frequently taken by
 # other local services, so pin the dev port here. The app reaches this via
@@ -28,15 +32,11 @@ persist = true
 head_sampling_rate = 1
 
 [triggers]
-crons = []
+crons = ["* * * * *"]
 
 [[durable_objects.bindings]]
 name = "JOBS"
 class_name = "JobExecutor"
-
-[[migrations]]
-tag = "jobs-v1"
-new_sqlite_classes = ["JobExecutor"]
 
 [vars]
 AS_ISSUER = "https://api.delulu.social"
@@ -91,6 +91,8 @@ name = "EMAIL"
 remote = true
 allowed_sender_addresses = ["welcome@mail.delulu.social"]
 
+# Agent RPC bindings are staging-only until the production runtime is provisioned.
+
 # Postgres via Hyperdrive. In production `id` points at the real Hyperdrive
 # config (fill after `wrangler hyperdrive create`). In local `wrangler dev`,
 # Miniflare ignores `id` and runs its own Hyperdrive proxy against
@@ -136,3 +138,61 @@ id = "e4eecde6b80f429b94485436a905c864"
 [[kv_namespaces]]
 binding = "EDGE_CACHE_KV"
 id = "0fa4faf775ec4ab28e259c8a5503dc3c"
+
+# Same entrypoint and routes as production; no production data bindings.
+# Provision dedicated staging account/config storage before testing DB routes.
+[env.staging]
+name = "delulu-staging"
+workers_dev = true
+hyperdrive = []
+kv_namespaces = []
+send_email = []
+
+[env.staging.vars]
+ENVIRONMENT = "staging"
+AS_ISSUER = "https://delulu-staging.whizzy.workers.dev"
+API_RESOURCE = "https://delulu-staging.whizzy.workers.dev"
+APP_BASE_URL = "http://localhost:3000"
+DODO_PAYMENTS_ENVIRONMENT = "test_mode"
+WHATSAPP_INGRESS_ENABLED = "false"
+TELEGRAM_INGRESS_ENABLED = "true"
+TELEGRAM_ALLOWED_USER_ID = "1343034850"
+TELEGRAM_MONTHLY_TURN_LIMIT = "1000"
+WHATSAPP_PHONE_NUMBER_ID = "1235417779664941"
+
+[[env.staging.durable_objects.bindings]]
+name = "WHATSAPP_CONVERSATIONS"
+class_name = "WhatsAppConversation"
+
+[[env.staging.durable_objects.bindings]]
+name = "TELEGRAM_CONVERSATIONS"
+class_name = "TelegramConversation"
+
+[[env.staging.durable_objects.bindings]]
+name = "TELEGRAM_ADMISSION"
+class_name = "TelegramAdmission"
+
+[env.staging.triggers]
+crons = []
+
+[[env.staging.migrations]]
+tag = "v1-whatsapp-conversation"
+new_sqlite_classes = ["WhatsAppConversation"]
+
+[[env.staging.migrations]]
+tag = "v2-telegram-conversation"
+new_sqlite_classes = ["TelegramConversation", "TelegramAdmission"]
+
+[env.staging.unsafe]
+bindings = []
+
+[[env.staging.services]]
+binding = "AGENT_RUNTIME"
+service = "delulu-agent-runtime-staging"
+entrypoint = "ExternalMessageGateway"
+props = { source = "delulu" }
+
+[[env.staging.services]]
+binding = "AGENT_RUNTIME_BRIDGE"
+service = "delulu-staging"
+entrypoint = "AgentRuntimeBridge"

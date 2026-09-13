@@ -1,7 +1,13 @@
 "use client";
 
 import { resourceEffect } from "@delulu/client";
-import { DottedSeparator } from "@delulu/design-system/components/ui/dotted-separator";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@delulu/design-system/components/ui/sheet";
 import {
   Tabs,
   TabsContent,
@@ -25,13 +31,13 @@ import {
   useSelectedSocialProviders,
   useStore,
 } from "@/store/post";
-import { Header } from "../layout/header";
+import { ComposerToolbar } from "./composer-toolbar";
 import { ContentModule } from "./content-module";
-import { MobilePostHeader } from "./mobile-post-header";
 import { AlternativeContentSelector } from "./network-selector";
 import { ReviewBanner } from "./review-banner";
 import { PostSidebar } from "./sidebar/post-sidebar";
 import { SocialIcon } from "./sidebar/social-icon";
+import SocialSelector from "./sidebar/social-selector";
 
 interface PostCreatorProps {
   postId?: string;
@@ -42,10 +48,13 @@ export function PostCreator({ postId }: PostCreatorProps = {}) {
   const alternativeContent = useAlternativeContent();
   const socialProviders = useSelectedSocialProviders();
   const [activeModuleId, setActiveModuleId] = useState<string>("global");
+  const [isControlsOpen, setIsControlsOpen] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const loadPost = useStore((state) => state.loadPost);
   const setDateAlongWithTime = useStore((state) => state.setDateAlongWithTime);
   const setTime = useStore((state) => state.setTime);
   const appliedDraftRef = useRef<string | null>(null);
+  const loadedPostRef = useRef<string | null>(null);
   const { workspaceId } = useWorkspace();
   const { resources } = useApiClient();
 
@@ -58,6 +67,10 @@ export function PostCreator({ postId }: PostCreatorProps = {}) {
   // Fetch post data if in edit mode
   const postData = useResourceAtom({
     ...resources.posts.get(workspaceId ?? "", postId ?? ""),
+    enabled: Boolean(workspaceId && postId),
+  });
+  const connectionData = useResourceAtom({
+    ...resources.connections.list(workspaceId ?? "", { limit: 100 }),
     enabled: Boolean(workspaceId && postId),
   });
   const mediaIds = useMemo(
@@ -107,12 +120,16 @@ export function PostCreator({ postId }: PostCreatorProps = {}) {
 
   // Load post data into store when fetched
   useEffect(() => {
+    const loadKey = `${workspaceId}:${postId}`;
     if (
       postData.data &&
       postId &&
-      !(mediaResults.isPending || mediaResults.isError)
+      loadedPostRef.current !== loadKey &&
+      !(mediaResults.isPending || mediaResults.isError) &&
+      !(connectionData.isPending || connectionData.isError)
     ) {
-      loadPost(postData.data, mediaById);
+      loadPost(postData.data, mediaById, connectionData.data?.data ?? []);
+      loadedPostRef.current = loadKey;
     }
   }, [
     postData.data,
@@ -121,6 +138,10 @@ export function PostCreator({ postId }: PostCreatorProps = {}) {
     mediaById,
     mediaResults.isPending,
     mediaResults.isError,
+    connectionData.data,
+    connectionData.isPending,
+    connectionData.isError,
+    workspaceId,
   ]);
 
   // Start a clean, editable post from a public tool handoff.
@@ -198,28 +219,33 @@ export function PostCreator({ postId }: PostCreatorProps = {}) {
   }, [alternativeContent, activeModuleId]);
 
   // Show loading state while fetching post data
-  if (postId && (postData.isPending || mediaResults.isPending)) {
+  if (
+    postId &&
+    (postData.isPending || mediaResults.isPending || connectionData.isPending)
+  ) {
     return (
-      <div className="flex h-full gap-4">
-        <div className="flex-1">
-          <Header page="Loading..." pages={["Post"]} />
-          <div className="flex h-64 items-center justify-center">
-            <div className="text-muted-foreground">Loading post...</div>
-          </div>
+      <div className="flex h-full flex-col">
+        <ComposerToolbar actionsDisabled postId={postId} />
+        <div className="flex flex-1 items-center justify-center">
+          <div className="text-muted-foreground">Loading post…</div>
         </div>
       </div>
     );
   }
 
-  if (postId && (postData.isError || mediaResults.isError)) {
+  if (
+    postId &&
+    (postData.isError || mediaResults.isError || connectionData.isError)
+  ) {
     return (
-      <div className="flex h-full gap-4">
-        <div className="flex-1">
-          <Header page="Unable to load post" pages={["Post"]} />
-          <div className="flex h-64 items-center justify-center">
-            <div className="text-muted-foreground">
-              The post media could not be loaded. Please retry.
-            </div>
+      <div className="flex h-full flex-col">
+        <ComposerToolbar actionsDisabled postId={postId} />
+        <div className="flex flex-1 items-center justify-center px-6 text-center">
+          <div>
+            <h2 className="font-medium">Unable to load post</h2>
+            <p className="mt-1 text-muted-foreground text-sm">
+              The post data could not be loaded. Please retry.
+            </p>
           </div>
         </div>
       </div>
@@ -227,107 +253,168 @@ export function PostCreator({ postId }: PostCreatorProps = {}) {
   }
 
   return (
-    <div className="flex h-full flex-col lg:flex-row">
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4 pb-24 lg:pr-6 lg:pb-6">
-        {/* Show warning if post is already published */}
-        {postData.data?.status === "published" && (
-          <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50/60 p-4 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-            <h3 className="font-semibold">
-              Warning: This post has already been published
-            </h3>
-            <p className="text-sm">
-              This post has already been published to social media. Any changes
-              you make will only be saved as drafts and won't affect the
-              published content.
-            </p>
-          </div>
-        )}
+    <div className="flex h-full min-h-0 flex-col bg-background">
+      <ComposerToolbar
+        onOpenControls={() => setIsControlsOpen(true)}
+        onOpenPreview={() => setIsPreviewOpen(true)}
+        postId={postId}
+      />
 
-        {/* Review status banner for org posts */}
-        {postData.data?.workspaceId && (
-          <div className="mb-4">
-            <ReviewBanner
-              organizationId={postData.data.workspaceId}
-              postId={postData.data.id}
-              reviewStatus=""
-            />
-          </div>
-        )}
-        <div className="hidden lg:block">
-          <Header
-            page={postId ? "Edit Post" : "Create Post"}
-            pages={["Post"]}
-          />
-          <DottedSeparator className="mb-4" />
-        </div>
-        <MobilePostHeader />
+      <div className="flex min-h-0 flex-1">
+        <Tabs
+          className="flex min-h-0 min-w-0 flex-1 flex-col"
+          onValueChange={handleTabChange}
+          value={activeModuleId}
+        >
+          {socialProviders.length >= 2 && (
+            <div className="shrink-0 border-border/80 border-b bg-background">
+              <div className="mx-auto w-full max-w-[920px] overflow-x-auto px-3 py-2 sm:px-6">
+                <TabsList className="h-11 w-max justify-start gap-1 bg-transparent p-0 sm:h-8 [@media(pointer:coarse)]:h-11">
+                  <TabsTrigger
+                    className={cn(
+                      "h-11 min-w-fit rounded-md px-2 text-xs sm:h-8 [@media(pointer:coarse)]:h-11",
+                      singleProviderInDefault && "gap-2"
+                    )}
+                    value="global"
+                  >
+                    {singleProviderInDefault ? (
+                      <>
+                        <SocialIcon
+                          className="size-4"
+                          type={singleProviderInDefault.socialType}
+                        />
+                        {singleProviderInDefault.name}
+                      </>
+                    ) : (
+                      "Global"
+                    )}
+                  </TabsTrigger>
+                  {alternativeContent.map((content) => (
+                    <TabsTrigger
+                      className="h-11 min-w-fit gap-1.5 rounded-md px-2 text-xs sm:h-8 [@media(pointer:coarse)]:h-11"
+                      key={content.socialProvider.socialId}
+                      value={content.socialProvider.socialId}
+                    >
+                      <SocialIcon
+                        className="size-4"
+                        type={content.socialProvider.socialType}
+                      />
+                      {content.socialProvider.name}
+                    </TabsTrigger>
+                  ))}
+                  <AlternativeContentSelector />
+                </TabsList>
+              </div>
+            </div>
+          )}
 
-        <Tabs onValueChange={handleTabChange} value={activeModuleId}>
-          <div className="w-full overflow-x-auto pb-2 lg:overflow-visible lg:pb-0">
-            <TabsList
-              className={cn(
-                socialProviders.length < 2 && "hidden",
-                "w-max justify-start lg:w-full"
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-muted/25">
+            <main className="mx-auto min-h-full w-full max-w-[920px] bg-background px-4 py-7 sm:border-border/70 sm:border-x sm:px-10 sm:py-10 lg:px-14">
+              {postData.data?.status === "published" && (
+                <div className="mb-6 rounded-lg bg-amber-50 px-4 py-3 text-amber-900 ring-1 ring-amber-200/80 dark:bg-amber-950/30 dark:text-amber-100 dark:ring-amber-800">
+                  <h3 className="font-medium text-sm">Already published</h3>
+                  <p className="mt-0.5 text-xs opacity-80">
+                    Changes are saved as a new draft and won’t alter the live
+                    post.
+                  </p>
+                </div>
               )}
-            >
-              <TabsTrigger
-                className={cn(
-                  singleProviderInDefault && "min-w-fit gap-2 text-xs"
-                )}
-                value="global"
-              >
-                {singleProviderInDefault ? (
-                  <>
-                    <SocialIcon
-                      className="size-4"
-                      type={singleProviderInDefault.socialType}
-                    />
-                    {singleProviderInDefault.name}
-                  </>
-                ) : (
-                  "Global"
-                )}
-              </TabsTrigger>
+
+              {postData.data?.workspaceId && (
+                <div className="mb-6">
+                  <ReviewBanner
+                    organizationId={postData.data.workspaceId}
+                    postId={postData.data.id}
+                    reviewStatus=""
+                  />
+                </div>
+              )}
+
+              <div className="mx-auto mb-4 w-full max-w-[780px]">
+                <SocialSelector surface="composer" />
+              </div>
+
+              <TabsContent className="mt-0" value="global">
+                <ContentModule
+                  socialId="global"
+                  socialType={SocialTypes.DEFAULT}
+                />
+              </TabsContent>
+
               {alternativeContent.map((content) => (
-                <TabsTrigger
-                  className="min-w-fit gap-2 text-xs"
+                <TabsContent
+                  className="mt-0"
                   key={content.socialProvider.socialId}
                   value={content.socialProvider.socialId}
                 >
-                  <SocialIcon
-                    className="size-4"
-                    type={content.socialProvider.socialType}
+                  <ContentModule
+                    socialId={content.socialProvider.socialId}
+                    socialType={content.socialProvider.socialType}
                   />
-                  {content.socialProvider.name}
-                </TabsTrigger>
+                </TabsContent>
               ))}
-              <AlternativeContentSelector />
-            </TabsList>
+            </main>
           </div>
-
-          <TabsContent value="global">
-            <ContentModule socialId="global" socialType={SocialTypes.DEFAULT} />
-          </TabsContent>
-
-          {alternativeContent.map((content) => (
-            <TabsContent
-              key={content.socialProvider.socialId}
-              value={content.socialProvider.socialId}
-            >
-              <ContentModule
-                socialId={content.socialProvider.socialId}
-                socialType={content.socialProvider.socialType}
-              />
-            </TabsContent>
-          ))}
         </Tabs>
+
+        <aside className="hidden w-[360px] shrink-0 flex-col border-border/80 border-l bg-background lg:flex xl:w-[380px]">
+          <div className="border-border/80 border-b px-4 py-4">
+            <h2 className="font-semibold text-sm">Post settings</h2>
+            <p className="mt-0.5 text-muted-foreground text-xs">
+              Pick a date and time to schedule this post.
+            </p>
+          </div>
+          <div className="min-h-0 flex-1">
+            <PostSidebar
+              onOpenPreview={() => setIsPreviewOpen(true)}
+              organizationId={postData.data?.workspaceId}
+              postId={postId}
+              view="controls"
+            />
+          </div>
+        </aside>
       </div>
-      <div className="hidden h-full shrink-0 lg:block">
-        <PostSidebar
-          organizationId={postData.data?.workspaceId}
-          postId={postId}
-        />
-      </div>
+
+      <Sheet onOpenChange={setIsControlsOpen} open={isControlsOpen}>
+        <SheetContent className="w-[min(94vw,420px)] gap-0 border-border/80 p-0 sm:max-w-[420px] lg:hidden">
+          <SheetHeader className="border-border/80 border-b pr-12">
+            <SheetTitle>Post settings</SheetTitle>
+            <SheetDescription>
+              Pick a date and time to schedule this post.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="min-h-0 flex-1">
+            <PostSidebar
+              onOpenPreview={() => {
+                setIsControlsOpen(false);
+                setIsPreviewOpen(true);
+              }}
+              organizationId={postData.data?.workspaceId}
+              postId={postId}
+              showPreviewAction
+              view="controls"
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet onOpenChange={setIsPreviewOpen} open={isPreviewOpen}>
+        <SheetContent className="w-[min(94vw,480px)] gap-0 border-border/80 p-0 sm:max-w-[480px]">
+          <SheetHeader className="border-border/80 border-b pr-12">
+            <SheetTitle>Post preview</SheetTitle>
+            <SheetDescription>
+              Review how the selected channel will look.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="min-h-0 flex-1">
+            <PostSidebar
+              organizationId={postData.data?.workspaceId}
+              postId={postId}
+              view="preview"
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

@@ -2,6 +2,8 @@ import { Api } from "@delulu/contracts";
 import type { TokenCipher } from "@delulu/core";
 import type {
   AdminService,
+  AgentRuntimeProvider,
+  AgentWorkspaceService,
   AnalyticsService,
   ApiKeyVerifier,
   AsTokenService,
@@ -23,6 +25,7 @@ import type {
   IdentityService,
   JobService,
   LifecycleService,
+  MaintenanceScheduler,
   MediaService,
   MembershipService,
   MessagingService,
@@ -39,11 +42,17 @@ import type {
   TranscriptionService,
   WebhookIngressService,
   WorkspaceAccessService,
+  WorkspaceFileService,
 } from "@delulu/services";
 import { Layer } from "effect";
 import { HttpMiddleware, HttpRouter, HttpServer } from "effect/unstable/http";
 import { HttpApiBuilder, HttpApiScalar } from "effect/unstable/httpapi";
 import type { SqlClient } from "effect/unstable/sql";
+import {
+  AgentComputerHandlers,
+  AgentHandlers,
+  WorkspaceFileHandlers,
+} from "./agent-workspace-handlers";
 import { AnalyticsHandlers } from "./analytics-handlers";
 import { AutomationHandlers } from "./automation-handlers";
 import { BillingHandlers } from "./billing-handlers";
@@ -82,12 +91,16 @@ export type AppServices =
   | LifecycleService
   | PostService
   | MediaService
+  | MaintenanceScheduler
   | MessagingService
   | R2Service
   | ConnectionsService
   | ConnectionStateService
   | ReviewService
   | AdminService
+  | AgentRuntimeProvider
+  | AgentWorkspaceService
+  | WorkspaceFileService
   | AnalyticsService
   | AutomationService
   | BillingService
@@ -132,6 +145,9 @@ export const buildWebHandler = (
       AutomationHandlers,
       BillingHandlers,
       TranscriptionHandlers,
+      AgentHandlers,
+      AgentComputerHandlers,
+      WorkspaceFileHandlers,
     ])
   );
 

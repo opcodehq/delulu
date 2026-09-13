@@ -1,7 +1,7 @@
 import {
+  type ComposerPostConnection,
   invalidateWorkspaceResource,
-  makeSimplePostWrite,
-  type SimplePostConnection,
+  makeComposerPostWrite,
 } from "@delulu/client";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -9,6 +9,11 @@ import { toast } from "sonner";
 import { useApiClient } from "@/components/providers/api-client";
 import { useWorkspace } from "@/components/providers/workspace";
 import { useUsageLimit } from "@/hooks/use-usage-limits";
+import {
+  getPlatformsInDefault,
+  shouldDefaultUseMultiPostLayout,
+  shouldUseMultiPostLayout,
+} from "@/lib/platform-rules";
 import {
   useMutationAtom,
   useResourceAtom,
@@ -51,54 +56,92 @@ export function usePostActions() {
     monthlyPostsLimit.isUnlimited || monthlyPostsLimit.allowed
   );
 
-  const write = async (scheduledAt: string | null, asDraft = false) => {
+  const write = async (
+    scheduledAt: string | null,
+    intent: "draft" | "schedule" | "publish_now"
+  ) => {
+    const isDraft = intent === "draft";
     if (!workspaceId) {
       throw new Error("Select a workspace before saving a post");
     }
-    if (!asDraft && isAtPostLimit) {
+    if (!isDraft && isAtPostLimit) {
       throw new Error("You have reached your monthly post limit");
     }
     const byId = new Map(
       (connections.data?.data ?? []).map((item) => [item.id, item])
     );
-    const targets = asDraft
-      ? []
-      : selected.map((item) => {
-          const connection = byId.get(item.socialId);
-          if (!connection) {
-            throw new Error(`Connection ${item.name} is no longer available`);
-          }
-          const configured = providerSettings[connection.id];
-          const settings =
-            configured?.type === connection.platform
-              ? ({
-                  platform: configured.type,
-                  values: configured.settings,
-                } as SimplePostConnection["settings"])
-              : undefined;
-          return {
-            id: connection.id,
-            platform: connection.platform,
-            settings,
-          };
-        });
-    const content = post.content[0];
-    const payload = makeSimplePostWrite({
-      caption: content?.text ?? "",
+    const platformsInDefault = getPlatformsInDefault(
+      selected,
+      post.alternativeContent
+    );
+    if (
+      !isDraft &&
+      post.content.length > 1 &&
+      platformsInDefault.length > 0 &&
+      !shouldDefaultUseMultiPostLayout(platformsInDefault)
+    ) {
+      throw new Error(
+        "Shared thread content can only be published to X and Threads. Remove the extra posts or create platform-specific content."
+      );
+    }
+    const incompatibleAlternative = post.alternativeContent.find(
+      (item) =>
+        item.content.length > 1 &&
+        !shouldUseMultiPostLayout(item.socialProvider.socialType, [])
+    );
+    if (!isDraft && incompatibleAlternative) {
+      throw new Error(
+        `${incompatibleAlternative.socialProvider.name} does not support threaded content. Keep one post for this account.`
+      );
+    }
+
+    const toSegments = (items: typeof post.content) =>
+      [...items]
+        .sort((left, right) => left.order - right.order)
+        .map((item) => ({
+          text: item.text,
+          media: item.media.flatMap((media) =>
+            media.id
+              ? [
+                  {
+                    id: media.id,
+                    altText: media.altText,
+                    thumbnailMediaId: media.thumbnailMediaId,
+                    thumbnailTimestamp: media.thumbnailTimestamp,
+                  },
+                ]
+              : []
+          ),
+        }));
+    const targets = selected.map((item) => {
+      const connection = byId.get(item.socialId);
+      if (!connection) {
+        throw new Error(`Connection ${item.name} is no longer available`);
+      }
+      const configured = providerSettings[connection.id];
+      const settings =
+        configured?.type === connection.platform
+          ? ({
+              platform: configured.type,
+              values: configured.settings,
+            } as ComposerPostConnection["settings"])
+          : undefined;
+      const alternative = post.alternativeContent.find(
+        (content) => content.socialProvider.socialId === connection.id
+      );
+      return {
+        id: connection.id,
+        platform: connection.platform,
+        settings,
+        segments: alternative ? toSegments(alternative.content) : undefined,
+      };
+    });
+    const payload = makeComposerPostWrite({
+      segments: toSegments(post.content),
       connections: targets,
-      media: (content?.media ?? []).flatMap((media) =>
-        media.id
-          ? [
-              {
-                id: media.id,
-                altText: media.altText,
-                thumbnailMediaId: media.thumbnailMediaId,
-                thumbnailTimestamp: media.thumbnailTimestamp,
-              },
-            ]
-          : []
-      ),
+      intent,
       scheduledAt,
+      source: "app",
     });
     const result = postId
       ? await updatePost.mutateAsync(payload)
@@ -130,7 +173,7 @@ export function usePostActions() {
   return {
     handlePostNow: () =>
       run(
-        () => write(new Date().toISOString()),
+        () => write(null, "publish_now"),
         "Post sent for processing, will be published shortly.",
         "Failed to publish post",
         "/posts?status=publishing"
@@ -138,7 +181,7 @@ export function usePostActions() {
     handleSchedulePost: () =>
       date
         ? run(
-            () => write(date.toISOString()),
+            () => write(date.toISOString(), "schedule"),
             "Post scheduled successfully",
             "Failed to schedule post",
             "/posts?status=scheduled"
@@ -146,7 +189,7 @@ export function usePostActions() {
         : Promise.resolve(),
     handleSaveAsDraft: () =>
       run(
-        () => write(null, true),
+        () => write(null, "draft"),
         postId ? "Post updated successfully" : "Post saved successfully",
         postId ? "Failed to update post" : "Failed to save post",
         "/posts?status=draft"

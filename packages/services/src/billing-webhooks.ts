@@ -283,7 +283,10 @@ export class BillingWebhookApplication extends Context.Service<
   {
     readonly apply: (
       event: BillingWebhookEvent
-    ) => Effect.Effect<{ readonly applied: boolean }, BillingStateError>;
+    ) => Effect.Effect<
+      { readonly applied: boolean; readonly stale: boolean },
+      BillingStateError
+    >;
   }
 >()("@delulu/services/BillingWebhookApplication") {
   static readonly layer = Layer.effect(
@@ -332,7 +335,7 @@ export class BillingWebhookApplication extends Context.Service<
             },
           });
         }
-        return { applied: result.applied };
+        return { applied: result.applied, stale: "stale" in result };
       });
 
       return BillingWebhookApplication.of({ apply });

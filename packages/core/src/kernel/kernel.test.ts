@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest";
 import { PostContent } from "../domain/post-group";
 import { PlatformSettings } from "../domain/post-target";
 import {
+  AgentCommandId,
+  AgentComputerId,
+  AgentProcessId,
+  AgentTaskId,
   ApiKeyId,
   AutomationContactId,
   AutomationId,
@@ -21,7 +25,10 @@ import {
   TransactionId,
   TranscriptionId,
   UserId,
+  WorkspaceFileId,
+  WorkspaceFileVersionId,
   WorkspaceId,
+  WorkspaceSnapshotId,
 } from "./ids";
 import { validateMediaFile } from "./media";
 import { makeTokenCipher } from "./token-cipher";
@@ -46,6 +53,13 @@ const entityIdCases: ReadonlyArray<readonly [EntityIdSchema<unknown>, string]> =
     [AutomationRunId, "automation_run"],
     [AutomationContactId, "automation_contact"],
     [TranscriptionId, "transcription"],
+    [AgentComputerId, "agent_computer"],
+    [AgentTaskId, "agent_task"],
+    [AgentCommandId, "agent_command"],
+    [AgentProcessId, "agent_process"],
+    [WorkspaceFileId, "workspace_file"],
+    [WorkspaceFileVersionId, "file_version"],
+    [WorkspaceSnapshotId, "workspace_snapshot"],
   ];
 
 describe("core kernel", () => {

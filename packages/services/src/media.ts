@@ -429,11 +429,13 @@ export class MediaService extends Context.Service<
           if (
             !(
               contentType.startsWith("image/") ||
-              contentType.startsWith("video/")
+              contentType.startsWith("video/") ||
+              contentType.startsWith("audio/") ||
+              contentType === "application/pdf"
             )
           ) {
             return yield* new ConflictError({
-              message: "Imported media must be an image or video",
+              message: "Imported media must be an image, audio, video, or PDF",
               resource: "media",
             });
           }

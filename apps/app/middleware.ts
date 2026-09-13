@@ -42,7 +42,9 @@ const maintenanceBypassRoutes = createRouteMatcher([
 // Create security headers middleware
 const securityHeaders = noseconeMiddleware(noseconeOptions);
 
-export default clerkMiddleware(async (auth, req) => {
+const middleware: (
+  ...args: Parameters<typeof clerkMiddleware>
+) => ReturnType<typeof clerkMiddleware> = clerkMiddleware(async (auth, req) => {
   // Get the security headers
   await securityHeaders();
 
@@ -120,6 +122,8 @@ export default clerkMiddleware(async (auth, req) => {
   // For all other routes, continue with security headers
   return withGeoCookie(NextResponse.next());
 });
+
+export default middleware;
 
 export const config = {
   matcher: [

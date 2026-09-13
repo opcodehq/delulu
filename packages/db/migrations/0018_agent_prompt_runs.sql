@@ -1,0 +1,2 @@
+-- Reserved. The full-machine prompt prototype was removed before release.
+-- Durable agent runs are introduced by migration 0019.

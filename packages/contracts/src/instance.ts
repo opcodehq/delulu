@@ -12,6 +12,8 @@ export const InstanceCapabilities = Schema.Struct({
   deploymentMode: DeploymentMode,
   billingEnabled: Schema.Boolean,
   registrationEnabled: Schema.Boolean,
+  agentComputerEnabled: Schema.Boolean,
+  workspaceFilesEnabled: Schema.Boolean,
   version: Schema.String,
 }).annotate({
   identifier: "InstanceCapabilities",
@@ -26,7 +28,7 @@ export const InstanceGroup = HttpApiGroup.make("instance")
       .annotate(OpenApi.Summary, "Inspect deployment capabilities")
       .annotate(
         OpenApi.Description,
-        "Reports deployment, billing, registration, and version capabilities without requiring authentication."
+        "Reports deployment, billing, registration, agent computer, workspace file, and version capabilities without requiring authentication."
       )
   )
   .annotate(OpenApi.Title, "Instance");

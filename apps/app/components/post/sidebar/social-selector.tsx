@@ -73,7 +73,15 @@ function addProvider(account: AccountLike) {
   }
 }
 
-export default function SocialSelector() {
+interface SocialSelectorProps {
+  surface?: "plain" | "composer";
+  showPlatformSettings?: boolean;
+}
+
+export default function SocialSelector({
+  surface = "plain",
+  showPlatformSettings = true,
+}: SocialSelectorProps = {}) {
   const { workspaceId } = useWorkspace();
   const { resources } = useApiClient();
   const socialProviders = useResourceAtom({
@@ -128,19 +136,24 @@ export default function SocialSelector() {
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    <div
+      className={cn(
+        "flex flex-col gap-2",
+        surface === "composer" && "border-border/60 border-b px-1 pb-3"
+      )}
+    >
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5">
+        <div>
           <h3 className="font-medium text-sm">Publish to</h3>
-          {selectedIds.size > 0 && (
-            <span className="rounded-full bg-primary/10 px-1.5 py-0.5 font-medium text-[11px] text-primary">
-              {selectedIds.size}
-            </span>
+          {surface === "composer" && (
+            <p className="mt-0.5 text-muted-foreground text-xs">
+              Choose one or more accounts
+            </p>
           )}
         </div>
         {accounts.length > 1 && !allSelected && (
           <button
-            className="flex items-center gap-1 text-muted-foreground text-xs transition-colors hover:text-foreground"
+            className="flex min-h-11 items-center gap-1 rounded-md px-2 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground sm:min-h-8 [@media(pointer:coarse)]:min-h-11"
             onClick={handleSelectAll}
             type="button"
           >
@@ -151,9 +164,14 @@ export default function SocialSelector() {
       </div>
 
       {accounts.length === 0 ? (
-        <div className="flex flex-col items-start gap-1 rounded-lg border border-dashed p-3">
+        <div className="flex flex-col items-start gap-1 rounded-md border border-dashed p-2">
           <p className="text-muted-foreground text-xs">No accounts connected</p>
-          <Button asChild className="h-7 px-2 text-xs" size="sm" variant="link">
+          <Button
+            asChild
+            className="h-11 rounded-md px-2 text-xs sm:h-8 [@media(pointer:coarse)]:h-11"
+            size="sm"
+            variant="link"
+          >
             <Link href="/socials">Connect an account →</Link>
           </Button>
         </div>
@@ -164,6 +182,7 @@ export default function SocialSelector() {
               account={account}
               key={account.id}
               selected={selectedIds.has(account.id)}
+              showPlatformSettings={showPlatformSettings}
             />
           ))}
         </div>
@@ -179,9 +198,11 @@ function hasSettings(platform: SocialType): boolean {
 function SocialSelectorChip({
   account,
   selected,
+  showPlatformSettings,
 }: {
   account: AccountLike;
   selected: boolean;
+  showPlatformSettings: boolean;
 }) {
   const post = useStore((state) => state.post);
   const automationConfig = useAutomationConfig(account.id);
@@ -191,7 +212,7 @@ function SocialSelectorChip({
   const socialType = account.platform as SocialType;
   const displayPlatform = normalizePlatform(account.platform);
   const name = accountName(account);
-  const showGear = selected && hasSettings(socialType);
+  const showGear = showPlatformSettings && selected && hasSettings(socialType);
 
   const hasAlternativeContent = post.alternativeContent.some(
     (content) => content.socialProvider.socialId === account.id
@@ -241,11 +262,12 @@ function SocialSelectorChip({
 
       <div className="relative inline-flex">
         <button
+          aria-pressed={selected}
           className={cn(
-            "flex items-center gap-2 rounded-lg border py-1.5 pl-1.5 font-medium text-sm transition-all",
-            showGear ? "pr-8" : "pr-3.5",
+            "flex min-h-11 items-center gap-1.5 rounded-md border py-1 pl-1 font-medium text-xs transition-[background-color,border-color,color,box-shadow] active:scale-[0.98] sm:min-h-8 [@media(pointer:coarse)]:min-h-11",
+            showGear ? "pr-11 sm:pr-8" : "pr-2",
             selected
-              ? "border-primary/30 bg-primary/10 text-primary shadow-[inset_0_1px_0_0_rgb(255_255_255/0.5),0_1px_2px_-1px_rgb(16_24_40/0.12)] dark:shadow-[inset_0_1px_0_0_rgb(255_255_255/0.06),0_1px_2px_-1px_rgb(0_0_0/0.4)]"
+              ? "border-primary/30 bg-primary/10 text-primary shadow-[inset_0_0_0_1px_rgb(255_255_255/0.35)] dark:shadow-[inset_0_0_0_1px_rgb(255_255_255/0.04)]"
               : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
           )}
           onClick={handleSelect}
@@ -253,7 +275,7 @@ function SocialSelectorChip({
         >
           <span
             className={cn(
-              "flex size-6 shrink-0 items-center justify-center rounded-md",
+              "flex size-5 shrink-0 items-center justify-center rounded",
               displayPlatform
                 ? socialBackgroundColors[displayPlatform]
                 : "bg-muted"
@@ -261,7 +283,7 @@ function SocialSelectorChip({
           >
             {displayPlatform && (
               <SocialIcon
-                className="size-3.5 text-white"
+                className="size-3 text-white"
                 type={displayPlatform}
               />
             )}
@@ -271,7 +293,7 @@ function SocialSelectorChip({
         {showGear && (
           <button
             aria-label="Platform settings"
-            className="absolute top-1/2 right-1.5 grid size-5 -translate-y-1/2 place-items-center rounded-full text-primary/70 transition-colors hover:bg-primary/15 hover:text-primary"
+            className="absolute top-1/2 right-0.5 grid size-10 -translate-y-1/2 place-items-center rounded-md text-primary/70 transition-colors after:absolute after:-inset-0.5 hover:bg-primary/15 hover:text-primary sm:size-7 sm:after:inset-0 [@media(pointer:coarse)]:size-11"
             onClick={handleSettingsClick}
             type="button"
           >

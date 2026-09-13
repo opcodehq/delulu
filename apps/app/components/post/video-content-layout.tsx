@@ -2,7 +2,6 @@
 
 import { Badge } from "@delulu/design-system/components/ui/badge";
 import { Button } from "@delulu/design-system/components/ui/button";
-import { Card } from "@delulu/design-system/components/ui/card";
 import { Input } from "@delulu/design-system/components/ui/input";
 import { Label } from "@delulu/design-system/components/ui/label";
 import { Textarea } from "@delulu/design-system/components/ui/textarea";
@@ -162,14 +161,14 @@ export function VideoContentLayout({
   const videoAspectClass = config.isVertical ? "aspect-[9/16]" : "aspect-video";
 
   return (
-    <Card className="mt-4 max-h-[calc(100vh-220px)] overflow-y-auto border-none p-4 shadow-sm">
-      <div className="grid gap-6 lg:grid-cols-[minmax(200px,320px)_1fr]">
+    <div className="mx-auto w-full max-w-[780px]">
+      <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_260px] lg:gap-8">
         {/* Left Column - Video Upload or Thumbnail Preview */}
-        <div className="space-y-4">
+        <div className="order-2 space-y-3">
           {videoUrl ? (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-sm">Thumbnail Preview</Label>
+                <Label className="text-sm">Thumbnail preview</Label>
                 {hasCustomThumbnailImage && (
                   <Badge className="gap-1" variant="secondary">
                     <Icon icon={Image01Icon} size={12} />
@@ -179,7 +178,7 @@ export function VideoContentLayout({
               </div>
               <button
                 className={cn(
-                  "group relative mx-auto block w-full max-w-sm overflow-hidden rounded-lg border-2 border-dashed transition-all hover:border-primary",
+                  "group relative mx-auto block w-full max-w-sm overflow-hidden rounded-lg border border-border transition-colors hover:border-foreground/35",
                   videoAspectClass,
                   "border-border bg-black"
                 )}
@@ -199,7 +198,7 @@ export function VideoContentLayout({
                         <div className="flex items-center gap-2">
                           <Icon icon={PencilEdit01Icon} size={16} />
                           <span className="font-medium text-sm">
-                            Change Thumbnail
+                            Change thumbnail
                           </span>
                         </div>
                       </div>
@@ -221,7 +220,7 @@ export function VideoContentLayout({
                         <div className="flex items-center gap-2">
                           <Icon icon={Image01Icon} size={16} />
                           <span className="font-medium text-sm">
-                            Select Thumbnail
+                            Select thumbnail
                           </span>
                         </div>
                       </div>
@@ -239,8 +238,8 @@ export function VideoContentLayout({
               >
                 <Icon className="mr-2" icon={Image01Icon} size={16} />
                 {hasCustomThumbnailImage
-                  ? "Change Thumbnail"
-                  : "Select Thumbnail"}
+                  ? "Change thumbnail"
+                  : "Select thumbnail"}
               </Button>
 
               {/* Remove Video button */}
@@ -252,14 +251,15 @@ export function VideoContentLayout({
                 variant="destructive"
               >
                 <Icon className="mr-2" icon={Delete01Icon} size={14} />
-                Remove Video
+                Remove video
               </Button>
             </div>
           ) : (
             <>
               {/* Show MediaUploader when no video */}
-              <Label className="text-sm">Upload Video</Label>
+              <Label className="text-sm">Video</Label>
               <MediaUploader
+                compact
                 orderId={orderId}
                 socialId={socialId}
                 socialType={socialType}
@@ -269,10 +269,10 @@ export function VideoContentLayout({
         </div>
 
         {/* Right Column - Text Content */}
-        <div className="space-y-4">
+        <div className="order-1 space-y-5">
           {/* Platform Requirements */}
           {config.requirements && (
-            <div className="rounded-lg bg-muted p-3">
+            <div className="rounded-lg bg-muted/60 px-3 py-2.5 ring-1 ring-border/70">
               <p className="text-muted-foreground text-xs">
                 {config.requirements}
               </p>
@@ -302,7 +302,7 @@ export function VideoContentLayout({
               </div>
               <div className="relative">
                 <Input
-                  className="pr-16"
+                  className="h-11 rounded-lg bg-background pr-16 text-base shadow-none"
                   id="video-title"
                   onChange={handleTitleChange}
                   placeholder={config.titlePlaceholder}
@@ -332,7 +332,7 @@ export function VideoContentLayout({
             </Label>
             <div className="relative">
               <Textarea
-                className="min-h-[300px] resize-none border-border pr-16 shadow-none focus-visible:ring-1"
+                className="min-h-[clamp(240px,38vh,420px)] resize-none overflow-hidden rounded-lg border-border/80 bg-card px-4 py-3 pr-16 text-[17px] leading-7 shadow-none placeholder:text-muted-foreground/70 focus-visible:border-foreground/25 focus-visible:ring-0 md:text-[17px]"
                 id="video-caption"
                 onChange={handleTextChange}
                 placeholder={config.captionPlaceholder}
@@ -377,6 +377,6 @@ export function VideoContentLayout({
           videoUrl={videoUrl}
         />
       )}
-    </Card>
+    </div>
   );
 }

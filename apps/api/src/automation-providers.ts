@@ -449,6 +449,29 @@ const billingLookupFailed = () =>
     retryable: true,
   });
 
+const billingOutboxKeys = (
+  event: typeof BillingWebhookEvent.Type
+): readonly string[] => {
+  if (event._tag === "SubscriptionChanged") {
+    return [
+      `billing:${event.eventId}:identify`,
+      `billing:${event.eventId}:subscription`,
+    ] as const;
+  }
+  if (event._tag === "AddonSubscriptionChanged") {
+    return [`billing:${event.eventId}:addon`] as const;
+  }
+  if (event._tag === "UnrecognizedSubscriptionChanged") {
+    return [`billing:${event.eventId}:unrecognized`] as const;
+  }
+  return event.providerEventType === "payment.failed"
+    ? ([
+        `billing:${event.eventId}:payment`,
+        `payment-failed:${event.eventId}`,
+      ] as const)
+    : ([`billing:${event.eventId}:payment`] as const);
+};
+
 export const PaymentWebhookSinkLive = Layer.effect(
   PaymentWebhookSink,
   Effect.gen(function* () {
@@ -657,19 +680,34 @@ export const PaymentWebhookSinkLive = Layer.effect(
               })
           )
         );
-        const workspaces = yield* sql<{ id: string }>`
-          SELECT id FROM workspaces
-          WHERE billing_owner_user_id = ${event.billingOwnerUserId}`.pipe(
-          Effect.mapError(billingLookupFailed)
-        );
-        yield* Effect.forEach(workspaces, (workspace) =>
-          setup.status(
-            workspace.id as WorkspaceId,
-            event.billingOwnerUserId as UserId
-          )
-        );
-        if ("stale" in application && application.stale) {
+        if (application.stale) {
           return;
+        }
+        if (application.applied) {
+          const workspaces = yield* sql<{ id: string }>`
+            SELECT id FROM workspaces
+            WHERE billing_owner_user_id = ${event.billingOwnerUserId}`.pipe(
+            Effect.mapError(billingLookupFailed)
+          );
+          yield* Effect.forEach(workspaces, (workspace) =>
+            setup.status(
+              workspace.id as WorkspaceId,
+              event.billingOwnerUserId as UserId
+            )
+          );
+        } else {
+          const keys = billingOutboxKeys(event);
+          const existing = yield* sql<{
+            count: string;
+          }>`SELECT count(*)::text AS count
+            FROM message_deliveries
+            WHERE idempotency_key = ${keys[0]}
+              OR idempotency_key = ${keys[1] ?? keys[0]}`.pipe(
+            Effect.mapError(billingLookupFailed)
+          );
+          if (Number(existing[0]?.count ?? 0) === keys.length) {
+            return;
+          }
         }
         // Re-run durable outbox writes on provider replay. Their idempotency
         // keys make this safe and recover a prior attempt that committed the

@@ -1,0 +1,24 @@
+{
+  "name": "@delulu/agent-runtime-deployment",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
+  "packageManager": "pnpm@11.17.0",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "11.17.0",
+      "onFail": "error"
+    }
+  },
+  "scripts": {
+    "check": "node scripts/runtime.mjs check",
+    "prepare": "node scripts/runtime.mjs prepare",
+    "install:runtime": "node scripts/runtime.mjs install",
+    "test": "node --test scripts/*.test.mjs",
+    "build": "node scripts/runtime.mjs build",
+    "deploy": "node scripts/deploy.mjs"
+  }
+}

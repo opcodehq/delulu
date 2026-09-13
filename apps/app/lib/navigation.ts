@@ -18,6 +18,12 @@ export const navigationItems = [
     dataTour: undefined, // Stats will be marked separately
   },
   {
+    title: "Agent",
+    url: "/agent",
+    icon: Robot,
+    dataTour: "agent-nav",
+  },
+  {
     title: "Posts",
     url: "/posts",
     icon: Draft,

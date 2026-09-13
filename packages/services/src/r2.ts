@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { ConflictError } from "@delulu/contracts";
 import { Context, Effect, Layer } from "effect";
 
@@ -49,10 +50,23 @@ const signingKey = async (
 export class R2Service extends Context.Service<
   R2Service,
   {
+    readonly configured: boolean;
     readonly presignPut: (key: string) => Effect.Effect<string, ConflictError>;
+    readonly presignVerifiedPut: (
+      key: string,
+      input: { readonly contentType: string }
+    ) => Effect.Effect<
+      {
+        readonly url: string;
+        readonly headers: Readonly<Record<string, string>>;
+      },
+      ConflictError
+    >;
+    readonly presignGet: (key: string) => Effect.Effect<string, ConflictError>;
     readonly head: (
       key: string
     ) => Effect.Effect<R2ObjectMetadata, ConflictError>;
+    readonly hashSha256: (key: string) => Effect.Effect<string, ConflictError>;
     readonly remove: (key: string) => Effect.Effect<void, ConflictError>;
     readonly publicUrl: (key: string) => string;
   }
@@ -62,7 +76,11 @@ export class R2Service extends Context.Service<
     Effect.gen(function* () {
       const config = yield* R2Config;
       const endpoint = `https://${config.accountId}.r2.cloudflarestorage.com`;
-      const presignPut = (key: string) =>
+      const presign = (
+        method: "GET" | "PUT",
+        key: string,
+        requestHeaders: Readonly<Record<string, string>> = {}
+      ) =>
         Effect.tryPromise({
           try: async () => {
             const now = new Date();
@@ -70,19 +88,25 @@ export class R2Service extends Context.Service<
             const date = amzDate.slice(0, 8);
             const scope = `${date}/auto/s3/aws4_request`;
             const uri = `/${config.bucket}/${key}`;
+            const headers = { host: new URL(endpoint).host, ...requestHeaders };
+            const signedHeaders = Object.keys(headers).sort().join(";");
+            const canonicalHeaders = Object.entries(headers)
+              .sort(([left], [right]) => left.localeCompare(right))
+              .map(([name, value]) => `${name}:${value.trim()}\n`)
+              .join("");
             const query = [
               "X-Amz-Algorithm=AWS4-HMAC-SHA256",
               `X-Amz-Credential=${encodeURIComponent(`${config.accessKeyId}/${scope}`)}`,
               `X-Amz-Date=${amzDate}`,
               "X-Amz-Expires=3600",
-              "X-Amz-SignedHeaders=host",
+              `X-Amz-SignedHeaders=${encodeURIComponent(signedHeaders)}`,
             ].join("&");
             const canonical = [
-              "PUT",
+              method,
               uri,
               query,
-              `host:${new URL(endpoint).host}\n`,
-              "host",
+              canonicalHeaders,
+              signedHeaders,
               "UNSIGNED-PAYLOAD",
             ].join("\n");
             const toSign = [
@@ -98,8 +122,8 @@ export class R2Service extends Context.Service<
           },
           catch: () =>
             new ConflictError({
-              message: "Unable to sign R2 upload",
-              resource: "media",
+              message: `Unable to sign R2 ${method === "PUT" ? "upload" : "download"}`,
+              resource: "workspace-file",
             }),
         });
       const signedRequest = (method: "HEAD" | "DELETE", key: string) =>
@@ -178,8 +202,48 @@ export class R2Service extends Context.Service<
           )
         );
       return R2Service.of({
-        presignPut,
+        configured: Boolean(
+          config.accountId && config.accessKeyId && config.secretAccessKey
+        ),
+        presignPut: (key) => presign("PUT", key),
+        presignVerifiedPut: (key, input) => {
+          const headers = {
+            "content-type": input.contentType,
+          };
+          return presign("PUT", key, headers).pipe(
+            Effect.map((url) => ({ url, headers }))
+          );
+        },
+        presignGet: (key) => presign("GET", key),
         head,
+        hashSha256: (key) =>
+          presign("GET", key).pipe(
+            Effect.flatMap((url) =>
+              Effect.tryPromise({
+                try: async () => {
+                  const response = await fetch(url);
+                  if (!(response.ok && response.body)) {
+                    throw new Error("Object is unavailable");
+                  }
+                  const hash = createHash("sha256");
+                  const reader = response.body.getReader();
+                  for (;;) {
+                    const chunk = await reader.read();
+                    if (chunk.done) {
+                      break;
+                    }
+                    hash.update(chunk.value);
+                  }
+                  return hash.digest("hex");
+                },
+                catch: () =>
+                  new ConflictError({
+                    message: "Unable to verify R2 object integrity",
+                    resource: "workspace-file",
+                  }),
+              })
+            )
+          ),
         remove,
         publicUrl: (key) =>
           `${config.publicBaseUrl.replace(TRAILING_SLASH, "")}/${key}`,

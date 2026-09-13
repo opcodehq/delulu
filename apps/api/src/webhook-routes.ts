@@ -88,7 +88,6 @@ export const WebhookRoutes = HttpRouter.use(
     const calendar = yield* CalendarWebhookConfig;
     const cancellations = yield* CancellationService;
     const entitlements = yield* EntitlementPolicy;
-
     yield* router.add(
       "GET",
       "/webhooks/meta",

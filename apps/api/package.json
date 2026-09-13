@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
+    "dev:staging": "wrangler dev --env staging",
+    "deploy:staging": "wrangler deploy --env staging",
     "start:node": "tsx src/node.ts",
     "build:cloudflare": "node ../../scripts/run-cloudflare-production-migration.mjs",
     "deploy": "wrangler deploy",
@@ -14,6 +16,8 @@
     "test:durable-runtime": "node scripts/smoke-durable-jobs.mjs"
   },
   "dependencies": {
+    "@delulu/communication-telegram": "workspace:*",
+    "@delulu/communication-whatsapp": "workspace:*",
     "@delulu/analytics": "workspace:*",
     "@delulu/contracts": "workspace:*",
     "@delulu/core": "workspace:*",

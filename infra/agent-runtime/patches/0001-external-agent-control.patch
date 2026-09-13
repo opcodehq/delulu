@@ -1,0 +1,262 @@
+diff --git a/packages/workshop-backend/src/external-message-gateway.ts b/packages/workshop-backend/src/external-message-gateway.ts
+index 6a48a5a..7741e0d 100644
+--- a/packages/workshop-backend/src/external-message-gateway.ts
++++ b/packages/workshop-backend/src/external-message-gateway.ts
+@@ -1,7 +1,10 @@
+ import { WorkerEntrypoint } from "cloudflare:workers";
+ import { validateRpc } from "capnweb-validate";
+ import {
++  type EnsureExternalUserInput,
++  type ExternalActionInput,
+   type ExternalMessageGateway as ExternalMessageGatewayContract,
++  type InterruptExternalRunInput,
+   type SubmitExternalMessageInput,
+   type SubmitExternalMessageResult,
+ } from "@gadgets/workshop-shared/external-message-gateway";
+@@ -12,6 +15,17 @@ type ExternalMessageGatewayProps = {
+
+ @validateRpc()
+ export class ExternalMessageGateway extends WorkerEntrypoint<Cloudflare.Env, ExternalMessageGatewayProps> implements ExternalMessageGatewayContract {
++  async ensureExternalUser(input: EnsureExternalUserInput): Promise<void> {
++    let email = input.email.trim().toLowerCase();
++    if (!email) throw new Error("External user email is required.");
++    let user = this.ctx.exports.UserDurableObject.getByName(email);
++    await user.loginOrCreateViaGatekeeper(email, true);
++    await user.ensureExternalGatekeeperAccount("delulu", {
++      callerEmail: email,
++      displayName: input.displayName.trim() || email.split("@")[0],
++    });
++    await user.provisionAmbientAccount("scheduler");
++  }
++
+   async submitExternalMessage(input: SubmitExternalMessageInput): Promise<SubmitExternalMessageResult> {
+     let source = this.ctx.props.source;
+     if (!source) throw new Error("ExternalMessageGateway source prop is required.");
+@@ -20,7 +34,7 @@ export class ExternalMessageGateway extends WorkerEntrypoint<Cloudflare.Env, Ext
+
+     let externalKeys = {
+-      gadget: `${source}:${input.gadgetKey}`,
++      gadget: `${source}:${input.callerEmail.trim().toLowerCase()}:${input.gadgetKey}`,
+       chat: `${source}:${input.chatKey}`,
+       message: `${source}:${input.messageKey}`,
+     };
+@@ -36,4 +50,29 @@ export class ExternalMessageGateway extends WorkerEntrypoint<Cloudflare.Env, Ext
+       title: input.gadgetTitle,
+     });
+   }
++
++  async interruptExternalRun(input: InterruptExternalRunInput): Promise<void> {
++    let source = this.ctx.props.source;
++    if (!source) throw new Error("ExternalMessageGateway source prop is required.");
++    let overseer = this.ctx.exports.OverseerDurableObject.getByName(
++      `${source}:${input.callerEmail.trim().toLowerCase()}:${input.gadgetKey}`,
++    );
++    await overseer.interruptExternalRun({
++      callerEmail: input.callerEmail,
++      externalChatKey: `${source}:${input.chatKey}`,
++    });
++  }
++
++  async resolveExternalAction(input: ExternalActionInput): Promise<void> {
++    let source = this.ctx.props.source;
++    if (!source) throw new Error("ExternalMessageGateway source prop is required.");
++    let overseer = this.ctx.exports.OverseerDurableObject.getByName(
++      `${source}:${input.callerEmail.trim().toLowerCase()}:${input.gadgetKey}`,
++    );
++    await overseer.resolveExternalAction({
++      callerEmail: input.callerEmail,
++      actionId: input.actionId,
++      decision: input.decision,
++    });
++  }
+ }
+diff --git a/packages/workshop-backend/src/overseer.ts b/packages/workshop-backend/src/overseer.ts
+index e1699ad..cb4a956 100644
+--- a/packages/workshop-backend/src/overseer.ts
++++ b/packages/workshop-backend/src/overseer.ts
+@@ -3657,6 +3657,23 @@ class OverseerImpl implements AgentHooks {
+     try {
+       await record.chatGatewayRpcTarget.onGadgetResponse({
+         text: record.responseText,
++        actions: [...this.storage.actions.list()]
++          .filter(action =>
++            (action.type === "action" && action.state === "pending" ||
++              action.type === "bindHook" && !action.enabled) &&
++            "chatId" in action.caller &&
++            action.caller.chatId === record.chatId)
++          .map(action => ({
++            id: String(action.id),
++            kind: action.type === "bindHook"
++              ? "enable_ritual"
++              : "actionKind" in action.description
++                ? action.description.actionKind?.tag ?? "external_write"
++                : "external_write",
++            summary: `${action.description.title}\n\n${action.description.description}`,
++            risk: "consequential" as const,
++          })),
++        usage: this.#externalResponseUsage(record),
+       });
+     } catch (err) {
+       this.logger.error("failed to deliver external message response", {
+@@ -3688,6 +3705,39 @@ class OverseerImpl implements AgentHooks {
+     this.#updateExternalMessageResponseDeliveryAlarm();
+   }
+
++  #externalResponseUsage(record: ExternalMessageRecord) {
++    let provider = "unknown";
++    let model = "unknown";
++    let inputTokens = 0;
++    let outputTokens = 0;
++    let cachedInputTokens = 0;
++    let costMicros = 0;
++    for (let message of this.storage.chats.list({
++      prefix: `${keyString(record.chatId)}.`,
++      startAfter: `${keyString(record.chatId)}.${keyString(record.promptSequence)}`,
++    })) {
++      if (message.type === "message" && message.author.type === "user") break;
++      if (message.type !== "message" || message.author.type !== "agent") continue;
++      let snapshot = this.storage.chatModelData.get(
++        `${keyString(message.chatId)}.${keyString(message.sequence)}`,
++      )?.message;
++      if (!snapshot) continue;
++      provider = snapshot.provider;
++      model = snapshot.model;
++      inputTokens += snapshot.usage.input;
++      outputTokens += snapshot.usage.output;
++      cachedInputTokens += snapshot.usage.cacheRead;
++      costMicros += Math.round(snapshot.usage.cost.total * 1_000_000);
++    }
++    return { provider, model, inputTokens, outputTokens, cachedInputTokens, costMicros };
++  }
++
+   cancelAgent(chatId: number) {
+     let ctx = this.#liveChats.get(chatId);
+     if (ctx) {
+@@ -6613,6 +6663,63 @@ export class OverseerDurableObject extends DurableObject<Cloudflare.Env> {
+     return { accepted: true, chatPath: `/workspace/${this.ctx.id.toString()}?chat=${chatId}` };
+   }
+
++  async interruptExternalRun(input: {
++    callerEmail: string;
++    externalChatKey: string;
++  }): Promise<void> {
++    let caller = this.impl.users.getByName(input.callerEmail.trim().toLowerCase());
++    let callerProfile = await caller.whoamiIfExists();
++    if (!callerProfile || caller.id.toString() !== this.impl.ownerId) {
++      throw new Error("External caller cannot interrupt this workspace.");
++    }
++    let externalChat = this.#getExternalChat(input.externalChatKey);
++    if (externalChat) this.impl.cancelAgent(externalChat.chatId);
++  }
++
++  async resolveExternalAction(input: {
++    callerEmail: string;
++    actionId: string;
++    decision: "approved" | "rejected";
++  }): Promise<void> {
++    let caller = this.impl.users.getByName(input.callerEmail.trim().toLowerCase());
++    let callerProfile = await caller.whoamiIfExists();
++    let callerId = caller.id.toString();
++    if (!callerProfile || callerId !== this.impl.ownerId) {
++      throw new Error("External caller cannot resolve actions for this workspace.");
++    }
++    let actionId = Number(input.actionId);
++    if (!Number.isSafeInteger(actionId) || actionId < 0) {
++      throw new Error("Invalid external action ID.");
++    }
++    let existing = this.impl.storage.actions.get(actionId);
++    if (!existing || existing.type === "observation") {
++      throw new Error(`No such external action: ${actionId}`);
++    }
++    if (existing.type === "action" &&
++        (input.decision === "approved" && existing.state === "approved" ||
++         input.decision === "rejected" && existing.state === "rejected") ||
++        existing.type === "bindHook" && input.decision === "approved" && existing.enabled) {
++      return;
++    }
++    let notifyClosed = Object.assign(
++      () => {},
++      { [Symbol.dispose]() {} },
++    ) as unknown as NativeRpcStub<() => void>;
++    let client = new OverseerClientInterface(
++      this.impl,
++      callerProfile.id,
++      callerId,
++      true,
++      notifyClosed,
++      Promise.resolve(),
++    );
++    try {
++      if (existing.type === "bindHook") {
++        if (existing.hookId === undefined) throw new Error("Scheduled ritual no longer exists.");
++        if (input.decision === "approved") await client.enableHook(existing.hookId);
++        else await client.deleteHook(existing.hookId);
++      } else if (input.decision === "approved") await client.approveAction(actionId);
++      else await client.rejectAction(actionId);
++    } finally {
++      client[Symbol.dispose]();
++    }
++  }
++
+   // Initialize this workspace's default gadget from a blueprint's code snapshot. Called by
+   // AuthenticatedApi.newGadgetFromBlueprint() after creating (and opening) the DO.
+   async initializeFromBlueprint(code: Uint8Array, title: string, output?: BlueprintOutput)
+diff --git a/packages/workshop-shared/src/external-message-gateway.ts b/packages/workshop-shared/src/external-message-gateway.ts
+index 875e63a..3d93707 100644
+--- a/packages/workshop-shared/src/external-message-gateway.ts
++++ b/packages/workshop-shared/src/external-message-gateway.ts
+@@ -3,6 +3,41 @@ import type { RpcStub, RpcTarget } from "cloudflare:workers";
+ /** A completed Gadget response that should be delivered back to the chat gateway. */
+ export type GadgetResponse = {
+   text: string;
++  actions?: Array<{
++    id: string;
++    kind: string;
++    summary: string;
++    risk: "low" | "consequential";
++  }>;
++  usage?: {
++    provider: string;
++    model: string;
++    inputTokens: number;
++    outputTokens: number;
++    cachedInputTokens: number;
++    costMicros: number;
++  };
++};
++
++export type EnsureExternalUserInput = {
++  email: string;
++  displayName: string;
++};
++
++export type ExternalActionDecision = "approved" | "rejected";
++
++export type ExternalActionInput = {
++  callerEmail: string;
++  gadgetKey: string;
++  actionId: string;
++  decision: ExternalActionDecision;
++};
++
++export type InterruptExternalRunInput = {
++  callerEmail: string;
++  gadgetKey: string;
++  chatKey: string;
++  messageKey: string;
+ };
+
+ /** RPC target provided by the chat gateway for the backend's eventual response. */
+@@ -47,6 +74,12 @@ export type SubmitExternalMessageResult =
+
+ /** Service binding RPC interface used by chat gateway workers. */
+ export interface ExternalMessageGateway {
++  /** Idempotently provision a passwordless account for a trusted external identity. */
++  ensureExternalUser(input: EnsureExternalUserInput): Promise<void>;
+   /** Submit an external chat message for Gadget routing and execution. */
+   submitExternalMessage(input: SubmitExternalMessageInput): Promise<SubmitExternalMessageResult>;
++  /** Interrupt the active turn for an externally-addressed chat. */
++  interruptExternalRun(input: InterruptExternalRunInput): Promise<void>;
++  /** Resolve an action after the external channel has collected explicit approval. */
++  resolveExternalAction(input: ExternalActionInput): Promise<void>;
+ }

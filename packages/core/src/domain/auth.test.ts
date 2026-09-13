@@ -37,6 +37,18 @@ describe("roleScopeCeiling", () => {
     expect(roleScopeCeiling.editor).not.toContain("apikeys:write");
   });
 
+  it("lets viewers inspect files and computer state without mutating them", () => {
+    expect(roleScopeCeiling.viewer).toContain("files:read");
+    expect(roleScopeCeiling.viewer).toContain("computer:read");
+    expect(roleScopeCeiling.viewer).not.toContain("files:write");
+    expect(roleScopeCeiling.viewer).not.toContain("computer:write");
+  });
+
+  it("lets editors operate the workspace computer and its files", () => {
+    expect(roleScopeCeiling.editor).toContain("files:write");
+    expect(roleScopeCeiling.editor).toContain("computer:write");
+  });
+
   it("viewer can never write regardless of requested scopes", () => {
     const effective = effectivePermissions(
       "viewer",

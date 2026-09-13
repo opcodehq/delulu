@@ -1,0 +1,85 @@
+diff --git a/packages/workshop-backend/src/ai-models.ts b/packages/workshop-backend/src/ai-models.ts
+--- a/packages/workshop-backend/src/ai-models.ts
++++ b/packages/workshop-backend/src/ai-models.ts
+@@ -166,1 +166,1 @@
+-function gatewayNativeModel(config: AiModelConfig, gatewayUrl: string): Model<Api> | undefined {
++function gatewayNativeModel(config: AiModelConfig, gatewayUrl: string, openRouter = false): Model<Api> | undefined {
+   const catalog = catalogModel(config.provider, config.model);
+   const window = modelTokenWindow(config, catalog);
+   switch (config.provider) {
+@@ -188,1 +188,19 @@
+     case "openai":
++      if (openRouter) {
++        return {
++          id: `openai/${config.model}`,
++          name: catalog?.name ?? config.model,
++          api: "openai-completions",
++          provider: "openrouter",
++          baseUrl: `${gatewayUrl}/openrouter`,
++          reasoning: catalog?.reasoning ?? true,
++          input: catalog?.input ?? ["text", "image"],
++          cost: catalog?.cost ?? ZERO_COST,
++          ...window,
++          compat: {
++            supportsDeveloperRole: false,
++            supportsStore: false,
++            supportsUsageInStreaming: true,
++          },
++        };
++      }
+       return {
+         id: config.model,
+         name: catalog?.name ?? config.model,
+@@ -454,1 +472,2 @@
+-  const model = gatewayNativeModel(config, `${gatewayBase}/${gateway}`);
++  const model = gatewayNativeModel(config, `${gatewayBase}/${gateway}`,
++      gwConfig.quickModel !== undefined);
+   if (!model) {
+     throw new Error(
+       `Provider "${config.provider}" is not supported through AI Gateway. ` +
+diff --git a/packages/workshop-backend/src/ai-gateway.ts b/packages/workshop-backend/src/ai-gateway.ts
+--- a/packages/workshop-backend/src/ai-gateway.ts
++++ b/packages/workshop-backend/src/ai-gateway.ts
+@@ -15,1 +15,2 @@
+   readonly providers: Set<string>;
++  readonly quickModel?: string;
+ 
+   constructor(env: Cloudflare.Env) {
+     this.gateway = env.CF_AI_GATEWAY!;
+@@ -28,1 +29,5 @@
+     this.apiToken = env.CF_AI_GATEWAY_API_TOKEN;
++    const policy = env as Cloudflare.Env & {OPENAI_VIA_OPENROUTER?: string; EXTERNAL_QUICK_MODEL?: string};
++    if (policy.OPENAI_VIA_OPENROUTER === "true") {
++      this.quickModel = policy.EXTERNAL_QUICK_MODEL || "gpt-5.6-luna";
++    }
+     if (env.CF_AI_GATEWAY_WAI_DIRECT === "true" && env.CF_AI_GATEWAY_WAI) {
+       throw new Error(
+@@ -90,2 +95,5 @@
+   getQuickModelConfig(): AiModelConfig | undefined {
++    if (this.quickModel) {
++      return this.resolveModel(this.quickModel)?.config;
++    }
+     // Always use Workers AI here.
+     return {
+       provider: "cloudflare",
+diff --git a/packages/workshop-backend/__tests__/ai-models.test.ts b/packages/workshop-backend/__tests__/ai-models.test.ts
+--- a/packages/workshop-backend/__tests__/ai-models.test.ts
++++ b/packages/workshop-backend/__tests__/ai-models.test.ts
+@@ -73,3 +73,22 @@
++  it("routes platform GPT calls through the stored OpenRouter key without forwarding credentials", async () => {
++    const configured = Object.assign(env(), {OPENAI_VIA_OPENROUTER: "true"});
++    const handle = getModel(configured, {
++      provider: "openai", model: "gpt-5.6-luna", apiToken: "must-not-forward",
++    }, INITIATOR);
++    expect(handle.model.id).toBe("openai/gpt-5.6-luna");
++    expect(handle.model.api).toBe("openai-completions");
++    const request = await captureRequest(handle);
++    expect(request.url).toBe("https://gateway.ai.cloudflare.com/v1/gateway-account-id/platform-gateway/openrouter/chat/completions");
++    expect(request.headers.get("cf-aig-authorization")).toBe("Bearer gateway-token");
++    expect(request.headers.get("authorization")).toBeNull();
++    expect(JSON.parse(request.body).model).toBe("openai/gpt-5.6-luna");
++  });
++
+   it("routes non-Workers providers through the platform gateway", async () => {
+     const handle = getModel(env(), ANTHROPIC_CONFIG, INITIATOR, {
+       metadata: { source: "chat", gadgetId: "gadget-123", chatId: 7 },

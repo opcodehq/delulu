@@ -1,359 +1,352 @@
-import { makeTokenCipher, TokenCipher } from "@delulu/core";
+import { WorkerEntrypoint } from "cloudflare:workers";
+import { PostWrite } from "@delulu/contracts";
+import { WorkspaceId } from "@delulu/core";
 import {
-  AdminService,
-  AnalyticsService,
-  ApiKeyVerifier,
-  AsTokenService,
-  AuthorizationService,
-  AutomationEngine,
-  AutomationKvNamespace,
-  AutomationKvService,
-  AutomationService,
-  AutomationSessionService,
-  BillingOwnerTransfers,
-  BillingProviderConfig,
-  BillingProviderService,
-  BillingReconciliation,
-  BillingService,
-  BillingWebhookApplication,
-  CalendarWebhookConfig,
-  CancellationService,
-  ClerkAdminService,
-  ClerkSyncService,
-  ClerkTokenVerifier,
-  ConnectionStateService,
-  ConnectionsService,
-  DeploymentConfig,
-  DmDispatchService,
-  EntitlementPolicy,
-  IdentityService,
+  AgentWorkspaceService,
   JobIntent,
-  JobService,
-  LifecycleService,
-  MediaService,
-  MembershipService,
-  MessagingService,
-  makeAnalyticsCacheLayer,
-  makeMemoryAnalyticsCacheLayer,
-  OAuthFlowService,
-  PooledQuotaReservations,
   PostService,
-  ProductAnalytics,
-  QuotaGuard,
-  R2Service,
-  RateLimiterService,
-  ReviewService,
-  SetupService,
-  SignedIngress,
-  TranscriptionCheckoutConfig,
-  TranscriptionCheckoutService,
-  TranscriptionService,
-  WebhookDeliveryService,
-  WebhookIngressService,
-  WebhookSecrets,
-  WorkspaceAccessService,
 } from "@delulu/services";
-import { PgClient } from "@effect/sql-pg";
+import { Effect, Schema } from "effect";
+import { SqlClient } from "effect/unstable/sql";
+import { buildWebHandler } from "./app";
 import {
-  Effect,
-  String as EffectString,
-  Layer,
-  Redacted,
-  Schema,
-} from "effect";
-import { type AppServices, buildWebHandler } from "./app";
-import {
-  AutomationProviderLive,
-  PaymentWebhookSinkLive,
-} from "./automation-providers";
+  assertContentReceiptOwner,
+  prepareContentWrite,
+} from "./content-action-policy";
 import { DurableJobObject, type JobState } from "./durable-job";
-import {
-  appOrigins,
-  authConfigLayer,
-  databaseUrl,
-  domainConfigLayers,
-  type Env,
-  type ExecutionContext,
-  postHogConfigLayer,
-} from "./env";
+import { appOrigins, type Env, type ExecutionContext } from "./env";
 import { executeJob, failJob } from "./execute-job";
-import { jobTransportLayer, makeJobRuntime, sendIntent } from "./job-runtime";
-import { LiveInsightsProviderLive } from "./live-insights";
-import { maintenanceResponse } from "./maintenance";
+import { makeJobRuntime, sendIntent } from "./job-runtime";
+import { maintenanceResponse, runMaintenance } from "./maintenance";
+import { handleProviderIngress } from "./provider-ingress";
 
-import { messagingProvidersLayer } from "./messaging-providers";
+export {
+  TelegramAdmission,
+  TelegramConversation,
+  TelegramResponseTarget,
+} from "./telegram-conversation";
+export {
+  WhatsAppConversation,
+  WhatsAppResponseTarget,
+} from "./whatsapp-conversation";
 
-/**
- * Build the per-request service environment from the Worker `env`. Rate limiting
- * uses the Cloudflare bindings when present, else an in-memory limiter (local
- * dev / `wrangler dev`). Postgres comes via Hyperdrive in production.
- */
-export interface BaseLayerOverrides {
-  readonly clerk?: Layer.Layer<ClerkTokenVerifier>;
-  readonly clerkAdmin?: Layer.Layer<ClerkAdminService>;
-  readonly rateLimiter?: Layer.Layer<RateLimiterService>;
+import { makeBaseLayer, makePgLayer } from "./base-layer";
+
+interface AgentResponseTargetStub {
+  readonly onGadgetResponse: (
+    response: import("@delulu/services").AgentRuntimeResponse
+  ) => Promise<void>;
 }
 
-export const makePgLayer = (env: Env) =>
-  PgClient.layer({
-    url: Redacted.make(databaseUrl(env)),
-    transformQueryNames: EffectString.camelToSnake,
-    transformResultNames: EffectString.snakeToCamel,
-    transformJson: false,
-  });
+interface AgentResponseTargetExports {
+  readonly AgentResponseTarget: (options: {
+    readonly props: { readonly runId: string };
+  }) => AgentResponseTargetStub;
+}
 
-export const makeBaseLayer = (
-  env: Env,
-  overrides: BaseLayerOverrides = {}
-): Layer.Layer<AppServices> => {
-  // Transform column names only, NOT keys inside jsonb values. Content graphs
-  // contain data-derived ids that recursive key transforms can corrupt.
-  const Pg = makePgLayer(env);
-  const Config = authConfigLayer(env);
-  const Deployment = DeploymentConfig.layer({
-    mode:
-      env.DELULU_DEPLOYMENT_MODE === "self_hosted" ? "self_hosted" : "hosted",
-    registrationEnabled: env.DELULU_REGISTRATION_ENABLED !== "false",
-    version: env.DELULU_VERSION ?? "development",
-    communityApiRatePerMinute: Number(
-      env.DELULU_COMMUNITY_API_RATE_PER_MINUTE ?? 120
-    ),
-  });
-  const Entitlements = EntitlementPolicy.layer.pipe(Layer.provide(Deployment));
-  // Server-side product analytics. Disabled (fully inert) when POSTHOG_KEY is
-  // unset. Flushes buffered events on layer dispose, which upstream runs inside
-  // ctx.waitUntil for both the fetch and scheduled handlers. Defined early so it
-  // can be provided into services that capture events (ClerkSync, billing).
-  const Telemetry = ProductAnalytics.layer.pipe(
-    Layer.provide(postHogConfigLayer(env))
-  );
-  const AsToken = AsTokenService.layer;
-  const Clerk = overrides.clerk ?? ClerkTokenVerifier.layer;
-  const [ClerkAdminConfig, ConnectionConfig, R2Config] =
-    domainConfigLayers(env);
-  const Authorization = AuthorizationService.layer;
-  const Jobs = JobService.layer.pipe(Layer.provide(jobTransportLayer(env)));
-  const ClerkAdmin =
-    overrides.clerkAdmin ??
-    ClerkAdminService.layer.pipe(Layer.provide(ClerkAdminConfig));
-  const ConnectionState = ConnectionStateService.layer.pipe(
-    Layer.provide(ConnectionConfig)
-  );
-  const Cipher = Layer.succeed(
-    TokenCipher,
-    TokenCipher.of(makeTokenCipher(env.ENCRYPTION_SECRET ?? ""))
-  );
-  const R2 = R2Service.layer.pipe(Layer.provide(R2Config));
-  const Access = WorkspaceAccessService.layer.pipe(
-    Layer.provide([MembershipService.layer, Authorization, Entitlements])
-  );
-  const Posts = PostService.layer.pipe(Layer.provide(Jobs));
-  const Reviews = ReviewService.layer.pipe(Layer.provide(Jobs));
-  const Media = MediaService.layer.pipe(
-    Layer.provide([
-      Jobs,
-      R2,
-      QuotaGuard.layer.pipe(Layer.provide(Entitlements)),
-    ])
-  );
-  const AutomationKvBinding = env.AUTOMATION_KV
-    ? Layer.succeed(
-        AutomationKvNamespace,
-        AutomationKvNamespace.of(env.AUTOMATION_KV)
-      )
-    : AutomationKvService.memoryLayer();
-  const Messaging = MessagingService.layer.pipe(
-    Layer.provide([messagingProvidersLayer(env), Jobs])
-  );
-  const Lifecycle = LifecycleService.layer.pipe(
-    Layer.provide([Messaging, Jobs])
-  );
-  const Connections = ConnectionsService.layer.pipe(
-    Layer.provide([ConnectionState, Cipher, AutomationKvBinding, Lifecycle])
-  );
-  const Admin = AdminService.layer.pipe(Layer.provide([ClerkAdmin, Jobs]));
-  const AnalyticsCache = env.EDGE_CACHE_KV
-    ? makeAnalyticsCacheLayer(env.EDGE_CACHE_KV)
-    : makeMemoryAnalyticsCacheLayer();
-  const LiveInsights = LiveInsightsProviderLive.pipe(Layer.provide(Cipher));
-  const Analytics = AnalyticsService.layer.pipe(
-    Layer.provide([AnalyticsCache, LiveInsights])
-  );
-  const Billing = BillingService.layer;
-  const BillingTransfers = BillingOwnerTransfers.layer;
-  const BillingProviderConfigLayer = Layer.succeed(
-    BillingProviderConfig,
-    BillingProviderConfig.of({
-      apiKey: env.DODO_PAYMENTS_API_KEY ?? "",
-      environment:
-        env.DODO_PAYMENTS_ENVIRONMENT === "live_mode"
-          ? "live_mode"
-          : "test_mode",
-      appBaseUrl: env.APP_BASE_URL ?? "http://localhost:3000",
-    })
-  );
-  const BillingProvider = BillingProviderService.layer.pipe(
-    Layer.provide(BillingProviderConfigLayer)
-  );
-  const Cancellations = CancellationService.layer.pipe(
-    Layer.provide([
-      BillingProvider,
-      BillingProviderConfigLayer,
-      Messaging,
-      R2,
-      Jobs,
-    ])
-  );
-  const CalendarConfig = Layer.succeed(
-    CalendarWebhookConfig,
-    CalendarWebhookConfig.of({
-      secret: env.CAL_WEBHOOK_SECRET ?? "",
-      eventSlug: env.CAL_RETENTION_EVENT_SLUG ?? "retention",
-    })
-  );
-  const BillingWebhooks = BillingWebhookApplication.layer.pipe(
-    Layer.provide([Telemetry, Jobs])
-  );
-  const BillingReconcile = BillingReconciliation.layer;
-  const Transcriptions = TranscriptionService.layer;
-  const TranscriptionCheckoutConfigLayer = Layer.succeed(
-    TranscriptionCheckoutConfig,
-    TranscriptionCheckoutConfig.of({
-      apiKey: env.DODO_PAYMENTS_API_KEY ?? "",
-      environment:
-        env.DODO_PAYMENTS_ENVIRONMENT === "live_mode"
-          ? "live_mode"
-          : "test_mode",
-      returnUrl: env.APP_BASE_URL ?? "http://localhost:3000",
-    })
-  );
-  const TranscriptionCheckout = TranscriptionCheckoutService.layer.pipe(
-    Layer.provide(TranscriptionCheckoutConfigLayer)
-  );
-  const Setup = SetupService.layer.pipe(
-    Layer.provide([ClerkAdmin, Entitlements])
-  );
-  const QuotaReservations = PooledQuotaReservations.layer.pipe(
-    Layer.provide(Jobs)
-  );
-  const AutomationKv = AutomationKvService.layer.pipe(
-    Layer.provide(AutomationKvBinding)
-  );
-  const Automations = AutomationService.layer.pipe(
-    Layer.provide([AutomationKv, Jobs])
-  );
-  const AutomationSessions = AutomationSessionService.layer.pipe(
-    Layer.provide(AutomationKv)
-  );
-  const AutomationProviders = AutomationProviderLive.pipe(
-    Layer.provide(Cipher)
-  );
-  const DmDispatch = DmDispatchService.layer.pipe(
-    Layer.provide(AutomationProviders)
-  );
-  const AutomationRuntime = AutomationEngine.layer.pipe(
-    Layer.provide([
-      Automations,
-      AutomationSessions,
-      DmDispatch,
-      AutomationProviders,
-    ])
-  );
-  const WebhookDeliveries = WebhookDeliveryService.layer;
-  const ClerkSync = ClerkSyncService.layer.pipe(
-    Layer.provide([IdentityService.layer, Telemetry])
-  );
-  const PaymentSink = PaymentWebhookSinkLive.pipe(
-    Layer.provide([BillingWebhooks, Messaging, Setup])
-  );
-  const WebhookSecretConfig = Layer.succeed(
-    WebhookSecrets,
-    WebhookSecrets.of({
-      metaAppSecret: env.META_APP_SECRET ?? "",
-      metaVerifyToken: env.META_VERIFY_TOKEN ?? "",
-      clerkSigningSecret: env.CLERK_WEBHOOK_SECRET ?? "",
-      dodoSigningSecret: env.DODO_WEBHOOK_SECRET ?? "",
-      timestampToleranceSeconds: 300,
-    })
-  );
-  const WebhookVerification = SignedIngress.layer.pipe(
-    Layer.provide(WebhookSecretConfig)
-  );
-  const WebhookIngress = WebhookIngressService.layer.pipe(
-    Layer.provide([
-      WebhookDeliveries,
-      AutomationRuntime,
-      ClerkSync,
-      PaymentSink,
-    ])
-  );
+/** Trusted self-binding entrypoint that creates a persistent callback target. */
+export class AgentRuntimeBridge extends WorkerEntrypoint<Env> {
+  async ensureExternalUser(input: {
+    readonly email: string;
+    readonly displayName: string;
+  }): Promise<void> {
+    if (!this.env.AGENT_RUNTIME) {
+      throw new Error("Agent runtime binding is not configured");
+    }
+    await this.env.AGENT_RUNTIME.ensureExternalUser(input);
+  }
 
-  const RateLimiter =
-    overrides.rateLimiter ??
-    (env.RL_API_20 && env.RL_API_60 && env.RL_API_120 && env.RL_SESSION_300
-      ? RateLimiterService.workersLayer({
-          api20: env.RL_API_20,
-          api60: env.RL_API_60,
-          api120: env.RL_API_120,
-          session300: env.RL_SESSION_300,
-        })
-      : RateLimiterService.inMemoryLayer());
-  const OAuthFlow = OAuthFlowService.layer.pipe(
-    Layer.provide(MembershipService.layer)
-  );
+  async submitExternalMessage(input: {
+    readonly correlationId: string;
+    readonly callerEmail: string;
+    readonly displayName: string;
+    readonly gadgetKey: string;
+    readonly chatKey: string;
+    readonly messageKey: string;
+    readonly gadgetTitle: string;
+    readonly prompt: string;
+  }) {
+    if (!this.env.AGENT_RUNTIME) {
+      throw new Error("Agent runtime binding is not configured");
+    }
+    const workerExports = this.ctx
+      .exports as unknown as AgentResponseTargetExports;
+    const chatGatewayRpcTarget = workerExports.AgentResponseTarget({
+      props: { runId: input.correlationId },
+    });
+    return this.env.AGENT_RUNTIME.submitExternalMessage({
+      callerEmail: input.callerEmail,
+      gadgetKey: input.gadgetKey,
+      chatKey: input.chatKey,
+      messageKey: input.messageKey,
+      gadgetTitle: input.gadgetTitle,
+      prompt: input.prompt,
+      chatGatewayRpcTarget,
+    });
+  }
 
-  return Layer.mergeAll(
-    Cipher,
-    IdentityService.layer,
-    MembershipService.layer,
-    ApiKeyVerifier.layer,
-    OAuthFlow,
-    QuotaGuard.layer.pipe(Layer.provide(Entitlements)),
-    RateLimiter,
-    Telemetry,
-    Deployment,
-    Entitlements,
-    AsToken,
-    Clerk,
-    Config,
-    Authorization,
-    Jobs,
-    ClerkAdmin,
-    ConnectionState,
-    R2,
-    Access,
-    Posts,
-    Reviews,
-    Media,
-    Connections,
-    Admin,
-    Analytics,
-    Automations,
-    Billing,
-    BillingProvider,
-    Cancellations,
-    CalendarConfig,
-    Messaging,
-    Lifecycle,
-    BillingTransfers,
-    BillingWebhooks,
-    BillingReconcile,
-    Transcriptions,
-    TranscriptionCheckout,
-    Setup,
-    QuotaReservations,
-    WebhookVerification,
-    WebhookIngress
-  ).pipe(
-    Layer.provide(AsToken),
-    Layer.provide(Config),
-    Layer.provide(Entitlements),
-    Layer.provideMerge(Pg),
-    // Postgres connection-build failures become defects (500), not a typed
-    // requirement leak into the handler.
-    Layer.orDie
-  );
-};
+  async interruptExternalRun(input: {
+    readonly callerEmail: string;
+    readonly gadgetKey: string;
+    readonly chatKey: string;
+    readonly messageKey: string;
+  }): Promise<void> {
+    if (!this.env.AGENT_RUNTIME) {
+      throw new Error("Agent runtime binding is not configured");
+    }
+    await this.env.AGENT_RUNTIME.interruptExternalRun(input);
+  }
+
+  async resolveExternalAction(input: {
+    readonly callerEmail: string;
+    readonly gadgetKey: string;
+    readonly actionId: string;
+    readonly decision: "approved" | "rejected";
+  }): Promise<void> {
+    if (!this.env.AGENT_RUNTIME) {
+      throw new Error("Agent runtime binding is not configured");
+    }
+    await this.env.AGENT_RUNTIME.resolveExternalAction(input);
+  }
+}
+
+/** At-least-once runtime completion callback; database claims make delivery idempotent. */
+export class AgentResponseTarget extends WorkerEntrypoint<
+  Env,
+  { readonly runId: string }
+> {
+  async onGadgetResponse(
+    response: import("@delulu/services").AgentRuntimeResponse
+  ): Promise<void> {
+    const runId = this.ctx.props.runId;
+    const program = Effect.gen(function* () {
+      const agents = yield* AgentWorkspaceService;
+      yield* agents.completeExternalResponse({
+        runId,
+        response,
+      });
+    });
+    await Effect.runPromise(
+      program.pipe(Effect.provide(makeBaseLayer(this.env)))
+    );
+  }
+}
+
+type ContentAction =
+  | {
+      readonly kind: "create_draft";
+      readonly workspaceId: string;
+      readonly value: unknown;
+    }
+  | {
+      readonly kind: "update_draft";
+      readonly workspaceId: string;
+      readonly postId: string;
+      readonly value: unknown;
+    }
+  | {
+      readonly kind: "schedule";
+      readonly workspaceId: string;
+      readonly postId: string;
+      readonly value: unknown;
+    }
+  | {
+      readonly kind: "publish";
+      readonly workspaceId: string;
+      readonly postId: string;
+    };
+
+/** Tenant-authorized capability used only by the Content Gatekeeper binding. */
+export class AgentContentBridge extends WorkerEntrypoint<Env> {
+  async getContentContext(input: {
+    readonly callerEmail: string;
+    readonly workspaceId: string;
+  }) {
+    const program = Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      const posts = yield* PostService;
+      const workspaceId = yield* Schema.decodeUnknownEffect(WorkspaceId)(
+        input.workspaceId
+      );
+      const members = yield* sql<{
+        userId: string;
+        memberId: string;
+        role: "owner" | "admin" | "editor" | "viewer";
+        workspaceName: string;
+      }>`SELECT u.id AS user_id, wm.id AS member_id, wm.role, w.name AS workspace_name
+          FROM users u
+          JOIN workspace_members wm ON wm.user_id = u.id
+          JOIN workspaces w ON w.id = wm.workspace_id
+          WHERE lower(u.email) = ${input.callerEmail.trim().toLowerCase()}
+            AND wm.workspace_id = ${input.workspaceId}
+            AND u.identity_deleted_at IS NULL LIMIT 1`;
+      const member = members[0];
+      if (!member) {
+        throw new Error("Content HQ workspace access denied");
+      }
+      const [connections, memories, files, recentPosts] = yield* Effect.all([
+        sql<Record<string, unknown>>`SELECT id, platform, username, display_name
+          FROM connections WHERE workspace_id = ${input.workspaceId}
+          ORDER BY created_at DESC`,
+        sql<Record<string, unknown>>`SELECT id, category, value, provenance,
+          confidence, status, requires_confirmation, updated_at
+          FROM agent_memories WHERE workspace_id = ${input.workspaceId}
+            AND user_id = ${member.userId}
+            AND status != 'rejected' ORDER BY updated_at DESC LIMIT 100`,
+        sql<Record<string, unknown>>`SELECT wf.id, wf.filename, wf.logical_path,
+          wfv.mime_type, COALESCE(wfv.size_bytes, 0)::text AS size_bytes
+          FROM workspace_files wf LEFT JOIN workspace_file_versions wfv
+            ON wfv.id = wf.current_version_id
+          WHERE wf.workspace_id = ${input.workspaceId} AND wf.deleted_at IS NULL
+            AND (wf.visibility = 'workspace' OR wf.owner_user_id = ${member.userId})
+            AND wf.status = 'available' ORDER BY wf.updated_at DESC LIMIT 100`,
+        posts.list({
+          workspaceId,
+          limit: 50,
+          offset: 0,
+        }),
+      ]);
+      return {
+        workspace: {
+          id: input.workspaceId,
+          name: member.workspaceName,
+          role: member.role,
+        },
+        connections: connections.map((connection) => ({
+          id: String(connection.id),
+          platform: String(connection.platform),
+          username:
+            connection.username == null ? null : String(connection.username),
+          displayName:
+            connection.displayName == null
+              ? null
+              : String(connection.displayName),
+        })),
+        recentPosts: recentPosts.data,
+        memories,
+        files: files.map((file) => ({
+          id: String(file.id),
+          filename: String(file.filename),
+          logicalPath: String(file.logicalPath),
+          mimeType: file.mimeType == null ? null : String(file.mimeType),
+          sizeBytes: String(file.sizeBytes),
+        })),
+      };
+    });
+    return Effect.runPromise(
+      program.pipe(Effect.provide(makeBaseLayer(this.env)))
+    );
+  }
+
+  async executeContentAction(input: {
+    readonly callerEmail: string;
+    readonly action: ContentAction;
+    readonly idempotencyKey: string;
+  }) {
+    const program = Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      const posts = yield* PostService;
+      const workspaceId = yield* Schema.decodeUnknownEffect(WorkspaceId)(
+        input.action.workspaceId
+      );
+      const members = yield* sql<{
+        memberId: string;
+        role: "owner" | "admin" | "editor" | "viewer";
+      }>`SELECT wm.id AS member_id, wm.role FROM users u
+          JOIN workspace_members wm ON wm.user_id = u.id
+          JOIN agent_workspaces aw ON aw.user_id = u.id AND aw.workspace_id = wm.workspace_id
+          WHERE lower(u.email) = ${input.callerEmail.trim().toLowerCase()}
+            AND wm.workspace_id = ${input.action.workspaceId}
+            AND aw.state = 'active' AND aw.deleted_at IS NULL
+            AND aw.external_writes_enabled = true
+            AND u.identity_deleted_at IS NULL LIMIT 1`;
+      const actor = members[0];
+      if (!actor || actor.role === "viewer") {
+        throw new Error("Content HQ write access denied");
+      }
+      const receiptOwner = {
+        callerEmail: input.callerEmail.trim().toLowerCase(),
+        workspaceId: input.action.workspaceId,
+        actionKind: input.action.kind,
+      };
+      // An interrupted execution may already have committed its effect. Only a
+      // confirmed failure can retry; stale executing receipts need reconciliation.
+      const claimed = yield* sql<{
+        idempotencyKey: string;
+      }>`INSERT INTO agent_external_effects
+        (idempotency_key, caller_email, workspace_id, action_kind, status)
+        VALUES (${input.idempotencyKey}, ${receiptOwner.callerEmail},
+          ${input.action.workspaceId}, ${input.action.kind}, 'executing')
+        ON CONFLICT (idempotency_key) DO UPDATE SET
+          status = 'executing', error = NULL, started_at = now()
+        WHERE agent_external_effects.caller_email = EXCLUDED.caller_email
+          AND agent_external_effects.workspace_id = EXCLUDED.workspace_id
+          AND agent_external_effects.action_kind = EXCLUDED.action_kind
+          AND agent_external_effects.status = 'failed'
+        RETURNING idempotency_key`;
+      if (!claimed[0]) {
+        const existing = yield* sql<{
+          status: string;
+          result: unknown;
+          callerEmail: string;
+          workspaceId: string;
+          actionKind: string;
+        }>`SELECT status, result, caller_email, workspace_id, action_kind
+          FROM agent_external_effects WHERE idempotency_key = ${input.idempotencyKey}`;
+        if (existing[0]) {
+          assertContentReceiptOwner(existing[0], receiptOwner);
+        }
+        if (existing[0]?.status === "completed") {
+          return existing[0].result;
+        }
+        throw new Error("Content action is already executing");
+      }
+
+      const postActor = { memberId: actor.memberId, role: actor.role };
+      const execution = yield* Effect.gen(function* () {
+        if (input.action.kind === "publish") {
+          return yield* posts.publishNow({
+            workspaceId,
+            postId: input.action.postId,
+            actor: postActor,
+          });
+        }
+        const decoded = yield* Schema.decodeUnknownEffect(PostWrite)(
+          input.action.value
+        );
+        const value = prepareContentWrite(
+          input.action.kind,
+          decoded,
+          input.idempotencyKey
+        );
+        return input.action.kind === "create_draft"
+          ? yield* posts.create({
+              workspaceId,
+              actor: postActor,
+              value,
+            })
+          : yield* posts.update({
+              workspaceId,
+              postId: input.action.postId,
+              actor: postActor,
+              value,
+            });
+      }).pipe(Effect.result);
+      if (execution._tag === "Failure") {
+        yield* sql`UPDATE agent_external_effects SET status = 'failed'
+          WHERE idempotency_key = ${input.idempotencyKey}`;
+        return yield* Effect.fail(execution.failure);
+      }
+      yield* sql`UPDATE agent_external_effects SET status = 'completed',
+        result = ${JSON.stringify(execution.success)}::jsonb, completed_at = now()
+        WHERE idempotency_key = ${input.idempotencyKey}`;
+      return execution.success;
+    });
+    return Effect.runPromise(
+      program.pipe(Effect.provide(makeBaseLayer(this.env)))
+    );
+  }
+}
 
 type WebHandler = (request: Request) => Promise<Response>;
 
@@ -399,8 +392,12 @@ export class JobExecutor extends DurableJobObject {
     });
   }
 }
-
 export default {
+  scheduled(_controller: unknown, env: Env, ctx: ExecutionContext): void {
+    if (env.DATABASE_URL || env.HYPERDRIVE) {
+      ctx.waitUntil(runMaintenance(makeBaseLayer(env)));
+    }
+  },
   async fetch(
     request: Request,
     env: Env,
@@ -426,6 +423,10 @@ export default {
         Schema.decodeUnknownSync(JobIntent)(await request.json())
       );
       return new Response(null, { status: 204 });
+    }
+    const ingress = await handleProviderIngress(request, env);
+    if (ingress) {
+      return ingress;
     }
     return handleRequest(request, env, ctx);
   },

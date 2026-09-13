@@ -16,6 +16,10 @@ export const SCOPES = [
   "stats:read",
   "billing:write",
   "media:write",
+  "files:read",
+  "files:write",
+  "computer:read",
+  "computer:write",
   "reviews:read",
   "reviews:write",
   "members:read",
@@ -47,6 +51,8 @@ const READ_SCOPES = [
   "stats:read",
   "reviews:read",
   "members:read",
+  "files:read",
+  "computer:read",
 ] as const satisfies readonly Scope[];
 
 /**
@@ -63,6 +69,8 @@ export const roleScopeCeiling: Record<WorkspaceRole, readonly Scope[]> = {
     "posts:write",
     "accounts:write",
     "media:write",
+    "files:write",
+    "computer:write",
     "reviews:write",
   ],
   admin: [
@@ -70,6 +78,8 @@ export const roleScopeCeiling: Record<WorkspaceRole, readonly Scope[]> = {
     "posts:write",
     "accounts:write",
     "media:write",
+    "files:write",
+    "computer:write",
     "reviews:write",
     "members:write",
     "apikeys:write",
@@ -79,6 +89,8 @@ export const roleScopeCeiling: Record<WorkspaceRole, readonly Scope[]> = {
     "posts:write",
     "accounts:write",
     "media:write",
+    "files:write",
+    "computer:write",
     "reviews:write",
     "members:write",
     "apikeys:write",

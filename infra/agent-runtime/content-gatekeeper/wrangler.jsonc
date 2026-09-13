@@ -1,0 +1,18 @@
+{
+  "name": "delulu-content-gatekeeper",
+  "main": ".wrangler/validate/src/index.ts",
+  "build": {
+    "command": "pnpm exec capnweb-validate build --out .wrangler/validate",
+    "watch_dir": "src"
+  },
+  "compatibility_date": "2026-08-04",
+  "compatibility_flags": ["allow_irrevocable_stub_storage", "nodejs_compat"],
+  "migrations": [{ "tag": "v0", "new_sqlite_classes": ["ContentGatekeeper"] }],
+  "services": [
+    {
+      "binding": "CONTENT_API",
+      "service": "delulu-api-next",
+      "entrypoint": "AgentContentBridge"
+    }
+  ]
+}

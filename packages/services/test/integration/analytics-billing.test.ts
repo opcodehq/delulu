@@ -232,6 +232,7 @@ describe("M4 analytics and billing services", () => {
       program.pipe(Effect.provide(AppLayer))
     );
     expect(result.stale.applied).toBe(false);
+    expect(result.stale.stale).toBe(true);
     expect(result.subscription.status).toBe("active");
   });
 

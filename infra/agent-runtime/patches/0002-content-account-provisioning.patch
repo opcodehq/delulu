@@ -1,0 +1,41 @@
+diff --git a/packages/workshop-backend/src/user.ts b/packages/workshop-backend/src/user.ts
+--- a/packages/workshop-backend/src/user.ts
++++ b/packages/workshop-backend/src/user.ts
+@@ -1252,6 +1252,37 @@ export class UserDurableObject extends DurableObject<Cloudflare.Env> {
+     });
+   }
+
++  async ensureExternalGatekeeperAccount(
++      vendorId: string,
++      identity: {callerEmail: string, displayName: string},
++  ): Promise<void> {
++    vendorId = vendorId.toLowerCase();
++    if (this.#hasAccountForVendor(vendorId)) return;
++    let vendor = this.vendors.get(vendorId);
++    if (!vendor) throw new Error(`Required external gatekeeper is unavailable: ${vendorId}`);
++    type ExternalAccountVendor = {
++      createExternalAccount(input: {
++        callerEmail: string,
++        displayName: string,
++      }): Promise<Fetcher<GatekeeperUser>>;
++    };
++    let account = await (vendor as unknown as ExternalAccountVendor)
++        .createExternalAccount(identity);
++    let description = await account.describe();
++    if (this.#hasAccountForVendor(vendorId)) {
++      return;
++    }
++    let accountId = this.storage.nextAccountId.get();
++    this.storage.nextAccountId.put(accountId + 1);
++    this.storage.connectedAccounts.put({
++      id: accountId,
++      account,
++      description,
++      vendorId,
++      autoProvisioned: true,
++    });
++  }
++
+   // Dedup concurrent #ensureAutoProvisionedAccounts() calls. The provisioning loop awaits cross-worker
+   // RPCs (describe/createAccount), which releases the DO input gate; without this, two overlapping
+   // calls (e.g. the nav listing apps while a gadget opens) could both see "not provisioned" and
