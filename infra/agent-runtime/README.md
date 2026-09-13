@@ -46,7 +46,7 @@ Deploy from the repository root. Set `STAGING_CLERK_PUBLISHABLE_KEY` and `STAGIN
 
 ```sh
 NEXT_PUBLIC_API_URL=https://delulu-staging.whizzy.workers.dev \
-NEXT_PUBLIC_APP_URL=https://delulu-web-staging.whizzy.workers.dev \
+NEXT_PUBLIC_APP_URL=https://staging.delulu.social \
 NEXT_PUBLIC_ANALYTICS_DISABLED=true \
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="${STAGING_CLERK_PUBLISHABLE_KEY:?Set the test publishable key}" \
 CLERK_SECRET_KEY="${STAGING_CLERK_SECRET_KEY:?Set the test secret key}" \
