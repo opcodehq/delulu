@@ -9,14 +9,6 @@ compatibility_flags = ["nodejs_compat", "nodejs_compat_populate_process_env", "a
 tag = "jobs-v1"
 new_sqlite_classes = ["JobExecutor"]
 
-[[migrations]]
-tag = "v1-whatsapp-conversation"
-new_sqlite_classes = ["WhatsAppConversation"]
-
-[[migrations]]
-tag = "v2-telegram-conversation"
-new_sqlite_classes = ["TelegramConversation", "TelegramAdmission"]
-
 # Local `wrangler dev` server. Wrangler's default 8787 is frequently taken by
 # other local services, so pin the dev port here. The app reaches this via
 # NEXT_PUBLIC_API_URL (set in apps/app/.env.local for local dev).
