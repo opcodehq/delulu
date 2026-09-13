@@ -1,6 +1,7 @@
 import { makeTokenCipher, TokenCipher } from "@delulu/core";
 import {
   AdminService,
+  AgentChannelService,
   AgentWorkspaceService,
   AnalyticsService,
   ApiKeyVerifier,
@@ -62,6 +63,7 @@ import {
   AutomationProviderLive,
   PaymentWebhookSinkLive,
 } from "./automation-providers";
+import { channelLinkGatewayLayer } from "./channel-link-gateway";
 import {
   agentRuntimeProviderLayer,
   authConfigLayer,
@@ -318,10 +320,13 @@ export const makeBaseLayer = (
     Authorization,
     Jobs,
     ClerkAdmin,
+    ClerkAdminConfig,
     ConnectionState,
     R2,
     AgentRuntime,
     AgentWorkspaces,
+    AgentChannelService.layer,
+    channelLinkGatewayLayer(env),
     WorkspaceFiles,
     Access,
     Posts,

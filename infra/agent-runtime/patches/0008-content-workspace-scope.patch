@@ -1,0 +1,52 @@
+diff --git a/packages/workshop-backend/src/external-message-gateway.ts b/packages/workshop-backend/src/external-message-gateway.ts
+--- a/packages/workshop-backend/src/external-message-gateway.ts
++++ b/packages/workshop-backend/src/external-message-gateway.ts
+@@ -29,6 +29,9 @@
+     let overseer = this.ctx.exports.OverseerDurableObject.getByName(externalKeys.gadget);
+ 
++    if (input.gadgetKey.startsWith("workspace:")) {
++      await overseer.bindContentWorkspace(input.gadgetKey.slice("workspace:".length));
++    }
+     return await overseer.receiveExternalMessage({
+       callerEmail: input.callerEmail,
+diff --git a/packages/workshop-backend/src/overseer.ts b/packages/workshop-backend/src/overseer.ts
+--- a/packages/workshop-backend/src/overseer.ts
++++ b/packages/workshop-backend/src/overseer.ts
+@@ -687,6 +687,7 @@
+       title: "Untitled Workspace",
++      contentWorkspaceId: "",
+ 
+       // If present, this gadget was migrated from version zero, when a workspace had only one
+@@ -6303,6 +6304,16 @@
+   private impl: OverseerImpl;
+ 
++  async bindContentWorkspace(workspaceId: string): Promise<void> {
++    if (!workspaceId || workspaceId.length > 200) throw new Error("Invalid content workspace");
++    const current = this.impl.storage.contentWorkspaceId.get();
++    if (current && current !== workspaceId) throw new Error("Content workspace cannot change");
++    this.impl.storage.contentWorkspaceId.put(workspaceId);
++  }
++
+   constructor(ctx: DurableObjectState, env: Cloudflare.Env) {
+     super(ctx, env);
+@@ -9474,6 +9485,12 @@
+ 
++  async getContentWorkspaceId(): Promise<string> {
++    const workspaceId = this.impl.storage.contentWorkspaceId.get();
++    if (!workspaceId) throw new Error("Content workspace is not bound");
++    return workspaceId;
++  }
++
++  async getContentChannelGrant(): Promise<string> {
++    if (!("chatId" in this.caller)) return "";
++    const chatId = this.caller.chatId;
++    const chat = [...this.impl.storage.externalChats.list()].find(entry => entry.chatId === chatId);
++    if (!chat) return "";
++    const marker = chat.externalChatKey.indexOf(":telegram:");
++    if (marker < 0) return "";
++    const parts = chat.externalChatKey.slice(marker + 10).split(":");
++    return `${parts[0]}:${parts[1]}`;
++  }
++
+   authorizeObservation(description: ObservationDescription): Promise<void> {
+     return this.impl.authorizeObservation(this.gatekeeperId, description, this.caller);

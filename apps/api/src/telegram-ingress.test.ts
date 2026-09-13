@@ -53,6 +53,45 @@ it("ignores the retired lifetime cap and delegates atomic quotas to the conversa
   expect(h.enqueue).toHaveBeenCalled();
 });
 
+it("routes linked users to an isolated namespace without applying the legacy one-user gate", async () => {
+  const h = environment();
+  const env = {
+    ...h.env,
+    TELEGRAM_ACCOUNT_LINKING_ENABLED: "true",
+    TELEGRAM_ALLOWED_USER_ID: "999",
+    TELEGRAM_LINKED_CONVERSATIONS: { getByName: h.getByName },
+  } as unknown as Env;
+  expect((await handleProviderIngress(request(), env))?.status).toBe(200);
+  expect(h.getByName).toHaveBeenCalledWith("telegram-linked:42:123");
+});
+
+it("ignores forwarded or group callback messages without invoking an agent", async () => {
+  const h = environment();
+  const env = {
+    ...h.env,
+    TELEGRAM_ACCOUNT_LINKING_ENABLED: "true",
+    TELEGRAM_LINKED_CONVERSATIONS: { getByName: h.getByName },
+  } as unknown as Env;
+  const callback = {
+    update_id: 42,
+    callback_query: {
+      id: "query",
+      data: "opaque",
+      from: { id: 123, is_bot: false },
+      message: { chat: { id: 456, type: "private" } },
+    },
+  };
+  expect(
+    (
+      await handleProviderIngress(
+        request("secret", JSON.stringify(callback)),
+        env
+      )
+    )?.status
+  ).toBe(200);
+  expect(h.enqueue).not.toHaveBeenCalled();
+});
+
 it.each([
   undefined,
   "",

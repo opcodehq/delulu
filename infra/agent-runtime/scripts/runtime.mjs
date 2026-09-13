@@ -16,6 +16,8 @@ const patchFiles = [
   join(root, "patches", "0004-external-model-policy.patch"),
   join(root, "patches", "0005-openrouter-routing.patch"),
   join(root, "patches", "0006-persistent-response-bindings.patch"),
+  join(root, "patches", "0007-external-approval-continuations.patch"),
+  join(root, "patches", "0008-content-workspace-scope.patch"),
 ];
 
 const run = (command, args, cwd = root) => {

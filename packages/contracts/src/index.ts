@@ -1,4 +1,5 @@
 import { HttpApi, OpenApi } from "effect/unstable/httpapi";
+import { AgentChannelsGroup } from "./agent-channels";
 import {
   AgentComputerGroup,
   AgentGroup,
@@ -19,6 +20,7 @@ import {
   ReviewsGroup,
 } from "./workspace";
 
+export * from "./agent-channels";
 export * from "./agent-workspace";
 export * from "./analytics";
 export * from "./automations";
@@ -56,6 +58,7 @@ export const Api = HttpApi.make("deluluApi")
   .add(BillingGroup)
   .add(TranscriptionsGroup)
   .add(AgentGroup)
+  .add(AgentChannelsGroup)
   .add(AgentComputerGroup)
   .add(WorkspaceFilesGroup)
   .annotate(OpenApi.Title, "Delulu API")

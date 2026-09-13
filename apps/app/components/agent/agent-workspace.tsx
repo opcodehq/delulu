@@ -22,6 +22,7 @@ import {
   useResourceAtom,
   useResourceRegistry,
 } from "@/state/resources";
+import { AgentSkills } from "./agent-skills";
 
 const activeStatuses = new Set([
   "queued",
@@ -246,6 +247,7 @@ export function AgentWorkspace() {
 
   return (
     <div className="space-y-4">
+      <AgentSkills key={id} workspaceId={id} />
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_280px]">
         <Card>
           <CardHeader className="gap-2 sm:flex-row sm:items-center sm:justify-between">

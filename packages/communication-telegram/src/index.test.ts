@@ -1,5 +1,11 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { decodeTelegramMessage, secretMatches, telegramCall } from "./index";
+import {
+  decodeTelegramMessage,
+  decodeTelegramUpdate,
+  secretMatches,
+  splitTelegramText,
+  telegramCall,
+} from "./index";
 
 const update = {
   update_id: 1,
@@ -10,6 +16,31 @@ const update = {
   },
 };
 afterEach(() => vi.unstubAllGlobals());
+it("accepts private callback updates with matching sender and chat", () => {
+  expect(
+    decodeTelegramUpdate({
+      update_id: 19,
+      callback_query: {
+        id: "query-1",
+        data: "button-1",
+        from: { id: 123, is_bot: false },
+        message: { chat: { id: 123, type: "private" } },
+      },
+    })
+  ).toEqual({
+    id: "19",
+    sender: "123",
+    text: "",
+    callback: { id: "query-1", data: "button-1" },
+  });
+});
+it("splits long plain-text replies without losing characters or breaking emoji", () => {
+  const text = "a".repeat(3999) + "😀" + "b".repeat(4001);
+  const chunks = splitTelegramText(text);
+  expect(chunks.map((part) => part.length)).toEqual([3999, 4000, 3]);
+  expect(chunks.join("")).toBe(text);
+  expect(chunks[1]?.startsWith("😀")).toBe(true);
+});
 it("accepts private text messages and rejects group or mismatched identities", () => {
   expect(decodeTelegramMessage(update)).toEqual({
     id: "1",

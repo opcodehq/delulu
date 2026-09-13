@@ -14,6 +14,7 @@ const publicRoutes = createRouteMatcher([
   "/maintenance(.*)",
   "/mcp(.*)",
   "/auth.md",
+  "/connect/telegram",
   "/.well-known(.*)",
 ]);
 
@@ -27,6 +28,7 @@ const onboardingRoute = createRouteMatcher(["/onboarding(.*)"]);
 /** Allow the automation builder while onboarding is in progress. */
 const onboardingAutomationRoute = createRouteMatcher(["/automations(.*)"]);
 const oauthDeviceRoute = createRouteMatcher(["/oauth/device(.*)"]);
+const agentConnectionRoute = createRouteMatcher(["/connect/telegram(.*)"]);
 /** OAuth consent must stay reachable for signed-in users pre-onboarding. */
 const oauthConsentRoute = createRouteMatcher(["/oauth/consent(.*)"]);
 const connectionResultRoute = createRouteMatcher(["/connection-result(.*)"]);
@@ -95,6 +97,7 @@ const middleware: (
       onboardingAutomationRoute(req) ||
       oauthDeviceRoute(req) ||
       oauthConsentRoute(req) ||
+      agentConnectionRoute(req) ||
       connectionResultRoute(req) ||
       linkedInSelectionRoute(req))
   ) {

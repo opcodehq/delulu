@@ -156,6 +156,7 @@ APP_BASE_URL = "http://localhost:3000"
 DODO_PAYMENTS_ENVIRONMENT = "test_mode"
 WHATSAPP_INGRESS_ENABLED = "false"
 TELEGRAM_INGRESS_ENABLED = "true"
+TELEGRAM_ACCOUNT_LINKING_ENABLED = "false"
 TELEGRAM_ALLOWED_USER_ID = "1343034850"
 TELEGRAM_MONTHLY_TURN_LIMIT = "1000"
 WHATSAPP_PHONE_NUMBER_ID = "1235417779664941"
@@ -172,6 +173,10 @@ class_name = "TelegramConversation"
 name = "TELEGRAM_ADMISSION"
 class_name = "TelegramAdmission"
 
+[[env.staging.durable_objects.bindings]]
+name = "TELEGRAM_LINKED_CONVERSATIONS"
+class_name = "TelegramLinkedConversation"
+
 [env.staging.triggers]
 crons = []
 
@@ -182,6 +187,10 @@ new_sqlite_classes = ["WhatsAppConversation"]
 [[env.staging.migrations]]
 tag = "v2-telegram-conversation"
 new_sqlite_classes = ["TelegramConversation", "TelegramAdmission"]
+
+[[env.staging.migrations]]
+tag = "v3-telegram-account-linking"
+new_sqlite_classes = ["TelegramLinkedConversation"]
 
 [env.staging.unsafe]
 bindings = []
