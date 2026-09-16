@@ -7,6 +7,7 @@ import {
   createResourceEffects,
 } from "@delulu/client";
 import { createContext, type ReactNode, useContext, useMemo } from "react";
+import { resolveApiBaseUrl } from "../../lib/public-api-client";
 
 type ResourceEffects = ReturnType<typeof createResourceEffects>;
 
@@ -17,11 +18,7 @@ interface ApiClientContextValue {
 
 const ApiClientContext = createContext<ApiClientContextValue | null>(null);
 
-const apiBaseUrl =
-  process.env.NEXT_PUBLIC_API_URL ??
-  (process.env.NODE_ENV === "development"
-    ? "http://localhost:8788"
-    : "https://api.delulu.social");
+const apiBaseUrl = resolveApiBaseUrl();
 
 export const resolveAuthenticatedToken = async (
   getToken: () => Promise<string | null>,

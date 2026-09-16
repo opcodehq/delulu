@@ -38,12 +38,12 @@ diff --git a/packages/workshop-backend/src/overseer.ts b/packages/workshop-backe
 +  }
 +
 +  async getContentChannelGrant(): Promise<string> {
-+    if (!("chatId" in this.caller)) return "";
++    if (!("chatId" in this.caller)) throw new Error("Channel grant is required");
 +    const chatId = this.caller.chatId;
 +    const chat = [...this.impl.storage.externalChats.list()].find(entry => entry.chatId === chatId);
-+    if (!chat) return "";
++    if (!chat) throw new Error("Channel grant is required");
 +    const marker = chat.externalChatKey.indexOf(":telegram:");
-+    if (marker < 0) return "";
++    if (marker < 0) throw new Error("Channel grant is required");
 +    const parts = chat.externalChatKey.slice(marker + 10).split(":");
 +    return `${parts[0]}:${parts[1]}`;
 +  }

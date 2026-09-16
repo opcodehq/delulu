@@ -113,9 +113,10 @@ export class AgentChannelService extends Context.Service<
           generation: string;
         }
       ) {
+        const verifiedEmail = input.verifiedEmail.trim().toLowerCase();
         yield* requireWorkspace(input.userId, input.workspaceId);
         const matchingUser = yield* sql`SELECT id FROM users
-          WHERE id = ${input.userId} AND lower(email) = ${input.verifiedEmail}
+          WHERE id = ${input.userId} AND lower(email) = ${verifiedEmail}
             AND identity_deleted_at IS NULL`.pipe(Effect.orDie);
         if (!matchingUser[0]) {
           return yield* denied();
@@ -124,7 +125,7 @@ export class AgentChannelService extends Context.Service<
           yield* sql<ChannelPrincipal>`INSERT INTO agent_channel_identities
         (id, environment, channel, provider_account_id, provider_user_id, user_id, workspace_id, verified_email, generation)
         VALUES (${crypto.randomUUID()}, ${input.environment}, ${input.channel}, ${input.providerAccountId},
-          ${input.providerUserId}, ${input.userId}, ${input.workspaceId}, ${input.verifiedEmail}, ${input.generation})
+          ${input.providerUserId}, ${input.userId}, ${input.workspaceId}, ${verifiedEmail}, ${input.generation})
         ON CONFLICT (environment, channel, provider_account_id, provider_user_id) DO UPDATE SET
           user_id = EXCLUDED.user_id, workspace_id = EXCLUDED.workspace_id,
           verified_email = EXCLUDED.verified_email, generation = EXCLUDED.generation,

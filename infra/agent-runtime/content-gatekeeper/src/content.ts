@@ -180,6 +180,9 @@ export class ContentGatekeeper
         getContentChannelGrant(): Promise<string>;
       }
     ).getContentChannelGrant();
+    if (!channelGrant?.trim()) {
+      throw new Error("Channel grant is required");
+    }
     const bound = await this.ctx.storage.get<string>("workspaceId");
     if (bound && bound !== workspaceId) {
       throw new Error("Workspace access denied");
@@ -215,6 +218,9 @@ export class ContentGatekeeper
     const pending = await this.ctx.storage.get<PendingAction>(`action:${id}`);
     if (!pending) {
       throw new Error(`No such Content HQ action: ${id}`);
+    }
+    if (!pending.channelGrant?.trim()) {
+      throw new Error("Channel grant is required; request a new action");
     }
     if (
       pending.action.workspaceId !==

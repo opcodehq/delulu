@@ -9,6 +9,7 @@ import {
 import { Effect, Schema } from "effect";
 import { SqlClient } from "effect/unstable/sql";
 import { buildWebHandler } from "./app";
+import { parseChannelGrant } from "./channel-grant";
 import {
   assertContentReceiptOwner,
   prepareContentWrite,
@@ -174,15 +175,9 @@ type ContentAction =
 const requireChannelGrant = Effect.fn("requireChannelGrant")(function* (
   callerEmail: string,
   workspaceId: string,
-  grant?: string
+  grant: string
 ) {
-  if (!grant) {
-    return;
-  }
-  const [id, generation, extra] = grant.split(":");
-  if (!(id && generation) || extra) {
-    throw new Error("Invalid channel grant");
-  }
+  const { id, generation } = parseChannelGrant(grant);
   const sql = yield* SqlClient.SqlClient;
   const rows = yield* sql`SELECT c.id FROM agent_channel_identities c
     JOIN users u ON u.id = c.user_id
@@ -202,7 +197,7 @@ export class AgentContentBridge extends WorkerEntrypoint<Env> {
   async getContentContext(input: {
     readonly callerEmail: string;
     readonly workspaceId: string;
-    readonly channelGrant?: string;
+    readonly channelGrant: string;
   }) {
     const program = Effect.gen(function* () {
       yield* requireChannelGrant(
@@ -287,7 +282,7 @@ export class AgentContentBridge extends WorkerEntrypoint<Env> {
 
   async executeContentAction(input: {
     readonly callerEmail: string;
-    readonly channelGrant?: string;
+    readonly channelGrant: string;
     readonly action: ContentAction;
     readonly idempotencyKey: string;
   }) {

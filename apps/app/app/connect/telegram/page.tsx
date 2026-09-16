@@ -1,10 +1,11 @@
 "use client";
 
 import { SignInButton, useAuth } from "@delulu/auth";
-import { createApiClient, runEffect } from "@delulu/client";
+import { runEffect } from "@delulu/client";
 import { Button } from "@delulu/design-system/components/ui/button";
 import { DottedSeparator } from "@delulu/design-system/components/ui/dotted-separator";
 import { useEffect, useMemo, useState } from "react";
+import { createPublicApiClient } from "../../../lib/public-api-client";
 import { AuthorizationShell } from "../../oauth/authorization-shell";
 
 export default function ConnectTelegramPage() {
@@ -18,18 +19,7 @@ export default function ConnectTelegramPage() {
     "loading" | "ready" | "saving" | "pending" | "error"
   >("loading");
   const [error, setError] = useState("");
-  const client = useMemo(
-    () =>
-      createApiClient({
-        baseUrl:
-          process.env.NEXT_PUBLIC_API_URL ??
-          (process.env.NODE_ENV === "development"
-            ? "http://localhost:8788"
-            : "https://api.delulu.social"),
-        getToken: async () => (await getToken()) ?? "",
-      }),
-    [getToken]
-  );
+  const client = useMemo(() => createPublicApiClient(getToken), [getToken]);
   useEffect(() => {
     setChallenge(window.location.hash.slice(1));
     if (!(isLoaded && isSignedIn)) {

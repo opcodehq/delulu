@@ -4,12 +4,12 @@ interface ContentApiBinding {
   getContentContext(input: {
     callerEmail: string;
     workspaceId: string;
-    channelGrant?: string;
+    channelGrant: string;
   }): Promise<ContentContext>;
   executeContentAction(input: {
     callerEmail: string;
     action: ContentAction;
-    channelGrant?: string;
+    channelGrant: string;
     idempotencyKey: string;
   }): Promise<unknown>;
 }

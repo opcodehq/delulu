@@ -53,10 +53,11 @@ it("requires beta membership, connects idempotently, and revokes access without 
         ...address,
         userId: user.user.id,
         workspaceId,
-        verifiedEmail: email,
+        verifiedEmail: ` ${email.toUpperCase()} `,
         generation: "generation-1",
       };
       const first = yield* channels.connect(input);
+      expect(first.verifiedEmail).toBe(email.toLowerCase());
       expect(
         (yield* channels
           .connect({ ...input, verifiedEmail: "other@example.test" })
@@ -112,14 +113,26 @@ it("shares admission across channel connections and versions custom skills", asy
       expect(
         (yield* reserveChannelTurn(principal, ids[2]!).pipe(Effect.result))._tag
       ).toBe("Failure");
-      yield* settleChannelTurn(ids[0]!, {
+      yield* sql`UPDATE agent_channel_turns SET expires_at = now() - interval '1 minute' WHERE id = ${ids[0]!}`;
+      yield* reserveChannelTurn(principal, ids[2]!);
+      const expired = yield* sql<{
+        state: string;
+      }>`SELECT state FROM agent_channel_turns WHERE id = ${ids[0]!}`;
+      expect(expired[0]?.state).toBe("unknown");
+      const actualUsage = {
         provider: "test",
         model: "test",
         costMicros: 1000,
         inputTokens: 20,
         outputTokens: 10,
         cachedInputTokens: 0,
-      });
+      };
+      yield* settleChannelTurn(ids[0]!, actualUsage);
+      yield* settleChannelTurn(ids[0]!, actualUsage);
+      const releases = yield* sql<{
+        count: string;
+      }>`SELECT count(*)::text AS count FROM agent_usage_ledger WHERE idempotency_key = ${`channel:${ids[0]!}:release`}`;
+      expect(releases[0]?.count).toBe("1");
       yield* reserveChannelTurn(principal, ids[2]!);
       const skill = yield* saveInstructionSkill(user.user.id, workspaceId, {
         title: "Concise",

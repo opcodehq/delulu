@@ -1,10 +1,11 @@
 "use client";
 
 import { SignInButton, useAuth } from "@delulu/auth";
-import { createApiClient, runEffect } from "@delulu/client";
+import { runEffect } from "@delulu/client";
 import { Button } from "@delulu/design-system/components/ui/button";
 import { DottedSeparator } from "@delulu/design-system/components/ui/dotted-separator";
 import { useEffect, useMemo, useState } from "react";
+import { createPublicApiClient } from "../../../lib/public-api-client";
 import { AuthorizationShell } from "../../oauth/authorization-shell";
 
 const PLATFORMS: Record<string, string> = {
@@ -21,14 +22,7 @@ export default function ConnectAccountPage() {
   }>();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const client = useMemo(
-    () =>
-      createApiClient({
-        baseUrl: process.env.NEXT_PUBLIC_API_URL ?? "https://api.delulu.social",
-        getToken: async () => (await getToken()) ?? "",
-      }),
-    [getToken]
-  );
+  const client = useMemo(() => createPublicApiClient(getToken), [getToken]);
   useEffect(() => {
     setTarget(undefined);
     setError("");

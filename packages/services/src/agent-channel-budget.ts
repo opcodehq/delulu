@@ -37,6 +37,10 @@ export const lockAgentBudget = Effect.fn("lockAgentBudget")(function* (
 ) {
   const sql = yield* SqlClient.SqlClient;
   yield* sql`SELECT pg_advisory_xact_lock(hashtextextended(${`agent-budget:${billingOwnerUserId}`}, 0))`;
+  // Expiry releases concurrency, not uncertain inference costs. Reconciliation
+  // supplies actual usage before the reservation can safely be released.
+  yield* sql`UPDATE agent_channel_turns SET state = 'unknown', settled_at = now()
+    WHERE billing_owner_user_id = ${billingOwnerUserId} AND state = 'active' AND expires_at <= now()`;
 });
 /** No turn contents enter this admission or usage path. Unknown runs retain reservations. */
 export const reserveChannelTurn = Effect.fn("reserveChannelTurn")(function* (
@@ -104,8 +108,8 @@ export const reserveChannelTurn = Effect.fn("reserveChannelTurn")(function* (
       COALESCE(SUM(CASE WHEN created_at >= date_trunc('day', now()) THEN CASE entry_type WHEN 'release' THEN -cost_micros ELSE cost_micros END ELSE 0 END), 0)::text AS daily
       FROM agent_usage_ledger WHERE billing_owner_user_id = ${owner} AND created_at >= date_trunc('month', now())`;
         const counts = yield* sql<{ count: string }>`SELECT (
-      (SELECT count(*) FROM agent_channel_turns WHERE billing_owner_user_id = ${owner} AND state = 'active') +
-      (SELECT count(*) FROM agent_runs r JOIN workspaces w ON w.id = r.workspace_id WHERE w.billing_owner_user_id = ${owner} AND r.status IN ('queued','submitted','running','waiting_approval','interrupting'))
+      (SELECT count(*) FROM agent_channel_turns WHERE agent_workspace_id = ${agent.id} AND state = 'active' AND expires_at > now()) +
+      (SELECT count(*) FROM agent_runs r WHERE r.agent_workspace_id = ${agent.id} AND r.status IN ('queued','submitted','running','waiting_approval','interrupting'))
       )::text AS count`;
         if (
           Number(counts[0]?.count ?? 0) >= 2 ||
@@ -145,7 +149,7 @@ export const settleChannelTurn = Effect.fn("settleChannelTurn")(function* (
         }>`SELECT billing_owner_user_id, agent_workspace_id, reserved_micros::text, state
       FROM agent_channel_turns WHERE id = ${id} FOR UPDATE`;
         const row = rows[0];
-        if (!row || row.state !== "active") {
+        if (!row || (row.state !== "active" && row.state !== "unknown")) {
           return;
         }
         const known =
@@ -156,6 +160,9 @@ export const settleChannelTurn = Effect.fn("settleChannelTurn")(function* (
             usage.outputTokens,
             usage.cachedInputTokens,
           ].every((n) => Number.isSafeInteger(n) && n >= 0);
+        if (row.state === "unknown" && !known) {
+          return;
+        }
         if (known) {
           yield* sql`INSERT INTO agent_usage_ledger (id, billing_owner_user_id, agent_workspace_id, entry_type, idempotency_key, cost_micros)
         VALUES (${crypto.randomUUID()}, ${row.billingOwnerUserId}, ${row.agentWorkspaceId}, 'release', ${`channel:${id}:release`}, ${row.reservedMicros}) ON CONFLICT (idempotency_key) DO NOTHING`;

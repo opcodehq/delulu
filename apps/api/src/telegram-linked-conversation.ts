@@ -290,7 +290,7 @@ export class TelegramLinkedConversation extends ChannelConversation {
       const buttons = await this.directConnectionButtons(
         record.sender,
         presentation.rows.flat()
-      );
+      ).catch(() => []);
       presentation.rows = buttons.map((button) => [button]);
     }
     let replyMarkup: unknown = presentation.rows.length
@@ -923,10 +923,15 @@ export class TelegramLinkedConversation extends ChannelConversation {
           `Connected as ${principal.verifiedEmail}.\nMonthly agent allowance: ${usage}% used (including reserved tasks).`,
           {
             inline_keyboard: [
-              await this.directConnectionButtons(
-                message.sender,
-                connectionButtons(this.env.APP_BASE_URL!, principal.workspaceId)
-              ),
+              ...(
+                await this.directConnectionButtons(
+                  message.sender,
+                  connectionButtons(
+                    this.env.APP_BASE_URL!,
+                    principal.workspaceId
+                  )
+                ).catch(() => [])
+              ).map((button) => [button]),
               [
                 await this.button("Workspace", "workspace", principal),
                 await this.button("Tasks", "tasks", principal),
