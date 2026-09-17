@@ -1,4 +1,5 @@
 import { createApiClient } from "@delulu/client";
+import { resolveAuthenticatedToken } from "./authenticated-token";
 
 export function resolveApiBaseUrl() {
   return (
@@ -12,6 +13,6 @@ export function resolveApiBaseUrl() {
 export function createPublicApiClient(getToken: () => Promise<string | null>) {
   return createApiClient({
     baseUrl: resolveApiBaseUrl(),
-    getToken: async () => (await getToken()) ?? "",
+    getToken: () => resolveAuthenticatedToken(getToken),
   });
 }

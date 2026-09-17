@@ -7,7 +7,10 @@ import {
   createResourceEffects,
 } from "@delulu/client";
 import { createContext, type ReactNode, useContext, useMemo } from "react";
+import { resolveAuthenticatedToken } from "../../lib/authenticated-token";
 import { resolveApiBaseUrl } from "../../lib/public-api-client";
+
+export { resolveAuthenticatedToken } from "../../lib/authenticated-token";
 
 type ResourceEffects = ReturnType<typeof createResourceEffects>;
 
@@ -19,26 +22,6 @@ interface ApiClientContextValue {
 const ApiClientContext = createContext<ApiClientContextValue | null>(null);
 
 const apiBaseUrl = resolveApiBaseUrl();
-
-export const resolveAuthenticatedToken = async (
-  getToken: () => Promise<string | null>,
-  options: { attempts?: number; delayMs?: number } = {}
-): Promise<string> => {
-  const attempts = options.attempts ?? 6;
-  const delayMs = options.delayMs ?? 75;
-  for (let attempt = 0; attempt < attempts; attempt++) {
-    const token = await getToken();
-    if (token) {
-      return token;
-    }
-    if (attempt < attempts - 1) {
-      await new Promise((resolve) =>
-        setTimeout(resolve, delayMs * 2 ** attempt)
-      );
-    }
-  }
-  throw new Error("Your session is still loading. Please try again.");
-};
 
 export function ApiClientProvider({
   children,

@@ -4,8 +4,33 @@ import { createPublicApiClient } from "../lib/public-api-client";
 const client = vi.hoisted(() => vi.fn((options) => options));
 vi.mock("@delulu/client", () => ({ createApiClient: client }));
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllEnvs();
   vi.clearAllMocks();
+});
+it("waits for a delayed token instead of returning an empty bearer", async () => {
+  vi.useFakeTimers();
+  const getToken = vi
+    .fn()
+    .mockResolvedValueOnce(null)
+    .mockResolvedValueOnce(null)
+    .mockResolvedValue("ready");
+  createPublicApiClient(getToken);
+  const pending = client.mock.calls[0]![0].getToken();
+  await vi.runAllTimersAsync();
+  expect(await pending).toBe("ready");
+  expect(getToken).toHaveBeenCalledTimes(3);
+});
+it("rejects after the shared retry limit without sending an empty token", async () => {
+  vi.useFakeTimers();
+  const getToken = vi.fn().mockResolvedValue(null);
+  createPublicApiClient(getToken);
+  const assertion = expect(client.mock.calls[0]![0].getToken()).rejects.toThrow(
+    "Your session is still loading"
+  );
+  await vi.runAllTimersAsync();
+  await assertion;
+  expect(getToken).toHaveBeenCalledTimes(6);
 });
 it.each([
   ["development", "http://localhost:8788"],
