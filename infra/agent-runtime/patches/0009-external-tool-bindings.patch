@@ -1,0 +1,22 @@
+diff --git a/packages/workshop-backend/src/overseer.ts b/packages/workshop-backend/src/overseer.ts
+--- a/packages/workshop-backend/src/overseer.ts
++++ b/packages/workshop-backend/src/overseer.ts
+@@ -6555,6 +6555,23 @@
+     // Find the external conversation's chat if it exists.
++    // External entrypoints do not call open(), which normally provisions tools.
++    await this.impl.ensureAmbientCapsules();
+     let externalChat = this.#getExternalChat(input.externalChatKey);
++    if (externalChat) {
++      let context = this.impl.getChatAgentContext(externalChat.chatId);
++      // Add the first-party tool to legacy chats without discarding other bindings.
++      let content = [...this.impl.storage.gatekeepers.list()].find(gk =>
++          gk.creationSpec?.type === "ambient" && gk.creationSpec.vendorId === "delulu");
++      if (content && !context.spawnerConfig && context.bindings && !context.bindings.CONTENT) {
++        context.bindings.CONTENT = content.id;
++        context.alwaysAvailableCapsuleIds = [...new Set([
++          ...(context.alwaysAvailableCapsuleIds ?? []), content.id,
++        ])];
++        this.impl.storage.chatContext.put(context);
++      }
++    }
+     let modelId = null;

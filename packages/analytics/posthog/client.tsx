@@ -26,6 +26,9 @@ export const PostHogProvider = ({
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
+    if (keys().NEXT_PUBLIC_ANALYTICS_DISABLED === "true") {
+      return;
+    }
     const initPostHog = async () => {
       const posthogKey = keys().NEXT_PUBLIC_POSTHOG_KEY;
       let apiHost = keys().NEXT_PUBLIC_POSTHOG_HOST;

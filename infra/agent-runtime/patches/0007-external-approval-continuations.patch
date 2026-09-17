@@ -1,0 +1,22 @@
+diff --git a/packages/workshop-backend/src/overseer.ts b/packages/workshop-backend/src/overseer.ts
+--- a/packages/workshop-backend/src/overseer.ts
++++ b/packages/workshop-backend/src/overseer.ts
+@@ -3665,6 +3665,19 @@
+       throw err;
+     }
++    // Approval is an intermediate response. Retain the durable callback until
++    // the continuation finishes so chat transports can report the real outcome.
++    let awaitingApproval = [...this.storage.actions.list()].some(action =>
++      (action.type === "action" && action.state === "pending" ||
++        action.type === "bindHook" && !action.enabled) &&
++      "chatId" in action.caller && action.caller.chatId === record.chatId);
++    if (awaitingApproval) {
++      this.storage.gadgetResponseDeliveries.put({
++        ...record,
++        status: "waiting",
++      });
++      return;
++    }
+     this.storage.gadgetResponseDeliveries.put({
+       idempotencyKey: record.idempotencyKey,
+       chatId: record.chatId,

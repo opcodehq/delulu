@@ -9,6 +9,7 @@ import {
 import { Effect, Schema } from "effect";
 import { SqlClient } from "effect/unstable/sql";
 import { buildWebHandler } from "./app";
+import { parseChannelGrant } from "./channel-grant";
 import {
   assertContentReceiptOwner,
   prepareContentWrite,
@@ -25,6 +26,10 @@ export {
   TelegramConversation,
   TelegramResponseTarget,
 } from "./telegram-conversation";
+export {
+  TelegramLinkedConversation,
+  TelegramLinkedResponseTarget,
+} from "./telegram-linked-conversation";
 export {
   WhatsAppConversation,
   WhatsAppResponseTarget,
@@ -134,6 +139,16 @@ export class AgentResponseTarget extends WorkerEntrypoint<
 
 type ContentAction =
   | {
+      readonly kind: "remember";
+      readonly workspaceId: string;
+      readonly value: unknown;
+    }
+  | {
+      readonly kind: "forget_memory";
+      readonly workspaceId: string;
+      readonly memoryId: string;
+    }
+  | {
       readonly kind: "create_draft";
       readonly workspaceId: string;
       readonly value: unknown;
@@ -157,12 +172,39 @@ type ContentAction =
     };
 
 /** Tenant-authorized capability used only by the Content Gatekeeper binding. */
+const requireChannelGrant = Effect.fn("requireChannelGrant")(function* (
+  callerEmail: string,
+  workspaceId: string,
+  grant: string
+) {
+  const { id, generation } = parseChannelGrant(grant);
+  const sql = yield* SqlClient.SqlClient;
+  const rows = yield* sql`SELECT c.id FROM agent_channel_identities c
+    JOIN users u ON u.id = c.user_id
+    JOIN agent_beta_invites i ON i.user_id = u.id AND i.revoked_at IS NULL
+    JOIN workspace_members wm ON wm.user_id = u.id AND wm.workspace_id = c.workspace_id
+    JOIN workspaces w ON w.id = c.workspace_id AND w.deleted_at IS NULL
+    WHERE c.id = ${id} AND c.generation = ${generation}
+      AND c.workspace_id = ${workspaceId} AND c.disconnected_at IS NULL
+      AND lower(u.email) = ${callerEmail.trim().toLowerCase()}
+      AND u.identity_deleted_at IS NULL`;
+  if (!rows[0]) {
+    throw new Error("Channel access revoked");
+  }
+});
+
 export class AgentContentBridge extends WorkerEntrypoint<Env> {
   async getContentContext(input: {
     readonly callerEmail: string;
     readonly workspaceId: string;
+    readonly channelGrant: string;
   }) {
     const program = Effect.gen(function* () {
+      yield* requireChannelGrant(
+        input.callerEmail,
+        input.workspaceId,
+        input.channelGrant
+      );
       const sql = yield* SqlClient.SqlClient;
       const posts = yield* PostService;
       const workspaceId = yield* Schema.decodeUnknownEffect(WorkspaceId)(
@@ -190,9 +232,9 @@ export class AgentContentBridge extends WorkerEntrypoint<Env> {
           ORDER BY created_at DESC`,
         sql<Record<string, unknown>>`SELECT id, category, value, provenance,
           confidence, status, requires_confirmation, updated_at
-          FROM agent_memories WHERE workspace_id = ${input.workspaceId}
+          FROM agent_memories WHERE (workspace_id = ${input.workspaceId} OR scope = 'personal')
             AND user_id = ${member.userId}
-            AND status != 'rejected' ORDER BY updated_at DESC LIMIT 100`,
+            AND status = 'confirmed' ORDER BY updated_at DESC LIMIT 100`,
         sql<Record<string, unknown>>`SELECT wf.id, wf.filename, wf.logical_path,
           wfv.mime_type, COALESCE(wfv.size_bytes, 0)::text AS size_bytes
           FROM workspace_files wf LEFT JOIN workspace_file_versions wfv
@@ -240,10 +282,16 @@ export class AgentContentBridge extends WorkerEntrypoint<Env> {
 
   async executeContentAction(input: {
     readonly callerEmail: string;
+    readonly channelGrant: string;
     readonly action: ContentAction;
     readonly idempotencyKey: string;
   }) {
     const program = Effect.gen(function* () {
+      yield* requireChannelGrant(
+        input.callerEmail,
+        input.action.workspaceId,
+        input.channelGrant
+      );
       const sql = yield* SqlClient.SqlClient;
       const posts = yield* PostService;
       const workspaceId = yield* Schema.decodeUnknownEffect(WorkspaceId)(
@@ -251,8 +299,10 @@ export class AgentContentBridge extends WorkerEntrypoint<Env> {
       );
       const members = yield* sql<{
         memberId: string;
+        userId: string;
+        agentWorkspaceId: string;
         role: "owner" | "admin" | "editor" | "viewer";
-      }>`SELECT wm.id AS member_id, wm.role FROM users u
+      }>`SELECT wm.id AS member_id, wm.role, u.id AS user_id, aw.id AS agent_workspace_id FROM users u
           JOIN workspace_members wm ON wm.user_id = u.id
           JOIN agent_workspaces aw ON aw.user_id = u.id AND aw.workspace_id = wm.workspace_id
           WHERE lower(u.email) = ${input.callerEmail.trim().toLowerCase()}
@@ -304,6 +354,37 @@ export class AgentContentBridge extends WorkerEntrypoint<Env> {
 
       const postActor = { memberId: actor.memberId, role: actor.role };
       const execution = yield* Effect.gen(function* () {
+        if (input.action.kind === "remember") {
+          const memory = yield* Schema.decodeUnknownEffect(
+            Schema.Struct({
+              category: Schema.Literals([
+                "preference",
+                "voice",
+                "brand_fact",
+                "goal",
+              ]),
+              text: Schema.String,
+              scope: Schema.Literals(["personal", "workspace"]),
+            })
+          )(input.action.value);
+          if (
+            !memory.text.trim() ||
+            memory.text.length > 2000 ||
+            (memory.scope === "personal" && memory.category === "brand_fact")
+          ) {
+            throw new Error("Invalid memory proposal");
+          }
+          const id = crypto.randomUUID();
+          yield* sql`INSERT INTO agent_memories (id, agent_workspace_id, user_id, workspace_id, category, value, provenance, confidence, status, requires_confirmation, confirmed_at, scope)
+            VALUES (${id}, ${actor.agentWorkspaceId}, ${actor.userId}, ${workspaceId}, ${memory.category}, ${JSON.stringify(memory.text)}::jsonb,
+              ${`approved-action:${input.idempotencyKey}`}, 1, 'confirmed', true, now(), ${memory.scope})`;
+          return { memoryId: id };
+        }
+        if (input.action.kind === "forget_memory") {
+          yield* sql`UPDATE agent_memories SET status = 'rejected', updated_at = now() WHERE id = ${input.action.memoryId}
+            AND user_id = ${actor.userId} AND (workspace_id = ${workspaceId} OR scope = 'personal')`;
+          return { forgotten: true };
+        }
         if (input.action.kind === "publish") {
           return yield* posts.publishNow({
             workspaceId,

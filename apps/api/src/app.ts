@@ -2,6 +2,7 @@ import { Api } from "@delulu/contracts";
 import type { TokenCipher } from "@delulu/core";
 import type {
   AdminService,
+  AgentChannelService,
   AgentRuntimeProvider,
   AgentWorkspaceService,
   AnalyticsService,
@@ -16,6 +17,8 @@ import type {
   BillingService,
   CalendarWebhookConfig,
   CancellationService,
+  ChannelLinkGateway,
+  ClerkAdminConfig,
   ClerkAdminService,
   ClerkTokenVerifier,
   ConnectionStateService,
@@ -48,6 +51,7 @@ import { Layer } from "effect";
 import { HttpMiddleware, HttpRouter, HttpServer } from "effect/unstable/http";
 import { HttpApiBuilder, HttpApiScalar } from "effect/unstable/httpapi";
 import type { SqlClient } from "effect/unstable/sql";
+import { AgentChannelHandlers } from "./agent-channel-handlers";
 import {
   AgentComputerHandlers,
   AgentHandlers,
@@ -100,6 +104,9 @@ export type AppServices =
   | AdminService
   | AgentRuntimeProvider
   | AgentWorkspaceService
+  | AgentChannelService
+  | ChannelLinkGateway
+  | ClerkAdminConfig
   | WorkspaceFileService
   | AnalyticsService
   | AutomationService
@@ -146,6 +153,7 @@ export const buildWebHandler = (
       BillingHandlers,
       TranscriptionHandlers,
       AgentHandlers,
+      AgentChannelHandlers,
       AgentComputerHandlers,
       WorkspaceFileHandlers,
     ])

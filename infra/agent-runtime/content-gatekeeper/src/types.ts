@@ -18,6 +18,16 @@ export interface ContentContext {
 }
 
 export type ContentAction =
+  | {
+      kind: "remember";
+      workspaceId: string;
+      value: {
+        category: "preference" | "voice" | "brand_fact" | "goal";
+        text: string;
+        scope: "personal" | "workspace";
+      };
+    }
+  | { kind: "forget_memory"; workspaceId: string; memoryId: string }
   | { kind: "create_draft"; workspaceId: string; value: unknown }
   | {
       kind: "update_draft";

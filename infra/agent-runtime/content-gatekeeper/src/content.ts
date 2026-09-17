@@ -40,10 +40,21 @@ interface ContentGatekeeperProps {
 interface PendingAction {
   id: number;
   action: ContentAction;
+  channelGrant: string;
 }
 
 const actionDescription = (action: ContentAction) => {
   switch (action.kind) {
+    case "remember":
+      return {
+        title: "Save agent memory",
+        description: `${action.value.scope}: ${action.value.text}`,
+      };
+    case "forget_memory":
+      return {
+        title: "Forget agent memory",
+        description: `Remove memory ${action.memoryId} from future agent context.`,
+      };
     case "create_draft":
       return {
         title: "Create content draft",
@@ -75,21 +86,30 @@ class ContentSessionImpl extends RpcTarget implements ContentSession {
   private readonly callerEmail: string;
   private readonly api: Cloudflare.Env["CONTENT_API"];
   private readonly saveAction: (action: ContentAction) => Promise<number>;
+  private readonly workspaceId: string;
+  private readonly channelGrant: string;
 
   constructor(
     approvalQueue: RpcStub<ApprovalQueue>,
     callerEmail: string,
     api: Cloudflare.Env["CONTENT_API"],
-    saveAction: (action: ContentAction) => Promise<number>
+    saveAction: (action: ContentAction) => Promise<number>,
+    workspaceId: string,
+    channelGrant: string
   ) {
     super();
     this.approvalQueue = approvalQueue;
     this.callerEmail = callerEmail;
     this.api = api;
     this.saveAction = saveAction;
+    this.workspaceId = workspaceId;
+    this.channelGrant = channelGrant;
   }
 
   async getContext(workspaceId: string) {
+    if (workspaceId !== this.workspaceId) {
+      throw new Error("Workspace access denied");
+    }
     await this.approvalQueue.authorizeObservation({
       title: "Read Content HQ context",
       description:
@@ -98,10 +118,14 @@ class ContentSessionImpl extends RpcTarget implements ContentSession {
     return this.api.getContentContext({
       callerEmail: this.callerEmail,
       workspaceId,
+      channelGrant: this.channelGrant,
     });
   }
 
   async proposeAction(action: ContentAction): Promise<{ queued: true }> {
+    if (action.workspaceId !== this.workspaceId) {
+      throw new Error("Workspace access denied");
+    }
     const id = await this.saveAction(action);
     const description = actionDescription(action);
     await this.approvalQueue.submitAction(id, {
@@ -146,6 +170,24 @@ export class ContentGatekeeper
   }
 
   async startSession(queue: RpcStub<ApprovalQueue>): Promise<ContentSession> {
+    const workspaceId = await (
+      queue as RpcStub<ApprovalQueue> & {
+        getContentWorkspaceId(): Promise<string>;
+      }
+    ).getContentWorkspaceId();
+    const channelGrant = await (
+      queue as RpcStub<ApprovalQueue> & {
+        getContentChannelGrant(): Promise<string>;
+      }
+    ).getContentChannelGrant();
+    if (!channelGrant?.trim()) {
+      throw new Error("Channel grant is required");
+    }
+    const bound = await this.ctx.storage.get<string>("workspaceId");
+    if (bound && bound !== workspaceId) {
+      throw new Error("Workspace access denied");
+    }
+    await this.ctx.storage.put("workspaceId", workspaceId);
     return new ContentSessionImpl(
       queue.dup(),
       this.ctx.props.callerEmail,
@@ -155,10 +197,13 @@ export class ContentGatekeeper
         await this.ctx.storage.put(`action:${id}`, {
           id,
           action,
+          channelGrant,
         } satisfies PendingAction);
         await this.ctx.storage.put("nextActionId", id + 1);
         return id;
-      }
+      },
+      workspaceId,
+      channelGrant
     );
   }
 
@@ -174,9 +219,19 @@ export class ContentGatekeeper
     if (!pending) {
       throw new Error(`No such Content HQ action: ${id}`);
     }
+    if (!pending.channelGrant?.trim()) {
+      throw new Error("Channel grant is required; request a new action");
+    }
+    if (
+      pending.action.workspaceId !==
+      (await this.ctx.storage.get<string>("workspaceId"))
+    ) {
+      throw new Error("Workspace access denied");
+    }
     await this.env.CONTENT_API.executeContentAction({
       callerEmail: this.ctx.props.callerEmail,
       action: pending.action,
+      channelGrant: pending.channelGrant,
       idempotencyKey: `${this.ctx.id.toString()}:${id}`,
     });
     await this.ctx.storage.delete(`action:${id}`);

@@ -1,4 +1,8 @@
 const BOT_TOKEN_PATTERN = /^\d+:[A-Za-z0-9_-]+$/;
+
+export { downloadTelegramFile } from "./media";
+export type { TelegramMedia } from "./updates";
+export { decodeTelegramUpdate, splitTelegramText } from "./updates";
 /** Never expose request URLs containing tokens in errors. */
 export async function telegramCall<T>(
   token: string,
@@ -7,7 +11,12 @@ export async function telegramCall<T>(
     | "sendChatAction"
     | "setWebhook"
     | "getWebhookInfo"
-    | "getMe",
+    | "getMe"
+    | "answerCallbackQuery"
+    | "setMyCommands"
+    | "getFile"
+    | "sendDocument"
+    | "editMessageReplyMarkup",
   body: Record<string, unknown> = {},
   timeoutMs = 15_000
 ): Promise<

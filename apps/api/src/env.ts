@@ -99,6 +99,32 @@ export interface Env {
   readonly TELEGRAM_WEBHOOK_SECRET?: string;
   readonly TELEGRAM_SETUP_TOKEN?: string;
   readonly TELEGRAM_INGRESS_ENABLED?: string;
+  readonly TELEGRAM_ACCOUNT_LINKING_ENABLED?: string;
+  readonly AGENT_MEDIA_AI?: {
+    run(model: string, input: { audio: string }): Promise<{ text?: string }>;
+    toMarkdown(
+      input: Array<{ name: string; blob: Blob }>
+    ): Promise<Array<{ data?: string; format?: string }>>;
+  };
+  readonly TELEGRAM_LINKED_CONVERSATIONS?: {
+    getByName(
+      name: string
+    ): import("./channel-conversation").ConversationBinding & {
+      offerLink(
+        input: import("@delulu/services").ChannelLinkOffer
+      ): Promise<void>;
+      completeResponse(
+        id: string,
+        response: import("@delulu/services").AgentRuntimeResponse
+      ): Promise<void>;
+      manageConnection(input: {
+        sender: string;
+        userId: string;
+        connectionId: string;
+        workspaceId?: string;
+      }): Promise<void>;
+    };
+  };
   readonly TELEGRAM_ALLOWED_USER_ID?: string;
   readonly TELEGRAM_MONTHLY_TURN_LIMIT?: string;
   readonly TELEGRAM_CONVERSATIONS?: {

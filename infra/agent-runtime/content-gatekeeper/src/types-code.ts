@@ -6,6 +6,8 @@ const TYPES_CODE = `export interface ContentContext {
   files: Array<{ id: string; filename: string; logicalPath: string; mimeType: string | null; sizeBytes: string }>;
 }
 export type ContentAction =
+  | { kind: "remember"; workspaceId: string; value: { category: "preference" | "voice" | "brand_fact" | "goal"; text: string; scope: "personal" | "workspace" } }
+  | { kind: "forget_memory"; workspaceId: string; memoryId: string }
   | { kind: "create_draft"; workspaceId: string; value: unknown }
   | { kind: "update_draft"; workspaceId: string; postId: string; value: unknown }
   | { kind: "schedule"; workspaceId: string; postId: string; value: unknown }

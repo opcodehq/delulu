@@ -1,5 +1,6 @@
 import {
   decodeTelegramMessage,
+  decodeTelegramUpdate,
   secretMatches,
   telegramCall,
 } from "@delulu/communication-telegram";
@@ -121,7 +122,7 @@ export const handleProviderIngress = async (
         {
           url: expected,
           secret_token: env.TELEGRAM_WEBHOOK_SECRET,
-          allowed_updates: ["message"],
+          allowed_updates: ["message", "callback_query"],
           max_connections: 2,
         }
       );
@@ -130,6 +131,28 @@ export const handleProviderIngress = async (
           { error: "Telegram registration failed", status: registered.status },
           502
         );
+      }
+      const commands = await telegramCall(
+        env.TELEGRAM_BOT_TOKEN,
+        "setMyCommands",
+        {
+          commands: [
+            {
+              command: "start",
+              description: "Connect your account or open the menu",
+            },
+            { command: "new", description: "Start a new chat" },
+            { command: "workspace", description: "Switch workspace" },
+            { command: "skills", description: "Manage your skills" },
+            { command: "memory", description: "Manage your memory" },
+            { command: "tasks", description: "View current tasks" },
+            { command: "stop", description: "Stop the current task" },
+            { command: "settings", description: "Manage your connection" },
+          ],
+        }
+      );
+      if (!commands.ok) {
+        return textResponse("Telegram command setup failed", 502);
       }
     }
     const me = await telegramCall<{ username: string }>(
@@ -166,7 +189,9 @@ export const handleProviderIngress = async (
     if (
       env.TELEGRAM_INGRESS_ENABLED !== "true" ||
       !env.TELEGRAM_BOT_TOKEN ||
-      !env.TELEGRAM_CONVERSATIONS ||
+      !(env.TELEGRAM_ACCOUNT_LINKING_ENABLED === "true"
+        ? env.TELEGRAM_LINKED_CONVERSATIONS
+        : env.TELEGRAM_CONVERSATIONS) ||
       !env.AGENT_RUNTIME
     ) {
       return textResponse("Telegram ingress unavailable", 503);
@@ -181,20 +206,39 @@ export const handleProviderIngress = async (
     } catch {
       return textResponse("Invalid JSON", 400);
     }
-    const message = decodeTelegramMessage(value);
+    const linked = env.TELEGRAM_ACCOUNT_LINKING_ENABLED === "true";
+    const message: ReturnType<typeof decodeTelegramUpdate> = linked
+      ? decodeTelegramUpdate(value)
+      : decodeTelegramMessage(value);
     if (!message) {
       return jsonResponse({ accepted: true });
     }
     if (
-      !isAllowedTelegramSender(message.sender, env.TELEGRAM_ALLOWED_USER_ID)
+      !(
+        linked ||
+        isAllowedTelegramSender(message.sender, env.TELEGRAM_ALLOWED_USER_ID)
+      )
     ) {
       return jsonResponse({ accepted: false });
     }
     try {
       const botId = env.TELEGRAM_BOT_TOKEN.split(":")[0];
-      await env.TELEGRAM_CONVERSATIONS.getByName(
-        `telegram:${botId}:${message.sender}`
-      ).enqueue(message);
+      if (message.callback) {
+        await telegramCall(
+          env.TELEGRAM_BOT_TOKEN,
+          "answerCallbackQuery",
+          { callback_query_id: message.callback.id },
+          1500
+        );
+      }
+      const namespace = linked
+        ? env.TELEGRAM_LINKED_CONVERSATIONS!
+        : env.TELEGRAM_CONVERSATIONS!;
+      await namespace
+        .getByName(
+          `${linked ? "telegram-linked" : "telegram"}:${botId}:${message.sender}`
+        )
+        .enqueue(message);
       return jsonResponse({ accepted: true });
     } catch {
       return textResponse("Telegram temporarily unavailable", 503);

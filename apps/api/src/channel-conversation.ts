@@ -8,6 +8,16 @@ export interface ChannelMessage {
   id: string;
   sender: string;
   text: string;
+  callback?: { id: string; data: string };
+  media?: import("@delulu/communication-telegram").TelegramMedia;
+}
+export class ChannelInputError extends Error {}
+
+export interface ChannelRoute {
+  callerEmail: string;
+  gadgetKey: string;
+  chatKey: string;
+  principalKey: string;
 }
 
 export interface MessageRecord extends ChannelMessage {
@@ -19,6 +29,11 @@ export interface MessageRecord extends ChannelMessage {
   sendAttempts?: number;
   nextSendAt?: number;
   submittedAt?: number;
+  route?: ChannelRoute;
+  replyMarkup?: unknown;
+  responseVersion?: number;
+  responseFingerprint?: string;
+  awaitingContinuation?: boolean;
 }
 
 export interface ConversationBinding {
@@ -42,6 +57,36 @@ export type DeliveryResult =
 
 export class ChannelConversation extends DurableObject<Env> {
   private draining?: Promise<void>;
+
+  protected async route(sender: string): Promise<ChannelRoute> {
+    return {
+      callerEmail: this.email(sender)!,
+      gadgetKey: "content-hq",
+      chatKey: this.name(sender),
+      principalKey: this.email(sender)!,
+    };
+  }
+
+  protected async permits(record: MessageRecord): Promise<boolean> {
+    return this.authorized(record.sender);
+  }
+
+  protected async reserve(_message: ChannelMessage): Promise<void> {
+    return undefined;
+  }
+  protected async abandoned(_record: MessageRecord): Promise<void> {
+    return undefined;
+  }
+
+  protected responseText(text: string): string {
+    return text.slice(0, 3900);
+  }
+  protected resumableDelivery(): boolean {
+    return false;
+  }
+  protected async prompt(record: MessageRecord): Promise<string> {
+    return record.text;
+  }
 
   protected monthlyTurnLimit(): number {
     return 10;
@@ -97,12 +142,17 @@ export class ChannelConversation extends DurableObject<Env> {
   }
 
   async enqueue(message: ChannelMessage): Promise<void> {
+    if (await this.ctx.storage.get(`message:${message.id}`)) {
+      return;
+    }
     if (!(this.authorized(message.sender) && this.email(message.sender))) {
       throw new Error("Channel identity is not authorized");
     }
+    const route = await this.route(message.sender);
+    await this.reserve(message);
     await this.ctx.storage.transaction(async (storage) => {
       const principal = await storage.get<string>("principal");
-      if (principal && principal !== this.email(message.sender)) {
+      if (principal && principal !== route.principalKey) {
         throw new Error(
           "Channel identity changed; explicit migration required"
         );
@@ -122,9 +172,10 @@ export class ChannelConversation extends DurableObject<Env> {
       if (!exhausted) {
         await storage.put(quotaKey, reserved + 1);
       }
-      await storage.put("principal", this.email(message.sender)!);
+      await storage.put("principal", route.principalKey);
       await storage.put(`message:${message.id}`, {
         ...message,
+        route,
         state: exhausted ? "ready" : "queued",
         response,
         createdAt: Date.now(),
@@ -135,6 +186,14 @@ export class ChannelConversation extends DurableObject<Env> {
   }
 
   async complete(id: string, text: string): Promise<void> {
+    await this.finishResponse(id, text);
+  }
+
+  protected async finishResponse(
+    id: string,
+    text: string,
+    extra: Partial<MessageRecord> = {}
+  ): Promise<void> {
     await this.ctx.storage.transaction(async (storage) => {
       const record = await storage.get<MessageRecord>(`message:${id}`);
       if (!record || record.state !== "running") {
@@ -142,9 +201,11 @@ export class ChannelConversation extends DurableObject<Env> {
       }
       await storage.put(`message:${id}`, {
         ...record,
+        ...extra,
         state: "ready",
         response:
-          text.slice(0, 3900) || "The agent completed without a text response.",
+          this.responseText(text) ||
+          "The agent completed without a text response.",
       } satisfies MessageRecord);
       await storage.setAlarm(Date.now() + 1000);
     });
@@ -176,27 +237,38 @@ export class ChannelConversation extends DurableObject<Env> {
       ).values(),
     ].sort((a, b) => a.createdAt - b.createdAt);
     for (const record of records) {
-      if (!this.authorized(record.sender)) {
-        await this.ctx.storage.deleteAlarm();
-        return;
-      }
-      if (principal && principal !== this.email(record.sender)) {
-        throw new Error("Channel principal does not match configuration");
-      }
-      const key = `message:${record.id}`;
       if (record.state === "sent" || record.state === "failed") {
         continue;
       }
-      await this.ctx.storage.setAlarm(Date.now() + 30_000);
-      if (record.state === "sending") {
-        // A crash after Meta accepted a send is ambiguous; never double-send it.
-        await this.ctx.storage.put(key, {
+      if (!(await this.permits(record))) {
+        await this.abandoned(record);
+        await this.ctx.storage.put(`message:${record.id}`, {
           ...record,
           state: "failed",
           text: "",
           response: undefined,
         });
         continue;
+      }
+      const route = record.route ?? (await this.route(record.sender));
+      if (principal && principal !== route.principalKey) {
+        throw new Error("Channel principal does not match configuration");
+      }
+      const key = `message:${record.id}`;
+      await this.ctx.storage.setAlarm(Date.now() + 30_000);
+      if (record.state === "sending") {
+        if (this.resumableDelivery()) {
+          record.state = "ready";
+        } else {
+          // A crash after Meta accepted a send is ambiguous; never double-send it.
+          await this.ctx.storage.put(key, {
+            ...record,
+            state: "failed",
+            text: "",
+            response: undefined,
+          });
+          continue;
+        }
       }
       if (record.state === "ready") {
         if (record.nextSendAt && record.nextSendAt > Date.now()) {
@@ -244,9 +316,9 @@ export class ChannelConversation extends DurableObject<Env> {
       }
       if (record.startedAt && Date.now() - record.startedAt > 20 * 60_000) {
         await runtime.interruptExternalRun({
-          callerEmail: this.email(record.sender)!,
-          gadgetKey: "content-hq",
-          chatKey: this.name(record.sender),
+          callerEmail: route.callerEmail,
+          gadgetKey: route.gadgetKey,
+          chatKey: route.chatKey,
           messageKey: record.id,
         });
         await this.ctx.storage.transaction(async (storage) => {
@@ -259,10 +331,12 @@ export class ChannelConversation extends DurableObject<Env> {
             });
           }
         });
+        await this.abandoned(record);
         continue;
       }
       const shouldSubmit =
-        !record.submittedAt || Date.now() - record.submittedAt >= 30_000;
+        !record.awaitingContinuation &&
+        (!record.submittedAt || Date.now() - record.submittedAt >= 30_000);
       const active = {
         ...record,
         state: "running" as const,
@@ -290,8 +364,8 @@ export class ChannelConversation extends DurableObject<Env> {
         return;
       }
       await runtime.ensureExternalUser({
-        email: this.email(record.sender)!,
-        displayName: this.email(record.sender)!.split("@")[0],
+        email: route.callerEmail,
+        displayName: route.callerEmail.split("@")[0]!,
       });
       const exports = this.ctx.exports as unknown as Record<
         string,
@@ -300,13 +374,23 @@ export class ChannelConversation extends DurableObject<Env> {
         }
       >;
       const name = this.name(record.sender);
+      let prompt: string;
+      try {
+        prompt = await this.prompt(record);
+      } catch (error) {
+        if (!(error instanceof ChannelInputError)) {
+          throw error;
+        }
+        await this.complete(record.id, error.message);
+        return this.process();
+      }
       const result = await runtime.submitExternalMessage({
-        callerEmail: this.email(record.sender)!,
-        gadgetKey: "content-hq",
-        chatKey: name,
+        callerEmail: route.callerEmail,
+        gadgetKey: route.gadgetKey,
+        chatKey: route.chatKey,
         messageKey: record.id,
         gadgetTitle: "Content HQ",
-        prompt: record.text,
+        prompt,
         chatGatewayRpcTarget: exports[this.target()]!({
           props: { conversation: name, messageId: record.id },
         }),

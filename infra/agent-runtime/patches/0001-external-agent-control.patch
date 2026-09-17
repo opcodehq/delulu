@@ -188,7 +188,10 @@ index e1699ad..cb4a956 100644
 +    );
 +    try {
 +      if (existing.type === "bindHook") {
-+        if (existing.hookId === undefined) throw new Error("Scheduled ritual no longer exists.");
++        if (existing.hookId === undefined) {
++          if (input.decision === "rejected") return;
++          throw new Error("Scheduled ritual no longer exists.");
++        }
 +        if (input.decision === "approved") await client.enableHook(existing.hookId);
 +        else await client.deleteHook(existing.hookId);
 +      } else if (input.decision === "approved") await client.approveAction(actionId);

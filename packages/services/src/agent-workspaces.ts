@@ -26,6 +26,7 @@ import {
 } from "@delulu/core";
 import { Context, Effect, Layer, Predicate } from "effect";
 import { SqlClient } from "effect/unstable/sql";
+import { lockAgentBudget } from "./agent-channel-budget";
 import {
   AgentRuntimeProvider,
   type AgentRuntimeResponse,
@@ -607,7 +608,9 @@ export class AgentWorkspaceService extends Context.Service<
               // The billing-owner lock serializes budget reservations across all
               // of the owner's workspaces. The workspace lock serializes its
               // concurrency/trial counters and idempotency claim.
-              yield* sql`SELECT pg_advisory_xact_lock(hashtextextended(${`agent-budget:${input.billingOwnerUserId}`}, 0))`;
+              yield* lockAgentBudget(input.billingOwnerUserId).pipe(
+                Effect.provideService(SqlClient.SqlClient, sql)
+              );
               yield* sql`SELECT pg_advisory_xact_lock(hashtextextended(${`agent-runs:${String(workspace.id)}`}, 0))`;
 
               const existing = yield* sql<Row>`SELECT ${sql.unsafe(SELECT_RUN)}
@@ -638,10 +641,15 @@ export class AgentWorkspaceService extends Context.Service<
                 FROM agent_usage_ledger
                 WHERE billing_owner_user_id = ${input.billingOwnerUserId}`;
               const activeRows = yield* sql<Row>`SELECT count(*)::text AS count
-                FROM agent_runs WHERE agent_workspace_id = ${String(workspace.id)}
-                  AND status IN ('queued', 'submitted', 'running',
+                FROM agent_runs r
+                WHERE r.agent_workspace_id = ${String(lockedWorkspace.id)}
+                  AND r.status IN ('queued', 'submitted', 'running',
                     'waiting_approval', 'interrupting')`;
-              const activeRuns = Number(activeRows[0]?.count ?? 0);
+              const channelRows = yield* sql<Row>`SELECT count(*)::text AS count
+                FROM agent_channel_turns WHERE agent_workspace_id = ${String(lockedWorkspace.id)} AND state = 'active' AND expires_at > now()`;
+              const activeRuns =
+                Number(activeRows[0]?.count ?? 0) +
+                Number(channelRows[0]?.count ?? 0);
               if (
                 activeRuns >= Number(lockedWorkspace.maxConcurrentRuns) ||
                 (lockedWorkspace.accessTier === "trial" &&
