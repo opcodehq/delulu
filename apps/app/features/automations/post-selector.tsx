@@ -16,6 +16,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useApiClient } from "@/shell/providers/api-client";
 import { useWorkspace } from "@/shell/providers/workspace";
 import { useMutationAtom } from "@/shell/state/resources";
+import { requiresInstagramReconnect } from "./connection-errors";
 
 interface PostSelectorProps {
   socialProviderId: string | null;
@@ -170,6 +171,15 @@ export function PostSelector({
     loadInitial().catch(() => undefined);
   }, [loadInitial]);
 
+  useEffect(() => {
+    if (!(loadError && requiresInstagramReconnect(loadError))) {
+      return;
+    }
+    const reloadAfterReconnect = () => loadInitial().catch(() => undefined);
+    window.addEventListener("focus", reloadAfterReconnect);
+    return () => window.removeEventListener("focus", reloadAfterReconnect);
+  }, [loadError, loadInitial]);
+
   const loadMore = async () => {
     if (!nextCursor) {
       return;
@@ -221,6 +231,7 @@ export function PostSelector({
   }
 
   const itemLabel = isStoryMode ? "stories" : "posts and Reels";
+  const needsReconnect = loadError && requiresInstagramReconnect(loadError);
   const hasScheduledPosts = !isStoryMode && scheduledPosts.length > 0;
 
   return (
@@ -272,15 +283,33 @@ export function PostSelector({
           className="rounded-lg border border-destructive/40 bg-destructive/5 p-3"
           role="alert"
         >
-          <p className="text-destructive text-sm">{loadError.message}</p>
-          <Button
-            className="mt-2"
-            onClick={() => loadInitial().catch(() => undefined)}
-            size="sm"
-            variant="outline"
-          >
-            Retry
-          </Button>
+          <p className="text-destructive text-sm">
+            {needsReconnect
+              ? "Your Instagram connection has expired or is no longer valid. Reconnect Instagram to continue using DM automations."
+              : "We couldn’t load your Instagram media. Please try again."}
+          </p>
+          {needsReconnect ? (
+            <>
+              <p className="mt-1 text-muted-foreground text-xs">
+                Reconnect your account in Connected Accounts, then return here.
+                Your automation stays open in this tab.
+              </p>
+              <Button asChild className="mt-2" size="sm" variant="outline">
+                <a href="/socials" rel="noopener noreferrer" target="_blank">
+                  Reconnect Instagram
+                </a>
+              </Button>
+            </>
+          ) : (
+            <Button
+              className="mt-2"
+              onClick={() => loadInitial().catch(() => undefined)}
+              size="sm"
+              variant="outline"
+            >
+              Retry
+            </Button>
+          )}
         </div>
       )}
       {scheduledError && (

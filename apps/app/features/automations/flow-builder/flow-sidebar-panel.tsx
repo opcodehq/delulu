@@ -79,12 +79,15 @@ export function FlowSidebarPanel({
   if (trigger) {
     return (
       <Sheet onOpenChange={(o) => !o && onClose()} open>
-        <SheetContent className="w-[400px] p-0 sm:max-w-[400px]">
-          <SheetHeader className="border-border border-b px-6 py-4">
+        <SheetContent className="w-[400px] max-w-full gap-0 p-0 sm:max-w-[400px]">
+          <SheetHeader className="border-border border-b py-4 pr-12 pl-6">
             <SheetTitle>Trigger Configuration</SheetTitle>
           </SheetHeader>
-          <ScrollArea className="h-[calc(100vh-73px)]">
-            <div className="px-6 py-5">
+          <ScrollArea
+            className="min-h-0 min-w-0 flex-1"
+            viewportClassName="[&>div]:block!"
+          >
+            <div className="min-w-0 px-6 py-5">
               <TriggerPanel
                 instagramProviders={instagramProviders}
                 onChange={(updated) => onUpdateTrigger(trigger.id, updated)}
@@ -104,8 +107,8 @@ export function FlowSidebarPanel({
   if (note) {
     return (
       <Sheet onOpenChange={(o) => !o && onClose()} open>
-        <SheetContent className="w-[400px] p-0 sm:max-w-[400px]">
-          <SheetHeader className="border-border border-b px-6 py-4">
+        <SheetContent className="w-[400px] max-w-full gap-0 p-0 sm:max-w-[400px]">
+          <SheetHeader className="border-border border-b py-4 pr-12 pl-6">
             <div className="flex items-center justify-between">
               <SheetTitle>Note</SheetTitle>
               <Button
@@ -119,8 +122,11 @@ export function FlowSidebarPanel({
               </Button>
             </div>
           </SheetHeader>
-          <ScrollArea className="h-[calc(100vh-73px)]">
-            <div className="px-6 py-5">
+          <ScrollArea
+            className="min-h-0 min-w-0 flex-1"
+            viewportClassName="[&>div]:block!"
+          >
+            <div className="min-w-0 px-6 py-5">
               <div className="space-y-2">
                 <label className="font-medium text-sm" htmlFor="note-content">
                   Content
@@ -152,8 +158,8 @@ export function FlowSidebarPanel({
 
   return (
     <Sheet onOpenChange={(o) => !o && onClose()} open>
-      <SheetContent className="w-[400px] p-0 sm:max-w-[400px]">
-        <SheetHeader className="border-border border-b px-6 py-4">
+      <SheetContent className="w-[400px] max-w-full gap-0 p-0 sm:max-w-[400px]">
+        <SheetHeader className="border-border border-b py-4 pr-12 pl-6">
           <div className="flex items-center justify-between">
             <SheetTitle>{panelTitle}</SheetTitle>
             <Button
@@ -167,8 +173,11 @@ export function FlowSidebarPanel({
             </Button>
           </div>
         </SheetHeader>
-        <ScrollArea className="h-[calc(100vh-73px)]">
-          <div className="px-6 py-5">
+        <ScrollArea
+          className="min-h-0 min-w-0 flex-1"
+          viewportClassName="[&>div]:block!"
+        >
+          <div className="min-w-0 px-6 py-5">
             {step.type === "condition" && (
               <ConditionPanel
                 onChange={(updated) => onUpdateStep(step.id, updated)}
