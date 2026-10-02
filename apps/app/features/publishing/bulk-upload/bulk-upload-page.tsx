@@ -20,6 +20,19 @@ import { PiPaperPlaneTiltFill } from "react-icons/pi";
 import { toast } from "sonner";
 import { InlineUpgradePrompt } from "@/features/billing/upgrade-prompt";
 import { useUsageLimit } from "@/features/billing/use-usage-limits";
+import { BulkDropzone } from "@/features/publishing/bulk-upload/bulk-dropzone";
+import { BulkSocialSelector } from "@/features/publishing/bulk-upload/bulk-social-selector";
+import type {
+  BulkVideo,
+  SelectedProvider,
+} from "@/features/publishing/bulk-upload/bulk-upload-reducer";
+import {
+  bulkUploadReducer,
+  computeScheduledAt,
+  initialState,
+} from "@/features/publishing/bulk-upload/bulk-upload-reducer";
+import { BulkVideoList } from "@/features/publishing/bulk-upload/bulk-video-list";
+import { ScheduleConfig } from "@/features/publishing/bulk-upload/schedule-config";
 import {
   PLATFORM_VIDEO_RULES,
   validateVideo,
@@ -34,16 +47,6 @@ import {
   useResourceAtom,
 } from "@/shell/state/resources";
 import { usePermissions } from "@/shell/use-permissions";
-import { BulkDropzone } from "./bulk-dropzone";
-import { BulkSocialSelector } from "./bulk-social-selector";
-import type { BulkVideo, SelectedProvider } from "./bulk-upload-reducer";
-import {
-  bulkUploadReducer,
-  computeScheduledAt,
-  initialState,
-} from "./bulk-upload-reducer";
-import { BulkVideoList } from "./bulk-video-list";
-import { ScheduleConfig } from "./schedule-config";
 
 type PlatformSettingsValue =
   | {

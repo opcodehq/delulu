@@ -21,18 +21,18 @@ import {
   Loading03Icon,
 } from "@delulu/icons";
 import { lazy, Suspense } from "react";
+import { AnalyticsStatCards } from "@/features/analytics/analytics-stat-cards";
 import { OperationsError } from "@/features/workspace/query-state";
 import { PageLoading } from "@/shell/loading";
 import { PageSection, PageShell } from "@/shell/navigation/page-shell";
-import { AnalyticsStatCards } from "./analytics-stat-cards";
 
 const EngagementChart = lazy(() =>
-  import("./engagement-chart").then((module) => ({
+  import("@/features/analytics/engagement-chart").then((module) => ({
     default: module.EngagementChart,
   }))
 );
 
-import { TopPostsList } from "./top-posts-list";
+import { TopPostsList } from "@/features/analytics/top-posts-list";
 
 type AnalyticsEffects = ReturnType<typeof createAnalyticsEffects>;
 type InsightResource = ReturnType<AnalyticsEffects["insights"]>;

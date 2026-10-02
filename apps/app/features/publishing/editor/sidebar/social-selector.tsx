@@ -24,6 +24,7 @@ import { Settings01Icon, UserGroupIcon } from "@delulu/icons";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { PlatformSettingsDialog } from "@/features/publishing/editor/sidebar/platform-settings-dialog";
 import { normalizePlatform } from "@/features/publishing/social-platform";
 import {
   postActions,
@@ -35,7 +36,6 @@ import { AppLink as Link } from "@/shell/navigation/app-link";
 import { useApiClient } from "@/shell/providers/api-client";
 import { useWorkspace } from "@/shell/providers/workspace";
 import { useResourceAtom } from "@/shell/state/resources";
-import { PlatformSettingsDialog } from "./platform-settings-dialog";
 
 interface AccountLike {
   id: string;

@@ -8,7 +8,7 @@ import {
 } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { PostSelector } from "./post-selector";
+import { PostSelector } from "@/features/automations/post-selector";
 
 const SPECIFIC_MODE_NAME = /Specific posts and Reels/i;
 const ALL_MODE_NAME = /Any current or future post/i;

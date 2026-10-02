@@ -13,23 +13,26 @@ import {
 } from "@delulu/icons";
 import Image from "next/image";
 import { useCallback, useMemo, useState } from "react";
-import { useSubscription } from "@/features/billing/use-subscription";
-import { AppLink as Link } from "@/shell/navigation/app-link";
-import type { UseAutomationStateReturn } from "./hooks/use-automation-state";
-import { CommentReplyEditor } from "./panels/comment-reply-editor";
-import { DmComposer } from "./panels/dm-composer";
-import { KeywordFilterStep } from "./trigger-wizard/keyword-filter-step";
-import { PostSelectorStep } from "./trigger-wizard/post-selector-step";
-import { TriggerTypeStep } from "./trigger-wizard/trigger-type-step";
+import type { UseAutomationStateReturn } from "@/features/automations/flow-builder/hooks/use-automation-state";
+import { CommentReplyEditor } from "@/features/automations/flow-builder/panels/comment-reply-editor";
+import { DmComposer } from "@/features/automations/flow-builder/panels/dm-composer";
+import { KeywordFilterStep } from "@/features/automations/flow-builder/trigger-wizard/keyword-filter-step";
+import { PostSelectorStep } from "@/features/automations/flow-builder/trigger-wizard/post-selector-step";
+import { TriggerTypeStep } from "@/features/automations/flow-builder/trigger-wizard/trigger-type-step";
 import type {
   AutomationTriggerType,
   CommentReply,
   KeywordFilter,
   SendDmStep,
   TriggerStep,
-} from "./utils/flow-types";
-import { validateFlow } from "./utils/flow-validation";
-import { createSendDmStep, createTrigger } from "./utils/step-helpers";
+} from "@/features/automations/flow-builder/utils/flow-types";
+import { validateFlow } from "@/features/automations/flow-builder/utils/flow-validation";
+import {
+  createSendDmStep,
+  createTrigger,
+} from "@/features/automations/flow-builder/utils/step-helpers";
+import { useSubscription } from "@/features/billing/use-subscription";
+import { AppLink as Link } from "@/shell/navigation/app-link";
 
 type MobileStep = 1 | 2 | 3 | 4;
 

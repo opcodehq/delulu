@@ -1,6 +1,6 @@
 "use client";
-import { PostCard } from "./post-card";
-import type { Post, PostLayout } from "./types";
+import { PostCard } from "@/features/publishing/posts/post-card";
+import type { Post, PostLayout } from "@/features/publishing/posts/types";
 
 interface PostsViewProps {
   posts: Post[];

@@ -2,11 +2,11 @@ import { resourceEffect } from "@delulu/client";
 import { render, screen, waitFor } from "@testing-library/react";
 import { Effect } from "effect";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useApiClient } from "@/shell/providers/api-client";
+import { useWorkspace, WorkspaceProvider } from "@/shell/providers/workspace";
 import { AppStateProvider } from "@/shell/state/resources";
-import { useApiClient } from "./api-client";
-import { useWorkspace, WorkspaceProvider } from "./workspace";
 
-vi.mock("./api-client", () => ({
+vi.mock("@/shell/providers/api-client", () => ({
   useApiClient: vi.fn(),
 }));
 

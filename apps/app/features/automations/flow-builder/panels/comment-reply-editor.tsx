@@ -6,7 +6,7 @@ import { Label } from "@delulu/design-system/components/ui/label";
 import { Switch } from "@delulu/design-system/components/ui/switch";
 import { Icon } from "@delulu/design-system/providers/icon";
 import { Add01Icon, Delete02Icon } from "@delulu/icons";
-import type { CommentReply } from "../utils/flow-types";
+import type { CommentReply } from "@/features/automations/flow-builder/utils/flow-types";
 
 interface CommentReplyEditorProps {
   commentReply: CommentReply | undefined;

@@ -4,7 +4,10 @@ import { cn } from "@delulu/design-system/lib/utils";
 import { Icon } from "@delulu/design-system/providers/icon";
 import { Add01Icon, Cancel01Icon, Link01Icon } from "@delulu/icons";
 import { nanoid } from "nanoid";
-import type { DmButton, SendDmStep } from "../utils/flow-types";
+import type {
+  DmButton,
+  SendDmStep,
+} from "@/features/automations/flow-builder/utils/flow-types";
 
 function renderPreview(template: string): string {
   return (template || "")

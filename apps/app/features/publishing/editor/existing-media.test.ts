@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { existingMediaFiles } from "./existing-media";
+import { existingMediaFiles } from "@/features/publishing/editor/existing-media";
 
 describe("existingMediaFiles", () => {
   it("keeps the database media ID used by the publishing worker", () => {

@@ -1,4 +1,4 @@
-import AffiliatesClient from "../../../features/billing/affiliates-client";
+import AffiliatesClient from "@/features/billing/affiliates-client";
 
 export const dynamic = "force-dynamic";
 

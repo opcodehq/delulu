@@ -9,8 +9,8 @@ import { SocialIcon } from "@delulu/design-system/components/ui/social-icon";
 import type { SupportedSocialPlatform } from "@delulu/design-system/lib/social-config";
 import { Icon } from "@delulu/design-system/providers/icon";
 import { CheckmarkCircle01Icon } from "@delulu/icons";
+import type { OnboardingGoal } from "@/features/onboarding/goal-step";
 import type { ConnectionView } from "@/shared/workspace-views";
-import type { OnboardingGoal } from "./goal-step";
 
 export function ReadyStep({
   goal,

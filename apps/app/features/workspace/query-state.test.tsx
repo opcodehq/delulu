@@ -4,7 +4,7 @@ import {
   OperationsError,
   OperationsLoading,
   taggedMessage,
-} from "./query-state";
+} from "@/features/workspace/query-state";
 
 describe("operations query states", () => {
   it("renders a visible loading state", () => {

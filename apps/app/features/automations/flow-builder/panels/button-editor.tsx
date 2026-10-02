@@ -19,8 +19,8 @@ import {
   MessageMultiple01Icon,
 } from "@delulu/icons";
 import { nanoid } from "nanoid";
-import type { DmButton } from "../utils/flow-types";
-import { isValidUrl } from "../utils/flow-validation";
+import type { DmButton } from "@/features/automations/flow-builder/utils/flow-types";
+import { isValidUrl } from "@/features/automations/flow-builder/utils/flow-validation";
 
 type ButtonAction = "send_message" | "check_condition" | "do_nothing";
 

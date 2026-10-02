@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { resolveAuthenticatedToken } from "./api-client";
+import { resolveAuthenticatedToken } from "@/shell/providers/api-client";
 
 describe("resolveAuthenticatedToken", () => {
   it("waits for Clerk to expose the token after a sign-in redirect", async () => {

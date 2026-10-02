@@ -1,5 +1,5 @@
 import { createApiClient } from "@delulu/client";
-import { resolveAuthenticatedToken } from "./authenticated-token";
+import { resolveAuthenticatedToken } from "@/shell/authenticated-token";
 
 export function resolveApiBaseUrl() {
   return (

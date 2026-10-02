@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { useStore } from "./store";
+import { useStore } from "@/features/publishing/store";
 
 const values = new Map<string, string>();
 const storage: Storage = {

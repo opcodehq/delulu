@@ -4,7 +4,7 @@ import {
   getDynamicMediaLimits,
   shouldDefaultUseVideoLayout,
   shouldUseMultiPostLayout,
-} from "./platform-rules";
+} from "@/features/publishing/platform-rules";
 
 describe("TikTok composer media modes", () => {
   it("allows a photo carousel without requiring a video", () => {

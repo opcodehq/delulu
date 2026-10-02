@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import { ConnectAccountDialog } from "./connect-account-header";
+import { ConnectAccountDialog } from "@/features/connections/connect-account-header";
 
 vi.mock("@delulu/auth", () => ({
   useUser: () => ({

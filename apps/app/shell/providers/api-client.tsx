@@ -7,10 +7,10 @@ import {
   createResourceEffects,
 } from "@delulu/client";
 import { createContext, type ReactNode, useContext, useMemo } from "react";
-import { resolveAuthenticatedToken } from "../authenticated-token";
-import { resolveApiBaseUrl } from "../public-api-client";
+import { resolveAuthenticatedToken } from "@/shell/authenticated-token";
+import { resolveApiBaseUrl } from "@/shell/public-api-client";
 
-export { resolveAuthenticatedToken } from "../authenticated-token";
+export { resolveAuthenticatedToken } from "@/shell/authenticated-token";
 
 type ResourceEffects = ReturnType<typeof createResourceEffects>;
 

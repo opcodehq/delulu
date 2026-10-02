@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { PlanStep } from "./plan-step";
+import { PlanStep } from "@/features/onboarding/plan-step";
 
 const PAYMENT_SYNCING = /payment confirmed, syncing/i;
 const START_CHECKOUT = /start checkout/i;

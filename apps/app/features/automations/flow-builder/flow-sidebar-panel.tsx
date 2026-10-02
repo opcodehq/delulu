@@ -11,16 +11,16 @@ import {
 import { Textarea } from "@delulu/design-system/components/ui/textarea";
 import { Icon } from "@delulu/design-system/providers/icon";
 import { Delete02Icon } from "@delulu/icons";
-import { ConditionPanel } from "./panels/condition-panel";
-import { SendDmPanel } from "./panels/send-dm-panel";
-import { TriggerPanel } from "./panels/trigger-panel";
+import { ConditionPanel } from "@/features/automations/flow-builder/panels/condition-panel";
+import { SendDmPanel } from "@/features/automations/flow-builder/panels/send-dm-panel";
+import { TriggerPanel } from "@/features/automations/flow-builder/panels/trigger-panel";
 import type {
   AutomationStep,
   ConditionStep,
   Note,
   SendDmStep,
   TriggerStep,
-} from "./utils/flow-types";
+} from "@/features/automations/flow-builder/utils/flow-types";
 
 interface SocialProvider {
   _id: string;

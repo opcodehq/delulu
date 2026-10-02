@@ -18,15 +18,15 @@ import { Icon } from "@delulu/design-system/providers/icon";
 import { CheckmarkCircle01Icon, Loading03Icon } from "@delulu/icons";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { useApiClient } from "@/shell/providers/api-client";
-import { useWorkspace } from "@/shell/providers/workspace";
-import { useMutationAtom, useResourceRegistry } from "@/shell/state/resources";
-import { SocialError } from "./social-error";
+import { SocialError } from "@/features/connections/social-error";
 import {
   socialConnectionProgressCopy,
   socialSuccessCopy,
-} from "./social-success";
-import { useConnectionReconciliation } from "./use-connection-reconciliation";
+} from "@/features/connections/social-success";
+import { useConnectionReconciliation } from "@/features/connections/use-connection-reconciliation";
+import { useApiClient } from "@/shell/providers/api-client";
+import { useWorkspace } from "@/shell/providers/workspace";
+import { useMutationAtom, useResourceRegistry } from "@/shell/state/resources";
 
 const ERROR_MESSAGES = {
   auth_required: {

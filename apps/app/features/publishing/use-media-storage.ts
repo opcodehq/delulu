@@ -1,8 +1,8 @@
 "use client";
 
 import { useApiClient } from "@/shell/providers/api-client";
+import { useWorkspaceSelection } from "@/shell/providers/workspace";
 import { useMutationAtom, useResourceRegistry } from "@/shell/state/resources";
-import { useWorkspaceSelection } from "../../shell/providers/workspace";
 
 interface MediaUploadResult {
   bucketKey: string;

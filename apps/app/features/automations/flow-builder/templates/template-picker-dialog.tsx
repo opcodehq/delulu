@@ -16,7 +16,7 @@ import {
   TickDouble01Icon,
   UserStoryIcon,
 } from "@delulu/icons";
-import { AUTOMATION_TEMPLATES } from "./automation-templates";
+import { AUTOMATION_TEMPLATES } from "@/features/automations/flow-builder/templates/automation-templates";
 
 const TEMPLATE_ICONS: Record<string, typeof Comment01Icon> = {
   "grow-followers-comments": TickDouble01Icon,

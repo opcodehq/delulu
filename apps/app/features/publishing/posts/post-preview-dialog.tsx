@@ -22,9 +22,9 @@ import {
 } from "@delulu/icons";
 import Image from "next/image";
 import React from "react";
+import { ReviewActions } from "@/features/publishing/posts/review-actions";
+import { type Post, statusColors } from "@/features/publishing/posts/types";
 import { useMediaUrl } from "@/features/publishing/use-media-url";
-import { ReviewActions } from "./review-actions";
-import { type Post, statusColors } from "./types";
 
 interface PostPreviewDialogProps {
   post: Post;

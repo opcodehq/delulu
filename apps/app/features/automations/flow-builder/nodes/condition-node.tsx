@@ -3,7 +3,7 @@
 import { Icon } from "@delulu/design-system/providers/icon";
 import { FilterIcon } from "@delulu/icons";
 import { Handle, type NodeProps, Position } from "@xyflow/react";
-import type { ConditionStep } from "../utils/flow-types";
+import type { ConditionStep } from "@/features/automations/flow-builder/utils/flow-types";
 
 const OPERATOR_LABELS: Record<string, string> = {
   is_follower: "User follows you",

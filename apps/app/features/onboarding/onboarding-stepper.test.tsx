@@ -7,7 +7,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { OnboardingStepper } from "./onboarding-stepper";
+import { OnboardingStepper } from "@/features/onboarding/onboarding-stepper";
 
 const PUBLISH_CONTENT = /publish content/i;
 const CONTINUE = /^continue/i;
@@ -114,7 +114,7 @@ vi.mock("@/shell/use-feature-flag", () => ({
   useFeatureFlag: () => true,
 }));
 
-vi.mock("./plan-step", () => ({
+vi.mock("@/features/onboarding/plan-step", () => ({
   PlanStep: ({
     accounts,
     isRefreshing,

@@ -12,6 +12,8 @@ import { cn } from "@delulu/design-system/lib/utils";
 import { Icon } from "@delulu/design-system/providers/icon";
 import { Add01Icon, Remove01Icon } from "@delulu/icons";
 import { useCallback, useMemo, useRef } from "react";
+import { MediaUploader } from "@/features/publishing/editor/media-uploader";
+import { VideoContentLayout } from "@/features/publishing/editor/video-content-layout";
 import {
   getDefaultCharacterLimit,
   getDefaultPlaceholder,
@@ -26,8 +28,6 @@ import {
   useSelectedSocialProviders,
   useStore,
 } from "@/features/publishing/store";
-import { MediaUploader } from "./media-uploader";
-import { VideoContentLayout } from "./video-content-layout";
 
 const VIDEO_UPLOAD_LOG_PREFIX = "[video-upload-layout]";
 const shouldLogVideoUploadLayout = process.env.NODE_ENV !== "production";

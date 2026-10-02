@@ -16,7 +16,7 @@ import {
   useMutationAtom,
   useResourceAtom,
   useResourceRegistry,
-} from "./resources";
+} from "@/shell/state/resources";
 
 afterEach(() => {
   cleanup();

@@ -15,12 +15,12 @@ import {
 } from "@delulu/design-system/components/ui/select";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { AuthorizationShell } from "../authorization-shell";
+import { AuthorizationShell } from "@/app/oauth/authorization-shell";
 import {
   ROLE_SCOPE_CEILING,
   SCOPE_LABELS,
   type WorkspaceRole,
-} from "../scope-labels";
+} from "@/app/oauth/scope-labels";
 
 const apiBaseUrl =
   process.env.NEXT_PUBLIC_API_URL ??

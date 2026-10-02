@@ -3,8 +3,8 @@
 import { SocialPostPreview } from "@delulu/design-system/components/social-preview/social-post-preview";
 import type { SupportedSocialPlatform } from "@delulu/design-system/lib/social-config";
 import Image from "next/image";
-import { PhoneFrame } from "./phone-frame";
-import { usePreviewData } from "./preview-utils";
+import { PhoneFrame } from "@/features/publishing/editor/sidebar/previews/phone-frame";
+import { usePreviewData } from "@/features/publishing/editor/sidebar/previews/preview-utils";
 
 type PreviewPostData = Parameters<typeof usePreviewData>[1];
 

@@ -5,8 +5,8 @@ import { runEffect } from "@delulu/client";
 import { Button } from "@delulu/design-system/components/ui/button";
 import { DottedSeparator } from "@delulu/design-system/components/ui/dotted-separator";
 import { useEffect, useMemo, useState } from "react";
-import { createPublicApiClient } from "../../../shell/public-api-client";
-import { AuthorizationShell } from "../../oauth/authorization-shell";
+import { AuthorizationShell } from "@/app/oauth/authorization-shell";
+import { createPublicApiClient } from "@/shell/public-api-client";
 
 export default function ConnectTelegramPage() {
   const { isLoaded, isSignedIn, getToken } = useAuth();

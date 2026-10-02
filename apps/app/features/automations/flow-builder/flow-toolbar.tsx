@@ -6,8 +6,8 @@ import { Label } from "@delulu/design-system/components/ui/label";
 import { Switch } from "@delulu/design-system/components/ui/switch";
 import { Icon } from "@delulu/design-system/providers/icon";
 import { ArrowLeft01Icon, Loading03Icon } from "@delulu/icons";
+import type { AutomationMeta } from "@/features/automations/flow-builder/utils/flow-types";
 import { AppLink as Link } from "@/shell/navigation/app-link";
-import type { AutomationMeta } from "./utils/flow-types";
 
 interface FlowToolbarProps {
   automationMeta: AutomationMeta;

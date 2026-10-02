@@ -2,12 +2,12 @@
 
 import type { AutomationScope } from "@delulu/client";
 import { useMemo } from "react";
-import { useWorkspace } from "@/shell/providers/workspace";
 import type {
   AutomationStep,
   Note,
   TriggerStep,
-} from "./flow-builder/utils/flow-types";
+} from "@/features/automations/flow-builder/utils/flow-types";
+import { useWorkspace } from "@/shell/providers/workspace";
 
 export const AUTOMATION_PLATFORM = "instagram" as const;
 export const AUTOMATION_CATEGORY = "dm";

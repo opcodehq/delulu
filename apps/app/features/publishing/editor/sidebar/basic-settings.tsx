@@ -10,13 +10,13 @@ import { NaturalDatePicker } from "@delulu/design-system/components/ui/natural-d
 import { Icon } from "@delulu/design-system/providers/icon";
 import { AlertCircleIcon, EyeIcon } from "@delulu/icons";
 import { InlineUpgradePrompt } from "@/features/billing/upgrade-prompt";
+import { TikTokConsentBanner } from "@/features/publishing/editor/sidebar/tiktok-consent-banner";
 import {
   useDateTime,
   useSelectedSocialProviders,
   useStore,
 } from "@/features/publishing/store";
 import { usePostActions } from "@/features/publishing/use-post-actions";
-import { TikTokConsentBanner } from "./tiktok-consent-banner";
 
 interface BasicSettingsProps {
   onOpenPreview?: () => void;

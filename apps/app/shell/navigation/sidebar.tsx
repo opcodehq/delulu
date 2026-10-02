@@ -21,10 +21,10 @@ import { cn } from "@delulu/design-system/lib/utils";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useRef } from "react";
 import { navigationItems } from "@/shell/navigation";
+import { AppLink as Link } from "@/shell/navigation/app-link";
+import { OrganizationSwitcher } from "@/shell/navigation/organization-switcher";
+import { usePendingHref } from "@/shell/navigation/route-transition";
 import { useFeatureFlag } from "@/shell/use-feature-flag";
-import { AppLink as Link } from "./app-link";
-import { OrganizationSwitcher } from "./organization-switcher";
-import { usePendingHref } from "./route-transition";
 
 interface GlobalSidebarProperties {
   readonly children: ReactNode;

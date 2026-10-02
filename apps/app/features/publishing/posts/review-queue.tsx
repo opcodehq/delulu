@@ -2,11 +2,11 @@
 
 import { Badge } from "@delulu/design-system/components/ui/badge";
 import { Button } from "@delulu/design-system/components/ui/button";
+import { ReviewActions } from "@/features/publishing/posts/review-actions";
 import { AppLink as Link } from "@/shell/navigation/app-link";
 import { useApiClient } from "@/shell/providers/api-client";
 import { useWorkspaceSelection } from "@/shell/providers/workspace";
 import { useResourceAtom } from "@/shell/state/resources";
-import { ReviewActions } from "./review-actions";
 
 export function ReviewQueue() {
   const { workspaceId, isPending: isWorkspacePending } =

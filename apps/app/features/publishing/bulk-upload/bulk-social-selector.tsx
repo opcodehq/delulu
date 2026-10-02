@@ -8,11 +8,11 @@ import {
   motion,
 } from "motion/react";
 import { IoCheckmarkCircle } from "react-icons/io5";
+import type { SelectedProvider } from "@/features/publishing/bulk-upload/bulk-upload-reducer";
 import { SocialIcon } from "@/features/publishing/editor/sidebar/social-icon";
 import { useApiClient } from "@/shell/providers/api-client";
 import { useWorkspaceSelection } from "@/shell/providers/workspace";
 import { useResourceAtom } from "@/shell/state/resources";
-import type { SelectedProvider } from "./bulk-upload-reducer";
 
 interface BulkSocialSelectorProps {
   selectedProviders: SelectedProvider[];

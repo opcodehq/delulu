@@ -11,17 +11,17 @@ import { cn } from "@delulu/design-system/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { AccountActionsMenu } from "@/features/connections/account-actions-menu";
+import { AccountFilters } from "@/features/connections/account-filter";
+import { AccountStats } from "@/features/connections/account-stats";
+import { ConnectAccountDialog } from "@/features/connections/connect-account-header";
+import { SocialNotifications } from "@/features/connections/social-notifications";
 import { normalizePlatform } from "@/features/publishing/social-platform";
 import type { ConnectionView } from "@/shared/workspace-views";
 import { PageSection, PageShell } from "@/shell/navigation/page-shell";
 import { useApiClient } from "@/shell/providers/api-client";
 import { useWorkspaceSelection } from "@/shell/providers/workspace";
 import { useMutationAtom, useResourceAtom } from "@/shell/state/resources";
-import { AccountActionsMenu } from "./account-actions-menu";
-import { AccountFilters } from "./account-filter";
-import { AccountStats } from "./account-stats";
-import { ConnectAccountDialog } from "./connect-account-header";
-import { SocialNotifications } from "./social-notifications";
 
 type AccountStatus = "active" | "expiring" | "expired";
 

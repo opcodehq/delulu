@@ -18,6 +18,7 @@ import {
 } from "@delulu/design-system/components/ui/select";
 import { useState } from "react";
 import { toast } from "sonner";
+import { OperationsError } from "@/features/workspace/query-state";
 import { useApiClient } from "@/shell/providers/api-client";
 import { useWorkspaceSelection } from "@/shell/providers/workspace";
 import {
@@ -25,7 +26,6 @@ import {
   useResourceAtom,
   useResourceRegistry,
 } from "@/shell/state/resources";
-import { OperationsError } from "./query-state";
 
 const roles = ["owner", "admin", "editor", "viewer"] as const;
 type Role = (typeof roles)[number];

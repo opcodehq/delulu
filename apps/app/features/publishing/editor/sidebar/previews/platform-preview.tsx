@@ -1,14 +1,14 @@
 "use client";
 
 import type { SupportedSocialPlatform } from "@delulu/design-system/lib/social-config";
-import { FacebookPreview } from "./facebook-preview";
-import { InstagramPreview } from "./instagram-preview";
-import { LinkedInPreview } from "./linkedin-preview";
-import { usePreviewData } from "./preview-utils";
-import { ThreadsPreview } from "./threads-preview";
-import { TikTokPreview } from "./tiktok-preview";
-import { TwitterPreview } from "./twitter-preview";
-import { YouTubePreview } from "./youtube-preview";
+import { FacebookPreview } from "@/features/publishing/editor/sidebar/previews/facebook-preview";
+import { InstagramPreview } from "@/features/publishing/editor/sidebar/previews/instagram-preview";
+import { LinkedInPreview } from "@/features/publishing/editor/sidebar/previews/linkedin-preview";
+import { usePreviewData } from "@/features/publishing/editor/sidebar/previews/preview-utils";
+import { ThreadsPreview } from "@/features/publishing/editor/sidebar/previews/threads-preview";
+import { TikTokPreview } from "@/features/publishing/editor/sidebar/previews/tiktok-preview";
+import { TwitterPreview } from "@/features/publishing/editor/sidebar/previews/twitter-preview";
+import { YouTubePreview } from "@/features/publishing/editor/sidebar/previews/youtube-preview";
 
 function GenericPreview({ socialType }: { socialType: string }) {
   const { content, mediaUrl, hasImage, hasVideo, media } = usePreviewData(

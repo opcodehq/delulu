@@ -9,8 +9,8 @@ import {
 } from "@delulu/design-system/icons";
 import { cn } from "@delulu/design-system/lib/utils";
 import { usePathname } from "next/navigation";
-import { AppLink as Link } from "./app-link";
-import { usePendingHref } from "./route-transition";
+import { AppLink as Link } from "@/shell/navigation/app-link";
+import { usePendingHref } from "@/shell/navigation/route-transition";
 
 export function MobileBottomTabs() {
   const currentPathname = usePathname();

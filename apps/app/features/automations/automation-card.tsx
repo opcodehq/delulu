@@ -28,9 +28,9 @@ import {
   TickDouble01Icon,
 } from "@delulu/icons";
 import { useState } from "react";
+import type { AutomationResourceView } from "@/features/automations/automation-resource";
+import DeleteAlertDialog from "@/features/publishing/alerts/delete-post";
 import { AppLink as Link } from "@/shell/navigation/app-link";
-import DeleteAlertDialog from "../publishing/alerts/delete-post";
-import type { AutomationResourceView } from "./automation-resource";
 
 interface AutomationCardProps {
   automation: AutomationResourceView;

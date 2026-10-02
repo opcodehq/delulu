@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { type EditorMediaDetail, hydrateEditorMedia } from "./editor-media";
+import {
+  type EditorMediaDetail,
+  hydrateEditorMedia,
+} from "@/features/publishing/editor-media";
 
 describe("hydrateEditorMedia", () => {
   it("keeps the referenced video authoritative when a thumbnail also exists", () => {

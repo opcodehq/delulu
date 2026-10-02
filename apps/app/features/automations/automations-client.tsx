@@ -11,6 +11,15 @@ import { Icon } from "@delulu/design-system/providers/icon";
 import { Add01Icon, Loading03Icon } from "@delulu/icons";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { AutomationFilters } from "@/features/automations/automation-filters";
+import { AutomationList } from "@/features/automations/automation-list";
+import {
+  automationFromResource,
+  getApiErrorDetails,
+  useAutomationWorkspace,
+} from "@/features/automations/automation-resource";
+import { AutomationStats } from "@/features/automations/automation-stats";
+import { TemplatePickerDialog } from "@/features/automations/flow-builder/templates/template-picker-dialog";
 import { PageSection, PageShell } from "@/shell/navigation/page-shell";
 import { useAppRouter as useRouter } from "@/shell/navigation/route-transition";
 import { useApiClient } from "@/shell/providers/api-client";
@@ -20,15 +29,6 @@ import {
   useResourceRegistry,
 } from "@/shell/state/resources";
 import { usePermissions } from "@/shell/use-permissions";
-import { AutomationFilters } from "./automation-filters";
-import { AutomationList } from "./automation-list";
-import {
-  automationFromResource,
-  getApiErrorDetails,
-  useAutomationWorkspace,
-} from "./automation-resource";
-import { AutomationStats } from "./automation-stats";
-import { TemplatePickerDialog } from "./flow-builder/templates/template-picker-dialog";
 
 function RequestError({ error, retry }: { error: unknown; retry: () => void }) {
   const details = getApiErrorDetails(error);

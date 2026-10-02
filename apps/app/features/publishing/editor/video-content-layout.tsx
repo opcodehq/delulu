@@ -11,9 +11,9 @@ import { cn } from "@delulu/design-system/lib/utils";
 import { Icon } from "@delulu/design-system/providers/icon";
 import { Delete01Icon, Image01Icon, PencilEdit01Icon } from "@delulu/icons";
 import { useCallback, useState } from "react";
+import { MediaUploader } from "@/features/publishing/editor/media-uploader";
+import { VideoThumbnailSelector } from "@/features/publishing/editor/video-thumbnail-selector";
 import { useMediaUrl } from "@/features/publishing/use-media-url";
-import { MediaUploader } from "./media-uploader";
-import { VideoThumbnailSelector } from "./video-thumbnail-selector";
 
 interface VideoMedia {
   mediaType: "VIDEO";

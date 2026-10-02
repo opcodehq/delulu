@@ -26,6 +26,11 @@ import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
+  type ExistingMediaSelection,
+  existingMediaFiles,
+} from "@/features/publishing/editor/existing-media";
+import { MediaSelectionDialog } from "@/features/publishing/editor/media-selection-dialog";
+import {
   canAddMediaType,
   canUploadMore as canUploadMoreUtil,
   getDynamicMediaLimits,
@@ -34,11 +39,6 @@ import {
 import { useStore } from "@/features/publishing/store";
 import { useMediaStorage } from "@/features/publishing/use-media-storage";
 import { useMediaUrl } from "@/features/publishing/use-media-url";
-import {
-  type ExistingMediaSelection,
-  existingMediaFiles,
-} from "./existing-media";
-import { MediaSelectionDialog } from "./media-selection-dialog";
 
 interface MediaFile {
   id: string;

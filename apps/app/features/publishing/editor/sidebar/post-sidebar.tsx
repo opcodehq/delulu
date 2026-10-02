@@ -9,10 +9,10 @@ import {
 } from "@delulu/design-system/lib/social-config";
 import { cn } from "@delulu/design-system/lib/utils";
 import { useState } from "react";
+import { BasicSettings } from "@/features/publishing/editor/sidebar/basic-settings";
+import { PlatformPreview } from "@/features/publishing/editor/sidebar/previews";
 import { ReviewActivity } from "@/features/publishing/posts/review-activity";
 import { useSelectedSocialProviders } from "@/features/publishing/store";
-import { BasicSettings } from "./basic-settings";
-import { PlatformPreview } from "./previews";
 
 interface PostSidebarProps {
   postId?: string;

@@ -20,14 +20,14 @@ import {
   InstagramIcon,
   UserStoryIcon,
 } from "@delulu/icons";
-import { PostSelector } from "@/features/automations/post-selector";
+import { CommentReplyEditor } from "@/features/automations/flow-builder/panels/comment-reply-editor";
 import type {
   AutomationConditionOperator,
   AutomationTriggerType,
   CommentReply,
   TriggerStep,
-} from "../utils/flow-types";
-import { CommentReplyEditor } from "./comment-reply-editor";
+} from "@/features/automations/flow-builder/utils/flow-types";
+import { PostSelector } from "@/features/automations/post-selector";
 
 interface SocialProvider {
   _id: string;

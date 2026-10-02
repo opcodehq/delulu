@@ -12,17 +12,17 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { useApiClient } from "@/shell/providers/api-client";
-import { useWorkspace } from "@/shell/providers/workspace";
-import { useMutationAtom, useResourceAtom } from "@/shell/state/resources";
 import {
   ConnectAccountsStep,
   type ConnectionCallbackState,
-} from "./connect-accounts-step";
-import { GoalStep, type OnboardingGoal } from "./goal-step";
-import { OnboardingProgress } from "./onboarding-progress";
-import { PlanStep } from "./plan-step";
-import { ReadyStep } from "./ready-step";
+} from "@/features/onboarding/connect-accounts-step";
+import { GoalStep, type OnboardingGoal } from "@/features/onboarding/goal-step";
+import { OnboardingProgress } from "@/features/onboarding/onboarding-progress";
+import { PlanStep } from "@/features/onboarding/plan-step";
+import { ReadyStep } from "@/features/onboarding/ready-step";
+import { useApiClient } from "@/shell/providers/api-client";
+import { useWorkspace } from "@/shell/providers/workspace";
+import { useMutationAtom, useResourceAtom } from "@/shell/state/resources";
 
 type Step = "goal" | "connect" | "ready" | "plan";
 

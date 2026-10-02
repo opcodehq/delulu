@@ -1,7 +1,7 @@
 "use client";
 
+import type { AutomationTriggerType } from "@/features/automations/flow-builder/utils/flow-types";
 import { PostSelector } from "@/features/automations/post-selector";
-import type { AutomationTriggerType } from "../utils/flow-types";
 
 interface PostSelectorStepProps {
   socialProviderId: string;

@@ -1,10 +1,13 @@
-import type { NodePositions } from "../hooks/use-automation-state";
+import type { NodePositions } from "@/features/automations/flow-builder/hooks/use-automation-state";
 import type {
   AutomationStep,
   AutomationTriggerType,
   Note,
-} from "../utils/flow-types";
-import { createConditionStep, createSendDmStep } from "../utils/step-helpers";
+} from "@/features/automations/flow-builder/utils/flow-types";
+import {
+  createConditionStep,
+  createSendDmStep,
+} from "@/features/automations/flow-builder/utils/step-helpers";
 
 export interface TemplateContext {
   instagramUsername?: string;

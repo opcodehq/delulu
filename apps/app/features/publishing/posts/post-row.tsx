@@ -3,14 +3,14 @@
 import { SocialAvatarStack } from "@delulu/design-system/components/ui/social-avatar-stack";
 import { Icon } from "@delulu/design-system/providers/icon";
 import { DocumentAttachmentIcon } from "@delulu/icons";
-import type { ConnectionView, PostView } from "@/shared/workspace-views";
-import { PostActionsMenu } from "./post-actions-menu";
+import { PostActionsMenu } from "@/features/publishing/posts/post-actions-menu";
 import {
   getPostAvatarItems,
   getPostExcerpt,
   getPostTimeLabel,
-} from "./post-helpers";
-import { PostStatusBadge } from "./post-status-badge";
+} from "@/features/publishing/posts/post-helpers";
+import { PostStatusBadge } from "@/features/publishing/posts/post-status-badge";
+import type { ConnectionView, PostView } from "@/shared/workspace-views";
 
 interface PostRowProps {
   post: PostView;

@@ -9,18 +9,18 @@ import {
   DialogTitle,
 } from "@delulu/design-system/components/ui/dialog";
 import { useState } from "react";
-import { PostSelectorLoading } from "@/features/automations/post-selector";
-import { ResourceBoundary } from "@/shell/state/resources";
+import { AccountStep } from "@/features/automations/flow-builder/trigger-wizard/account-step";
+import { KeywordFilterStep } from "@/features/automations/flow-builder/trigger-wizard/keyword-filter-step";
+import { PostSelectorStep } from "@/features/automations/flow-builder/trigger-wizard/post-selector-step";
+import { TriggerTypeStep } from "@/features/automations/flow-builder/trigger-wizard/trigger-type-step";
 import type {
   AutomationTriggerType,
   KeywordFilter,
   TriggerStep,
-} from "../utils/flow-types";
-import { createTrigger } from "../utils/step-helpers";
-import { AccountStep } from "./account-step";
-import { KeywordFilterStep } from "./keyword-filter-step";
-import { PostSelectorStep } from "./post-selector-step";
-import { TriggerTypeStep } from "./trigger-type-step";
+} from "@/features/automations/flow-builder/utils/flow-types";
+import { createTrigger } from "@/features/automations/flow-builder/utils/step-helpers";
+import { PostSelectorLoading } from "@/features/automations/post-selector";
+import { ResourceBoundary } from "@/shell/state/resources";
 
 interface SocialProvider {
   _id: string;

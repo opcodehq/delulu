@@ -8,7 +8,7 @@ import { lazy, Suspense, useMemo, useState } from "react";
 import { AppLink as Link } from "@/shell/navigation/app-link";
 
 const DashboardChart = lazy(() =>
-  import("./dashboard-chart").then((module) => ({
+  import("@/features/dashboard/dashboard-chart").then((module) => ({
     default: module.DashboardChart,
   }))
 );

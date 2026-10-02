@@ -1,7 +1,7 @@
 "use client";
 
 import type { NodeProps } from "@xyflow/react";
-import type { Note } from "../utils/flow-types";
+import type { Note } from "@/features/automations/flow-builder/utils/flow-types";
 
 export function NoteNode({ data, selected }: NodeProps) {
   const note = data.note as Note;

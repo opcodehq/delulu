@@ -14,6 +14,14 @@ import { socialBackgroundColors } from "@delulu/design-system/lib/social-config"
 import { cn } from "@delulu/design-system/lib/utils";
 import { Icon } from "@delulu/design-system/providers/icon";
 import { LinkSquare02Icon } from "@delulu/icons";
+import { PostActionsMenu } from "@/features/publishing/posts/post-actions-menu";
+import {
+  getPostExcerpt,
+  getPostFirstMediaId,
+  getPostScheduledAt,
+  relativeTime,
+} from "@/features/publishing/posts/post-helpers";
+import { PostStatusBadge } from "@/features/publishing/posts/post-status-badge";
 import {
   normalizePlatform,
   platformLabel,
@@ -28,14 +36,6 @@ import { AppLink as Link } from "@/shell/navigation/app-link";
 import { useApiClient } from "@/shell/providers/api-client";
 import { useWorkspaceSelection } from "@/shell/providers/workspace";
 import { useResourceAtom } from "@/shell/state/resources";
-import { PostActionsMenu } from "./post-actions-menu";
-import {
-  getPostExcerpt,
-  getPostFirstMediaId,
-  getPostScheduledAt,
-  relativeTime,
-} from "./post-helpers";
-import { PostStatusBadge } from "./post-status-badge";
 
 const targetStatusVariant = {
   pending: "zinc",

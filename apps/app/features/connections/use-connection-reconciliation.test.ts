@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   connectionIsVisible,
   useConnectionReconciliation,
-} from "./use-connection-reconciliation";
+} from "@/features/connections/use-connection-reconciliation";
 
 const mocks = vi.hoisted(() => ({
   registry: { fetchResource: vi.fn() },

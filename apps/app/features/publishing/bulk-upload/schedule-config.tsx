@@ -6,7 +6,7 @@ import { NaturalDatePicker } from "@delulu/design-system/components/ui/natural-d
 import { cn } from "@delulu/design-system/lib/utils";
 import { format } from "date-fns";
 import { useState } from "react";
-import { computeScheduledAt } from "./bulk-upload-reducer";
+import { computeScheduledAt } from "@/features/publishing/bulk-upload/bulk-upload-reducer";
 
 const INTERVAL_PRESETS = [
   { label: "1 hour", minutes: 60 },

@@ -2,7 +2,7 @@
 import { cn } from "@delulu/design-system/lib/utils";
 import { Icon } from "@delulu/design-system/providers/icon";
 import { Cancel01Icon, Comment01Icon } from "@delulu/icons";
-import type { TriggerStep } from "../utils/flow-types";
+import type { TriggerStep } from "@/features/automations/flow-builder/utils/flow-types";
 
 const TRIGGER_LABELS: Record<string, string> = {
   COMMENT: "Post or Reel Comments",

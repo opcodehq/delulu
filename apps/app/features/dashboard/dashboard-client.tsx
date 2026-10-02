@@ -1,11 +1,11 @@
 "use client";
 
+import { DashboardContent } from "@/features/dashboard/dashboard-content";
 import { ReferralPrompt } from "@/features/onboarding/referral-prompt";
 import { OperationsError } from "@/features/workspace/query-state";
 import { useApiClient } from "@/shell/providers/api-client";
 import { useWorkspaceSelection } from "@/shell/providers/workspace";
 import { useResourceAtom } from "@/shell/state/resources";
-import { DashboardContent } from "./dashboard-content";
 
 export function DashboardClient() {
   const { resources } = useApiClient();

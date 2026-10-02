@@ -11,6 +11,7 @@ import {
   shouldDefaultUseMultiPostLayout,
   shouldUseMultiPostLayout,
 } from "@/features/publishing/platform-rules";
+import { cacheSavedPost } from "@/features/publishing/post-cache";
 import {
   useDateTime,
   usePost,
@@ -26,7 +27,6 @@ import {
   useResourceAtom,
   useResourceRegistry,
 } from "@/shell/state/resources";
-import { cacheSavedPost } from "./post-cache";
 
 export function usePostActions() {
   const { date } = useDateTime();

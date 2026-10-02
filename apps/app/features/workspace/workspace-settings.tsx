@@ -11,6 +11,10 @@ import {
 import { Input } from "@delulu/design-system/components/ui/input";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import {
+  OperationsError,
+  OperationsLoading,
+} from "@/features/workspace/query-state";
 import { useApiClient } from "@/shell/providers/api-client";
 import { useWorkspaceSelection } from "@/shell/providers/workspace";
 import {
@@ -18,7 +22,6 @@ import {
   useResourceAtom,
   useResourceRegistry,
 } from "@/shell/state/resources";
-import { OperationsError, OperationsLoading } from "./query-state";
 
 export function WorkspaceSettings() {
   const { resources } = useApiClient();

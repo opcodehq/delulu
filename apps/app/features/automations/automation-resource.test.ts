@@ -4,7 +4,7 @@ import {
   automationFromResource,
   getApiErrorDetails,
   triggersToResource,
-} from "./automation-resource";
+} from "@/features/automations/automation-resource";
 
 const resource = {
   id: "aut_1",

@@ -3,7 +3,7 @@
 import { cn } from "@delulu/design-system/lib/utils";
 import { Icon } from "@delulu/design-system/providers/icon";
 import { Cancel01Icon, FilterIcon } from "@delulu/icons";
-import type { ConditionStep } from "../utils/flow-types";
+import type { ConditionStep } from "@/features/automations/flow-builder/utils/flow-types";
 
 const OPERATOR_LABELS: Record<string, string> = {
   always: "Always (any comment)",

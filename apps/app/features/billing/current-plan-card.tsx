@@ -27,12 +27,12 @@ import { CURRENCY_SYMBOLS, PLANS } from "@delulu/payments";
 import { format } from "date-fns";
 import { useState } from "react";
 import { toast } from "sonner";
+import { CancellationFlow } from "@/features/billing/cancellation-flow";
 import { useCurrency } from "@/features/billing/use-currency";
 import { useSubscription } from "@/features/billing/use-subscription";
 import { useApiClient } from "@/shell/providers/api-client";
 import { useWorkspaceSelection } from "@/shell/providers/workspace";
 import { useMutationAtom } from "@/shell/state/resources";
-import { CancellationFlow } from "./cancellation-flow";
 
 export function CurrentPlanCard() {
   const [isLoadingPortal, setIsLoadingPortal] = useState(false);

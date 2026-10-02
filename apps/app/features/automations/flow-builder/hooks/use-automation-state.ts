@@ -6,13 +6,13 @@ import type {
   AutomationStep,
   Note,
   TriggerStep,
-} from "../utils/flow-types";
+} from "@/features/automations/flow-builder/utils/flow-types";
 import {
   insertStepAfter,
   removeStep,
   removeStepFromTriggers,
   updateStep,
-} from "../utils/step-helpers";
+} from "@/features/automations/flow-builder/utils/step-helpers";
 
 export type NodePositions = Record<string, { x: number; y: number }>;
 

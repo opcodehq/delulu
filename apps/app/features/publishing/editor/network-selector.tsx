@@ -16,12 +16,12 @@ import {
 } from "@delulu/design-system/components/ui/tooltip";
 import { Icon } from "@delulu/design-system/providers/icon";
 import { ArrowDown01Icon } from "@delulu/icons";
+import { SocialIcon } from "@/features/publishing/editor/sidebar/social-icon";
 import { getPlatformsInDefault } from "@/features/publishing/platform-rules";
 import {
   useSelectedSocialProviders,
   useStore,
 } from "@/features/publishing/store";
-import { SocialIcon } from "./sidebar/social-icon";
 
 export function AlternativeContentSelector() {
   const { post, setPost } = useStore((state) => ({

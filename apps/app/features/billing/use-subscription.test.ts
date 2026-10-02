@@ -1,6 +1,6 @@
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useSubscription } from "./use-subscription";
+import { useSubscription } from "@/features/billing/use-subscription";
 
 const mocks = vi.hoisted(() => ({
   query: {
@@ -47,7 +47,7 @@ vi.mock("@/shell/state/resources", () => ({
   useResourceAtom: () => mocks.query,
 }));
 
-vi.mock("../../shell/providers/workspace", () => ({
+vi.mock("@/shell/providers/workspace", () => ({
   useWorkspaceSelection: () => mocks.workspace,
 }));
 

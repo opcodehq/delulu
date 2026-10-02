@@ -6,7 +6,7 @@ import { Icon } from "@delulu/design-system/providers/icon";
 import { CloudUploadIcon } from "@delulu/icons";
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
-import type { BulkVideo } from "./bulk-upload-reducer";
+import type { BulkVideo } from "@/features/publishing/bulk-upload/bulk-upload-reducer";
 
 interface BulkDropzoneProps {
   onFilesSelected: (videos: BulkVideo[]) => void;

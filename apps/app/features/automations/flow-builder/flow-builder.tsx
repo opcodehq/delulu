@@ -24,6 +24,34 @@ import {
 } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import {
+  type AutomationResourceView,
+  automationConfigurationChanged,
+  automationFromResource,
+  getApiErrorDetails,
+  triggersToResource,
+  useAutomationWorkspace,
+} from "@/features/automations/automation-resource";
+import { FlowCanvas } from "@/features/automations/flow-builder/flow-canvas";
+import { FlowSidebarPanel } from "@/features/automations/flow-builder/flow-sidebar-panel";
+import { FlowToolbar } from "@/features/automations/flow-builder/flow-toolbar";
+import type { NodePositions } from "@/features/automations/flow-builder/hooks/use-automation-state";
+import { useAutomationState } from "@/features/automations/flow-builder/hooks/use-automation-state";
+import { MobileFlowEditor } from "@/features/automations/flow-builder/mobile-flow-editor";
+import { getTemplateBySlug } from "@/features/automations/flow-builder/templates/automation-templates";
+import { TriggerWizard } from "@/features/automations/flow-builder/trigger-wizard/trigger-wizard";
+import { stepsToFlow } from "@/features/automations/flow-builder/utils/auto-layout";
+import type {
+  AutomationStep,
+  Note,
+  TriggerStep,
+} from "@/features/automations/flow-builder/utils/flow-types";
+import { validateFlow } from "@/features/automations/flow-builder/utils/flow-validation";
+import {
+  createConditionStep,
+  createId,
+  createSendDmStep,
+} from "@/features/automations/flow-builder/utils/step-helpers";
 import { useSubscription } from "@/features/billing/use-subscription";
 import { AppLink as Link } from "@/shell/navigation/app-link";
 import { useAppRouter as useRouter } from "@/shell/navigation/route-transition";
@@ -34,30 +62,6 @@ import {
   useResourceRegistry,
 } from "@/shell/state/resources";
 import { usePermissions } from "@/shell/use-permissions";
-import {
-  type AutomationResourceView,
-  automationConfigurationChanged,
-  automationFromResource,
-  getApiErrorDetails,
-  triggersToResource,
-  useAutomationWorkspace,
-} from "../automation-resource";
-import { FlowCanvas } from "./flow-canvas";
-import { FlowSidebarPanel } from "./flow-sidebar-panel";
-import { FlowToolbar } from "./flow-toolbar";
-import type { NodePositions } from "./hooks/use-automation-state";
-import { useAutomationState } from "./hooks/use-automation-state";
-import { MobileFlowEditor } from "./mobile-flow-editor";
-import { getTemplateBySlug } from "./templates/automation-templates";
-import { TriggerWizard } from "./trigger-wizard/trigger-wizard";
-import { stepsToFlow } from "./utils/auto-layout";
-import type { AutomationStep, Note, TriggerStep } from "./utils/flow-types";
-import { validateFlow } from "./utils/flow-validation";
-import {
-  createConditionStep,
-  createId,
-  createSendDmStep,
-} from "./utils/step-helpers";
 
 const BUTTON_HANDLE_RE = /^button_(\d+)$/;
 

@@ -1,4 +1,7 @@
-import type { AutomationStep, TriggerStep } from "./flow-types";
+import type {
+  AutomationStep,
+  TriggerStep,
+} from "@/features/automations/flow-builder/utils/flow-types";
 
 export interface ValidationResult {
   valid: boolean;

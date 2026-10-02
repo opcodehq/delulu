@@ -4,7 +4,7 @@ import type {
   ConditionStep,
   SendDmStep,
   TriggerStep,
-} from "./flow-types";
+} from "@/features/automations/flow-builder/utils/flow-types";
 
 export function createId() {
   return nanoid(10);

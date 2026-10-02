@@ -7,7 +7,7 @@ import {
   AppStateProvider,
   ResourceBoundary,
   useResourceAtom,
-} from "./resources";
+} from "@/shell/state/resources";
 
 describe("AppStateProvider SSR", () => {
   it("does not start authenticated queries", async () => {

@@ -7,9 +7,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@delulu/design-system/components/ui/dialog";
+import { InstagramSettingsDisplay } from "@/features/publishing/editor/sidebar/instagram-settings";
+import { TikTokSettingsDisplay } from "@/features/publishing/editor/sidebar/tiktok-settings";
 import { usePost } from "@/features/publishing/store";
-import { InstagramSettingsDisplay } from "./instagram-settings";
-import { TikTokSettingsDisplay } from "./tiktok-settings";
 
 interface PlatformSettingsDialogProps {
   platform: SocialType;

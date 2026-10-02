@@ -1,6 +1,6 @@
-export { AutomationCard } from "./automation-card";
-export { AutomationFilters } from "./automation-filters";
-export { AutomationList } from "./automation-list";
-export { AutomationStats } from "./automation-stats";
-export { default as AutomationsClient } from "./automations-client";
-export { AutomationsHeader } from "./automations-header";
+export { AutomationCard } from "@/features/automations/automation-card";
+export { AutomationFilters } from "@/features/automations/automation-filters";
+export { AutomationList } from "@/features/automations/automation-list";
+export { AutomationStats } from "@/features/automations/automation-stats";
+export { default as AutomationsClient } from "@/features/automations/automations-client";
+export { AutomationsHeader } from "@/features/automations/automations-header";

@@ -6,11 +6,11 @@ import { Badge } from "@delulu/design-system/components/ui/badge";
 import { Button } from "@delulu/design-system/components/ui/button";
 import { Card, CardContent } from "@delulu/design-system/components/ui/card";
 import { toast } from "sonner";
+import type { Post, PostLayout } from "@/features/publishing/posts/types";
 import { AppLink as Link } from "@/shell/navigation/app-link";
 import { useApiClient } from "@/shell/providers/api-client";
 import { useWorkspace } from "@/shell/providers/workspace";
 import { useMutationAtom } from "@/shell/state/resources";
-import type { Post, PostLayout } from "./types";
 
 interface PostCardProps {
   post: Post;

@@ -11,7 +11,7 @@ import {
   NavigationProvider,
   RouteContent,
   useAppRouter,
-} from "./route-transition";
+} from "@/shell/navigation/route-transition";
 
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => router }));

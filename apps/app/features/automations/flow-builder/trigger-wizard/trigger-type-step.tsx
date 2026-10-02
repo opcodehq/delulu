@@ -4,7 +4,7 @@ import { Badge } from "@delulu/design-system/components/ui/badge";
 import { cn } from "@delulu/design-system/lib/utils";
 import { Icon } from "@delulu/design-system/providers/icon";
 import { AtIcon, Comment01Icon, UserStoryIcon } from "@delulu/icons";
-import type { AutomationTriggerType } from "../utils/flow-types";
+import type { AutomationTriggerType } from "@/features/automations/flow-builder/utils/flow-types";
 
 interface TriggerOption {
   type: AutomationTriggerType;

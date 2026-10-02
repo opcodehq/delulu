@@ -1,7 +1,7 @@
 import { AnalyticsProvider } from "@delulu/analytics";
 import { AuthProvider } from "@delulu/auth/provider";
 import { UserJot } from "@/features/analytics/userjot";
-import "./styles.css";
+import "@/app/styles.css";
 import { DesignSystemProvider } from "@delulu/design-system";
 import { fonts } from "@delulu/design-system/lib/fonts";
 import { NuqsAdapter } from "nuqs/adapters/next/app";

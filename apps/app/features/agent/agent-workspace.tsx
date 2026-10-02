@@ -15,6 +15,7 @@ import { Textarea } from "@delulu/design-system/components/ui/textarea";
 import { cn } from "@delulu/design-system/lib/utils";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { AgentSkills } from "@/features/agent/agent-skills";
 import { useApiClient } from "@/shell/providers/api-client";
 import { useWorkspace } from "@/shell/providers/workspace";
 import {
@@ -22,7 +23,6 @@ import {
   useResourceAtom,
   useResourceRegistry,
 } from "@/shell/state/resources";
-import { AgentSkills } from "./agent-skills";
 
 const activeStatuses = new Set([
   "queued",

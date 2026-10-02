@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { ComponentProps } from "react";
-import { useAppRouter } from "./route-transition";
+import { useAppRouter } from "@/shell/navigation/route-transition";
 
 /** Next handles modified clicks; normal navigation gets immediate shell feedback. */
 export function AppLink({

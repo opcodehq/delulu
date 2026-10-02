@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { TriggerStep } from "./flow-types";
-import { validateFlow } from "./flow-validation";
+import type { TriggerStep } from "@/features/automations/flow-builder/utils/flow-types";
+import { validateFlow } from "@/features/automations/flow-builder/utils/flow-validation";
 
 const trigger = (overrides: Partial<TriggerStep> = {}): TriggerStep => ({
   id: "trigger-1",

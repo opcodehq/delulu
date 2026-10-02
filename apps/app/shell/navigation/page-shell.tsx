@@ -1,7 +1,7 @@
 import { DottedSeparator } from "@delulu/design-system/components/ui/dotted-separator";
 import { cn } from "@delulu/design-system/lib/utils";
 import type { ReactNode } from "react";
-import { Header } from "./header";
+import { Header } from "@/shell/navigation/header";
 
 interface PageShellProps {
   /** Breadcrumb trail (everything before the current page). */

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   socialConnectionProgressCopy,
   socialSuccessCopy,
-} from "./social-success";
+} from "@/features/connections/social-success";
 
 describe("socialSuccessCopy", () => {
   it("includes provider, username, and CLI completion guidance", () => {

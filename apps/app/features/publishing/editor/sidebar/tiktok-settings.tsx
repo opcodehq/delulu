@@ -27,11 +27,11 @@ import { InformationCircleIcon } from "@delulu/icons";
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { TikTokConsentBanner } from "@/features/publishing/editor/sidebar/tiktok-consent-banner";
 import { useStore } from "@/features/publishing/store";
 import { useApiClient } from "@/shell/providers/api-client";
 import { useWorkspace } from "@/shell/providers/workspace";
 import { useResourceAtom } from "@/shell/state/resources";
-import { TikTokConsentBanner } from "./tiktok-consent-banner";
 
 interface TikTokSettingsProps {
   hasVideo: boolean;

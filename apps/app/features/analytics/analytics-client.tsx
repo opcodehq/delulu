@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { AnalyticsContent } from "@/features/analytics/analytics-content";
 import { OperationsError } from "@/features/workspace/query-state";
 import { FeatureGate } from "@/shell/feature-gate";
 import { useApiClient } from "@/shell/providers/api-client";
 import { useWorkspaceSelection } from "@/shell/providers/workspace";
 import { useResourceAtom } from "@/shell/state/resources";
-import { AnalyticsContent } from "./analytics-content";
 
 export function AnalyticsClient() {
   const { resources } = useApiClient();

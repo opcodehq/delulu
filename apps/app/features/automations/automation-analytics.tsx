@@ -18,15 +18,15 @@ import {
   TickDouble01Icon,
 } from "@delulu/icons";
 import { useMemo } from "react";
-import { AppLink as Link } from "@/shell/navigation/app-link";
-import { PageSection, PageShell } from "@/shell/navigation/page-shell";
-import { useApiClient } from "@/shell/providers/api-client";
-import { useResourceAtom } from "@/shell/state/resources";
 import {
   automationFromResource,
   getApiErrorDetails,
   useAutomationWorkspace,
-} from "./automation-resource";
+} from "@/features/automations/automation-resource";
+import { AppLink as Link } from "@/shell/navigation/app-link";
+import { PageSection, PageShell } from "@/shell/navigation/page-shell";
+import { useApiClient } from "@/shell/providers/api-client";
+import { useResourceAtom } from "@/shell/state/resources";
 
 function formatDate(timestamp: string): string {
   return new Date(timestamp).toLocaleString("en-US", {

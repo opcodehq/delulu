@@ -3,7 +3,7 @@
 import { Icon } from "@delulu/design-system/providers/icon";
 import { Comment01Icon } from "@delulu/icons";
 import { Handle, type NodeProps, Position } from "@xyflow/react";
-import type { TriggerStep } from "../utils/flow-types";
+import type { TriggerStep } from "@/features/automations/flow-builder/utils/flow-types";
 
 const TRIGGER_LABELS: Record<string, string> = {
   COMMENT: "Post or Reel Comments",

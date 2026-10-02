@@ -1,6 +1,6 @@
 import { cleanup, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { useFeatureFlag } from "./use-feature-flag";
+import { useFeatureFlag } from "@/shell/use-feature-flag";
 
 vi.mock("@delulu/auth", () => ({
   useUser: () => ({

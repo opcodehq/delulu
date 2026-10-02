@@ -21,7 +21,7 @@ import {
   TabsTrigger,
 } from "@delulu/design-system/components/ui/tabs";
 import { useId, useState } from "react";
-import type { InsightPoint } from "./analytics-content";
+import type { InsightPoint } from "@/features/analytics/analytics-content";
 
 const { CartesianGrid, Area, AreaChart, XAxis, YAxis } = RechartsPrimitive;
 

@@ -11,7 +11,7 @@ import {
 import type {
   AutomationConditionOperator,
   ConditionStep,
-} from "../utils/flow-types";
+} from "@/features/automations/flow-builder/utils/flow-types";
 
 const OPERATORS = [
   { value: "is_follower", label: "User follows you" },

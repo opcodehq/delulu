@@ -20,10 +20,10 @@ import {
   MoreHorizontalIcon,
 } from "@delulu/icons";
 import { useState } from "react";
+import { AutomationCard } from "@/features/automations/automation-card";
+import type { AutomationResourceView } from "@/features/automations/automation-resource";
+import DeleteAlertDialog from "@/features/publishing/alerts/delete-post";
 import { AppLink as Link } from "@/shell/navigation/app-link";
-import DeleteAlertDialog from "../publishing/alerts/delete-post";
-import { AutomationCard } from "./automation-card";
-import type { AutomationResourceView } from "./automation-resource";
 
 interface AutomationListProps {
   automations: AutomationResourceView[];

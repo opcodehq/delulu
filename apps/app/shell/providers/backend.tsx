@@ -5,9 +5,9 @@ import { Button } from "@delulu/design-system/components/ui/button";
 import { Skeleton } from "@delulu/design-system/components/ui/skeleton";
 import type { ReactNode } from "react";
 import { PageLoading } from "@/shell/loading";
+import { ApiClientProvider, useApiClient } from "@/shell/providers/api-client";
+import { WorkspaceProvider } from "@/shell/providers/workspace";
 import { AppStateProvider, ResourceBoundary } from "@/shell/state/resources";
-import { ApiClientProvider, useApiClient } from "./api-client";
-import { WorkspaceProvider } from "./workspace";
 
 function OnboardingFrame({ children }: { readonly children: ReactNode }) {
   return (

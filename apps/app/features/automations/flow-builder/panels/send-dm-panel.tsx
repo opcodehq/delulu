@@ -1,7 +1,7 @@
 "use client";
 
-import type { SendDmStep } from "../utils/flow-types";
-import { DmComposer } from "./dm-composer";
+import { DmComposer } from "@/features/automations/flow-builder/panels/dm-composer";
+import type { SendDmStep } from "@/features/automations/flow-builder/utils/flow-types";
 
 interface SendDmPanelProps {
   step: SendDmStep;

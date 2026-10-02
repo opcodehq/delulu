@@ -43,7 +43,7 @@ vi.mock("@/shell/providers/workspace", () => ({
   useWorkspace: () => ({ workspaceId: "a" }),
 }));
 
-import { AppShell } from "../app-shell";
+import { AppShell } from "@/shell/app-shell";
 
 describe("AppShell navigation", () => {
   it("renders ordinary pages while editor connections are still loading", () => {

@@ -36,9 +36,11 @@ vi.mock("@/shell/state/resources", () => ({
 vi.mock("@/shell/feature-gate", () => ({
   FeatureGate: ({ children }: { children: React.ReactNode }) => children,
 }));
-vi.mock("./analytics-content", () => ({ AnalyticsContent: () => null }));
+vi.mock("@/features/analytics/analytics-content", () => ({
+  AnalyticsContent: () => null,
+}));
 
-import { AnalyticsClient } from "./analytics-client";
+import { AnalyticsClient } from "@/features/analytics/analytics-client";
 
 afterEach(cleanup);
 it("never requests the previous workspace's connection after switching", async () => {

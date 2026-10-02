@@ -20,6 +20,13 @@ import { format } from "date-fns";
 import { Effect } from "effect";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ComposerToolbar } from "@/features/publishing/editor/composer-toolbar";
+import { ContentModule } from "@/features/publishing/editor/content-module";
+import { AlternativeContentSelector } from "@/features/publishing/editor/network-selector";
+import { ReviewBanner } from "@/features/publishing/editor/review-banner";
+import { PostSidebar } from "@/features/publishing/editor/sidebar/post-sidebar";
+import { SocialIcon } from "@/features/publishing/editor/sidebar/social-icon";
+import SocialSelector from "@/features/publishing/editor/sidebar/social-selector";
 import type { EditorMediaDetail } from "@/features/publishing/editor-media";
 import { getSingleProviderInDefault } from "@/features/publishing/platform-rules";
 import {
@@ -31,13 +38,6 @@ import {
 import { useApiClient } from "@/shell/providers/api-client";
 import { useWorkspace } from "@/shell/providers/workspace";
 import { useResourceAtom } from "@/shell/state/resources";
-import { ComposerToolbar } from "./composer-toolbar";
-import { ContentModule } from "./content-module";
-import { AlternativeContentSelector } from "./network-selector";
-import { ReviewBanner } from "./review-banner";
-import { PostSidebar } from "./sidebar/post-sidebar";
-import { SocialIcon } from "./sidebar/social-icon";
-import SocialSelector from "./sidebar/social-selector";
 
 interface PostCreatorProps {
   postId?: string;

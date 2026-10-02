@@ -1,5 +1,9 @@
 import type { Edge, Node } from "@xyflow/react";
-import type { AutomationStep, SendDmStep, TriggerStep } from "./flow-types";
+import type {
+  AutomationStep,
+  SendDmStep,
+  TriggerStep,
+} from "@/features/automations/flow-builder/utils/flow-types";
 
 const NODE_WIDTH = 280;
 const NODE_HEIGHT = 80;

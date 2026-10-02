@@ -14,7 +14,7 @@ import {
   Time01Icon,
   ViewIcon,
 } from "@delulu/icons";
-import type { InsightPost } from "./analytics-content";
+import type { InsightPost } from "@/features/analytics/analytics-content";
 
 interface TopPostsListProps {
   posts: readonly InsightPost[];

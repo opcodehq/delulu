@@ -13,8 +13,8 @@ import {
 } from "@delulu/icons";
 import { format } from "date-fns";
 import { AnimatePresence, motion } from "motion/react";
-import type { BulkVideo } from "./bulk-upload-reducer";
-import { computeScheduledAt } from "./bulk-upload-reducer";
+import type { BulkVideo } from "@/features/publishing/bulk-upload/bulk-upload-reducer";
+import { computeScheduledAt } from "@/features/publishing/bulk-upload/bulk-upload-reducer";
 
 interface BulkVideoListProps {
   videos: BulkVideo[];

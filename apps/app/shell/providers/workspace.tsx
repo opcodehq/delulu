@@ -8,8 +8,8 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useApiClient } from "@/shell/providers/api-client";
 import { useResourceAtom } from "@/shell/state/resources";
-import { useApiClient } from "./api-client";
 
 const STORAGE_KEY = "delulu.workspaceId";
 

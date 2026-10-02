@@ -14,7 +14,7 @@ import { cn } from "@delulu/design-system/lib/utils";
 import type {
   AutomationConditionOperator,
   KeywordFilter,
-} from "../utils/flow-types";
+} from "@/features/automations/flow-builder/utils/flow-types";
 
 const KEYWORD_OPERATORS: {
   value: AutomationConditionOperator;

@@ -2,8 +2,8 @@
 
 import type { PlanType } from "@delulu/payments";
 import { useApiClient } from "@/shell/providers/api-client";
+import { useWorkspaceSelection } from "@/shell/providers/workspace";
 import { useResourceAtom } from "@/shell/state/resources";
-import { useWorkspaceSelection } from "../../shell/providers/workspace";
 
 export interface SubscriptionView {
   id: string;

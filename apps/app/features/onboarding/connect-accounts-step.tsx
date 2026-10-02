@@ -33,13 +33,13 @@ import {
 } from "@delulu/icons";
 import { useState } from "react";
 import { toast } from "sonner";
+import type { OnboardingGoal } from "@/features/onboarding/goal-step";
 import type { ConnectionView } from "@/shared/workspace-views";
 import { AppLink as Link } from "@/shell/navigation/app-link";
 import { useApiClient } from "@/shell/providers/api-client";
 import { useWorkspace } from "@/shell/providers/workspace";
 import { useMutationAtom } from "@/shell/state/resources";
 import { useFeatureFlag } from "@/shell/use-feature-flag";
-import type { OnboardingGoal } from "./goal-step";
 
 const supportedPlatforms: SupportedSocialPlatform[] = [
   "INSTAGRAM",

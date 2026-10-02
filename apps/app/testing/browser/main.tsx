@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 import { lazy, Suspense } from "react";
-import "../../app/styles.css";
+import "@/app/styles.css";
 import { DesignSystemProvider } from "@delulu/design-system";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { createRoot } from "react-dom/client";
@@ -11,8 +11,8 @@ import { CalendarClient } from "@/features/publishing/calendar/calendar-client";
 import PostsClient from "@/features/publishing/posts/posts-client";
 import { AppShell } from "@/shell/app-shell";
 import { PageLoading } from "@/shell/loading";
-import { installFixtures, pending, requests } from "./fixtures";
-import { navigate, usePathname } from "./navigation";
+import { installFixtures, pending, requests } from "@/testing/browser/fixtures";
+import { navigate, usePathname } from "@/testing/browser/navigation";
 
 installFixtures();
 document.body.dataset.density = "compact";

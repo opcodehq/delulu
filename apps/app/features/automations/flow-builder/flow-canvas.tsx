@@ -18,10 +18,10 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ConditionNode } from "./nodes/condition-node";
-import { NoteNode } from "./nodes/note-node";
-import { SendDmNode } from "./nodes/send-dm-node";
-import { TriggerNode } from "./nodes/trigger-node";
+import { ConditionNode } from "@/features/automations/flow-builder/nodes/condition-node";
+import { NoteNode } from "@/features/automations/flow-builder/nodes/note-node";
+import { SendDmNode } from "@/features/automations/flow-builder/nodes/send-dm-node";
+import { TriggerNode } from "@/features/automations/flow-builder/nodes/trigger-node";
 
 const nodeTypes: NodeTypes = {
   trigger: TriggerNode,
