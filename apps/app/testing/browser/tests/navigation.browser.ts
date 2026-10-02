@@ -250,6 +250,10 @@ test("dashboard recovery is neutral with a ghost retry action", async ({
   await expect(
     page.getByText("1 post failed to publish", { exact: true })
   ).toBeVisible();
+  const edit = page.getByRole("button", { name: "Edit post", exact: true });
+  const hitArea = await edit.boundingBox();
+  expect(hitArea?.width).toBeGreaterThanOrEqual(44);
+  expect(hitArea?.height).toBeGreaterThanOrEqual(44);
   const retry = page.getByRole("button", { name: "Retry", exact: true });
   await expect(retry).toHaveAttribute("data-variant", "ghost");
   await expect(retry).toHaveCSS("background-image", "none");

@@ -137,6 +137,7 @@ function FailedPostRow({
         className="text-muted-foreground"
         onClick={onEdit}
         size="icon-sm"
+        style={{ minHeight: 44, minWidth: 44 }}
         variant="ghost"
       >
         <Icon icon={PencilEdit02Icon} size={15} />
