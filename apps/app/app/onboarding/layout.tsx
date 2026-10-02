@@ -1,6 +1,6 @@
 import { auth } from "@delulu/auth/server";
 import { redirect } from "next/navigation";
-import { BackendProviders } from "@/components/providers/backend";
+import { BackendProviders } from "@/shell/providers/backend";
 
 export const dynamic = "force-dynamic";
 

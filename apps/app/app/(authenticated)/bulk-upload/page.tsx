@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { BulkUploadPage } from "@/components/bulk-upload/bulk-upload-page";
+import { BulkUploadPage } from "@/features/publishing/bulk-upload/bulk-upload-page";
 
 export const dynamic = "force-dynamic";
 

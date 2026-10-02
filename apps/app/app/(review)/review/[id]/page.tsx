@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { ReviewClient } from "./review-client";
+import { ReviewClient } from "@/app/(review)/review/[id]/review-client";
 
 export const dynamic = "force-dynamic";
 

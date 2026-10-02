@@ -1,0 +1,4 @@
+interface:
+  display_name: "Make Motion Reel"
+  short_description: "Turn a reel script into an on-brand motion-graphics video."
+  default_prompt: "Use $make-motion-reel to turn my script into a vertical motion-graphics reel."

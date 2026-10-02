@@ -1,4 +1,4 @@
-import { DEFAULT_BLUESKY_SETTINGS } from "@delulu/validators/constants/settings";
+import { DEFAULT_BLUESKY_SETTINGS } from "@delulu/core/publishing/constants/settings";
 import type { PlatformSettings } from "../../types";
 
 export const blueskySettings: PlatformSettings = {

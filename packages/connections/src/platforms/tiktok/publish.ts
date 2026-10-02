@@ -3,7 +3,7 @@ import {
   promotionContentTypes,
   type SocialPublishInputType,
   type TikTokSettings,
-} from "@delulu/validators/post";
+} from "@delulu/core/publishing/post";
 import axios from "axios";
 import { Duration, Effect } from "effect";
 import {

@@ -1,5 +1,7 @@
 import { Suspense } from "react";
-import { LinkedInAccountSelect } from "./linkedin-account-select";
+import { LinkedInAccountSelect } from "@/app/linkedin-account-select/linkedin-account-select";
+
+import { AuthorizationShell } from "@/shell/navigation/authorization-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -7,9 +9,9 @@ export default function LinkedInAccountSelectPage() {
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-screen items-center justify-center p-6">
+        <AuthorizationShell>
           <output>Loading LinkedIn destinations…</output>
-        </main>
+        </AuthorizationShell>
       }
     >
       <LinkedInAccountSelect />

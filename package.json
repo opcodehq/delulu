@@ -51,7 +51,8 @@
     "clean": "git clean -xdf node_modules",
     "check": "ultracite check",
     "fix": "ultracite fix",
-    "prepare": "lefthook install"
+    "prepare": "lefthook install",
+    "verify:browser": "pnpm --filter app test:browser"
   },
   "devDependencies": {
     "@auto-it/first-time-contributor": "^11.3.0",

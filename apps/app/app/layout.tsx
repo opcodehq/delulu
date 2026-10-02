@@ -1,5 +1,7 @@
-import { UserJot } from "@/components/analytics/userjot";
-import "./styles.css";
+import { AnalyticsProvider } from "@delulu/analytics";
+import { AuthProvider } from "@delulu/auth/provider";
+import { UserJot } from "@/features/analytics/userjot";
+import "@/app/styles.css";
 import { DesignSystemProvider } from "@delulu/design-system";
 import { fonts } from "@delulu/design-system/lib/fonts";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
@@ -22,13 +24,16 @@ const RootLayout = ({ children }: RootLayoutProperties) => (
         />
       )}
     </head>
-    <body>
-      <DesignSystemProvider
-        platform="app"
-        privacyUrl="https://delulu.social/legal/privacy-policy"
-        termsUrl="https://delulu.social/legal/terms-of-service"
-      >
-        <NuqsAdapter>{children}</NuqsAdapter>
+    <body data-density="compact" data-texture="dither">
+      <DesignSystemProvider>
+        <AuthProvider
+          privacyUrl="https://delulu.social/legal/privacy-policy"
+          termsUrl="https://delulu.social/legal/terms-of-service"
+        >
+          <AnalyticsProvider platform="app">
+            <NuqsAdapter>{children}</NuqsAdapter>
+          </AnalyticsProvider>
+        </AuthProvider>
       </DesignSystemProvider>
       <UserJot />
     </body>

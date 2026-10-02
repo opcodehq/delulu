@@ -1,0 +1,274 @@
+{
+  "title": "DevDay: 20 launches, 2 matter",
+  "format": "reel",
+  "bpm": 120,
+  "loop": true,
+  "scenes": [
+    {
+      "id": "hook",
+      "duration": 3.5,
+      "blocks": [
+        {
+          "type": "headline",
+          "static": true,
+          "size": "m",
+          "lines": ["*20* launches. _2_ matter."]
+        },
+        {
+          "type": "launches",
+          "static": true,
+          "logo": "openai",
+          "title": "DevDay",
+          "count": 20,
+          "tiles": [
+            {
+              "title": "Spaces"
+            },
+            {
+              "title": "Ultrafast"
+            },
+            {
+              "title": "$500 Pro"
+            },
+            {
+              "title": "Decisions API"
+            },
+            {
+              "title": "GPT-6.1 Sol"
+            },
+            {
+              "title": "DOTS"
+            }
+          ],
+          "keep": [15, 18],
+          "collapseAt": 1.5
+        }
+      ]
+    },
+    {
+      "id": "speedrun",
+      "duration": 20,
+      "blocks": [
+        {
+          "type": "headline",
+          "size": "m",
+          "kicker": "Speedrun",
+          "lines": ["The rest."]
+        },
+        {
+          "type": "launches",
+          "cols": 2,
+          "count": 4,
+          "tiles": [
+            {
+              "title": "Spaces",
+              "note": "Notion, but your agents work in it",
+              "at": 1.5
+            },
+            {
+              "title": "Ultrafast",
+              "note": "Astra 8\u00d7 faster, 6\u00d7 the cost",
+              "at": 5
+            },
+            {
+              "title": "$500 Pro plan",
+              "note": "25\u00d7 the usage of Plus",
+              "at": 8.5
+            },
+            {
+              "title": "Decisions API",
+              "note": "next move in a fraction of a second",
+              "at": 12
+            }
+          ],
+          "sweepAt": 17.5
+        },
+        {
+          "type": "headline",
+          "size": "m",
+          "align": "center",
+          "lines": ["Cool. Moving on."],
+          "at": 17
+        }
+      ]
+    },
+    {
+      "id": "sol",
+      "duration": 9.5,
+      "blocks": [
+        {
+          "type": "headline",
+          "size": "m",
+          "kicker": "Matters #1",
+          "lines": ["*GPT-6.1 Sol*"]
+        },
+        {
+          "type": "leaderboard",
+          "key": "board",
+          "title": "DeepSWE leaderboard",
+          "column": "Cost / task",
+          "rows": [
+            {
+              "name": "Astra",
+              "logo": "openai",
+              "note": "OpenAI \u00b7 flagship",
+              "value": "$4\u20137"
+            },
+            {
+              "name": "GPT-6.1 Sol",
+              "logo": "openai",
+              "note": "OpenAI \u00b7 new",
+              "value": "<$1"
+            }
+          ],
+          "rerank": {
+            "at": 3,
+            "order": ["GPT-6.1 Sol", "Astra"]
+          },
+          "highlight": {
+            "name": "GPT-6.1 Sol",
+            "at": 3.5,
+            "badge": "#1"
+          }
+        }
+      ]
+    },
+    {
+      "id": "dumb",
+      "duration": 4.5,
+      "blocks": [
+        {
+          "type": "headline",
+          "size": "m",
+          "lines": ["Cheap model, expensive one looks _dumb._"]
+        },
+        {
+          "type": "picker",
+          "key": "board",
+          "app": "ChatGPT",
+          "logo": "chatgpt",
+          "options": [
+            {
+              "name": "Astra",
+              "logo": "openai",
+              "note": "the expensive one"
+            },
+            {
+              "name": "GPT-6.1 Sol",
+              "logo": "openai",
+              "note": "the cheap one",
+              "badge": "New"
+            }
+          ],
+          "selected": 1,
+          "strike": {
+            "index": 0,
+            "at": 1.5
+          }
+        }
+      ]
+    },
+    {
+      "id": "dots",
+      "duration": 12,
+      "transition": "flood",
+      "blocks": [
+        {
+          "type": "headline",
+          "size": "m",
+          "kicker": "Matters #2 \u00b7 the real story",
+          "lines": ["*DOTS.*"]
+        },
+        {
+          "type": "agent",
+          "app": "ChatGPT",
+          "logo": "chatgpt",
+          "name": "DOTS",
+          "status": "Running \u00b7 24/7",
+          "browse": "its own browser",
+          "tasks": [
+            {
+              "text": "Lives in *ChatGPT*",
+              "at": 2.5
+            },
+            {
+              "text": "Its own computer + browser",
+              "at": 4.5
+            },
+            {
+              "text": "Runs *24/7*",
+              "at": 6.5
+            }
+          ],
+          "usage": 0.32,
+          "usageNote": "Doesn't touch your usage",
+          "usageNoteAt": 8.5
+        }
+      ]
+    },
+    {
+      "id": "same-day",
+      "duration": 8,
+      "blocks": [
+        {
+          "type": "headline",
+          "size": "m",
+          "kicker": "Same day",
+          "lines": ["They cut the $200 plan."]
+        },
+        {
+          "type": "cut",
+          "logo": "chatgpt",
+          "label": "ChatGPT \u00b7 Pro plan",
+          "price": "$200",
+          "priceSub": "/month",
+          "usageLabel": "Usage vs Plus",
+          "from": 20,
+          "to": 10,
+          "cutAt": 2.5
+        }
+      ]
+    },
+    {
+      "id": "accident",
+      "duration": 10,
+      "blocks": [
+        {
+          "type": "headline",
+          "size": "m",
+          "lines": ["Plan got _smaller._", "Free stuff got *bigger.*"]
+        },
+        {
+          "type": "leaderboard",
+          "title": "Since DevDay",
+          "column": "Now",
+          "rows": [
+            {
+              "name": "Pro plan",
+              "logo": "chatgpt",
+              "note": "usage vs Plus",
+              "value": "20\u00d7\u219210\u00d7",
+              "bar": 0.5,
+              "tone": "red"
+            },
+            {
+              "name": "DOTS",
+              "logo": "chatgpt",
+              "note": "free, always on",
+              "value": "24/7",
+              "bar": 1,
+              "tone": "indigo"
+            }
+          ]
+        },
+        {
+          "type": "headline",
+          "size": "m",
+          "align": "center",
+          "lines": ["Not an _accident._"],
+          "at": 5.5
+        }
+      ]
+    }
+  ]
+}

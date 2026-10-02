@@ -95,6 +95,40 @@ jobs:
           fail-on-cache-miss: true
       - run: pnpm test
 
+  browser:
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Restore install
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+            apps/*/node_modules
+            scripts/*/node_modules
+          key: ci-install-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          fail-on-cache-miss: true
+      - run: pnpm --filter app exec playwright install --with-deps chromium
+      - run: pnpm verify:browser
+      - name: Browser report and failure traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-verification
+          path: |
+            apps/app/.cache/browser-report
+            apps/app/.cache/browser-results
+          retention-days: 14
+
   postgres-integration:
     needs: setup
     runs-on: ubuntu-latest

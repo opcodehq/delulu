@@ -5,8 +5,8 @@ import { runEffect } from "@delulu/client";
 import { Button } from "@delulu/design-system/components/ui/button";
 import { DottedSeparator } from "@delulu/design-system/components/ui/dotted-separator";
 import { useEffect, useMemo, useState } from "react";
-import { createPublicApiClient } from "../../../lib/public-api-client";
-import { AuthorizationShell } from "../../oauth/authorization-shell";
+import { AuthorizationShell } from "@/shell/navigation/authorization-shell";
+import { createPublicApiClient } from "@/shell/public-api-client";
 
 export default function ConnectTelegramPage() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
@@ -79,7 +79,7 @@ export default function ConnectTelegramPage() {
       <div className="flex flex-col gap-4 text-sm">
         {isLoaded && !isSignedIn ? (
           <SignInButton mode="modal">
-            <Button className="min-h-11">Sign in to Delulu</Button>
+            <Button>Sign in to Delulu</Button>
           </SignInButton>
         ) : state === "pending" ? (
           <output>
@@ -94,7 +94,7 @@ export default function ConnectTelegramPage() {
               <>
                 <label htmlFor="workspace">Workspace</label>
                 <select
-                  className="min-h-11 rounded-md border bg-background px-3"
+                  className="h-[var(--control-height,2.25rem)] rounded-md border bg-background px-3"
                   disabled={state === "saving"}
                   id="workspace"
                   onChange={(e) => setWorkspaceId(e.target.value)}
@@ -107,7 +107,6 @@ export default function ConnectTelegramPage() {
                   ))}
                 </select>
                 <Button
-                  className="min-h-11"
                   disabled={!(challenge && workspaceId) || state === "saving"}
                   onClick={confirm}
                 >

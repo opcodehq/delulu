@@ -1,0 +1,287 @@
+{
+  "title": "Don't use Sonnet 5.5",
+  "format": "reel",
+  "bpm": 120,
+  "loop": true,
+  "scenes": [
+    {
+      "id": "hook",
+      "duration": 3,
+      "blocks": [
+        {
+          "type": "headline",
+          "static": true,
+          "size": "m",
+          "lines": ["Don't use _Sonnet 5.5._"]
+        },
+        {
+          "type": "picker",
+          "static": true,
+          "key": "card",
+          "app": "Claude",
+          "logo": "claude",
+          "options": [
+            {
+              "name": "Opus",
+              "logo": "claude"
+            },
+            {
+              "name": "Sonnet 5.5",
+              "logo": "claude",
+              "note": "Looks like half of Opus",
+              "badge": "New"
+            },
+            {
+              "name": "Fable",
+              "logo": "claude"
+            }
+          ],
+          "selected": 1,
+          "strike": {
+            "index": 1,
+            "at": 1.25
+          }
+        }
+      ]
+    },
+    {
+      "id": "half",
+      "duration": 6,
+      "blocks": [
+        {
+          "type": "headline",
+          "size": "m",
+          "lines": ["Half the price? _It's not._"]
+        },
+        {
+          "type": "bars",
+          "key": "card",
+          "window": {
+            "title": "Cost on real work",
+            "logo": "claude"
+          },
+          "suffix": "%",
+          "rows": [
+            {
+              "name": "Opus",
+              "value": 100,
+              "max": 100,
+              "tone": "muted",
+              "at": 0.8
+            },
+            {
+              "name": "Sonnet 5.5",
+              "note": "List price",
+              "value": 50,
+              "max": 100,
+              "tone": "indigo",
+              "at": 1.4,
+              "change": {
+                "at": 3.5,
+                "value": 95,
+                "note": "Real work"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "why",
+      "duration": 8,
+      "blocks": [
+        {
+          "type": "headline",
+          "size": "m",
+          "kicker": "Why",
+          "lines": ["It eats tokens."]
+        },
+        {
+          "type": "terminal",
+          "key": "card",
+          "title": "claude \u00b7 sonnet-5.5",
+          "logo": "claude",
+          "lines": [
+            {
+              "text": "$ claude --model sonnet-5.5 \"fix the build\"",
+              "at": 0.6
+            },
+            {
+              "text": "\u203a reading files\u2026",
+              "tone": "muted",
+              "at": 1.6
+            },
+            {
+              "text": "\u203a reading more files\u2026",
+              "tone": "muted",
+              "at": 2.4
+            },
+            {
+              "text": "\u203a still reading\u2026",
+              "tone": "muted",
+              "at": 3.2
+            },
+            {
+              "text": "\u26a0 cache reads: no cheaper",
+              "tone": "warn",
+              "at": 4.6
+            },
+            {
+              "text": "\u26a0 real cost \u2248 Opus",
+              "tone": "warn",
+              "at": 6
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "slower",
+      "duration": 7,
+      "blocks": [
+        {
+          "type": "headline",
+          "size": "m",
+          "lines": ["Faster per token.", "_Slower_ to finish."]
+        },
+        {
+          "type": "leaderboard",
+          "key": "card",
+          "title": "Same task \u00b7 time to finish",
+          "column": "Finished",
+          "rows": [
+            {
+              "name": "Opus",
+              "logo": "claude",
+              "value": "1st",
+              "bar": 0.6,
+              "tone": "indigo"
+            },
+            {
+              "name": "Sonnet 5.5",
+              "logo": "claude",
+              "note": "burns more tokens",
+              "value": "2nd",
+              "bar": 1,
+              "tone": "red"
+            }
+          ],
+          "highlight": {
+            "name": "Opus",
+            "at": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "max",
+      "duration": 5,
+      "transition": "flood",
+      "blocks": [
+        {
+          "type": "headline",
+          "size": "m",
+          "lines": ["Don't touch _max._"],
+          "at": 0.5
+        },
+        {
+          "type": "picker",
+          "app": "Claude",
+          "logo": "claude",
+          "options": [
+            {
+              "name": "Sonnet 5.5",
+              "logo": "claude"
+            }
+          ],
+          "selected": 0,
+          "toggle": {
+            "label": "Max mode",
+            "at": 2.25,
+            "warn": "\u2248 Fable pricing"
+          }
+        }
+      ]
+    },
+    {
+      "id": "subagent",
+      "duration": 11,
+      "blocks": [
+        {
+          "type": "headline",
+          "size": "m",
+          "kicker": "But let Opus use it",
+          "lines": ["As Opus's *subagent*:"]
+        },
+        {
+          "type": "terminal",
+          "title": "claude \u00b7 opus",
+          "logo": "claude",
+          "lines": [
+            {
+              "text": "\u203a opus: spawning subagent \u2192 sonnet-5.5",
+              "at": 1
+            },
+            {
+              "text": "\u203a sonnet-5.5: digging through the codebase\u2026",
+              "tone": "muted",
+              "at": 2.6
+            },
+            {
+              "text": "\u2713 slightly better than Opus alone",
+              "tone": "ok",
+              "at": 5
+            },
+            {
+              "text": "\u2713 done in ~5 min",
+              "tone": "ok",
+              "at": 6.6
+            }
+          ],
+          "meters": [
+            {
+              "label": "Cost vs Opus",
+              "from": 100,
+              "to": 50,
+              "suffix": "%",
+              "at": 7.2,
+              "d": 1.2,
+              "tone": "indigo"
+            },
+            {
+              "label": "Time",
+              "from": 0,
+              "to": 5,
+              "prefix": "~",
+              "suffix": " min",
+              "at": 7.2,
+              "d": 1.2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "intern",
+      "duration": 8,
+      "blocks": [
+        {
+          "type": "headline",
+          "size": "m",
+          "align": "center",
+          "lines": ["Not a bad model.", "Just not *your* model."]
+        },
+        {
+          "type": "chip",
+          "text": "Sonnet 5.5"
+        },
+        {
+          "type": "tile",
+          "logo": "claude",
+          "label": "It's Opus's",
+          "value": "Intern."
+        }
+      ]
+    }
+  ]
+}

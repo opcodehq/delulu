@@ -1,4 +1,4 @@
-import type { SocialPublishInputType } from "@delulu/validators/post";
+import type { SocialPublishInputType } from "@delulu/core/publishing/post";
 import { keys } from "./key";
 import { generatePresignedDownloadUrl } from "./r2-presign";
 
