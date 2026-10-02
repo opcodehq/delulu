@@ -18,6 +18,7 @@ export { LOGOS } from "./logos";
 export { escapeHtml, inline, parseRuns } from "./markup";
 export {
   checkProject,
+  collectImages,
   HYPERFRAMES_VERSION,
   renderProject,
   writeProject,

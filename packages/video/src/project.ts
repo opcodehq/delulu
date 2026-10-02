@@ -19,6 +19,7 @@ import { sfxSource, TRACKS, trackFile } from "./sfx";
 import {
   decodeCachedTweet,
   fetchTweet,
+  type MediaFile,
   resolveSources,
   type Tweet,
 } from "./sources";
@@ -54,18 +55,9 @@ export interface WriteProjectOptions extends ComposeOptions {
 }
 
 /** Media the spec points at by local path, copied into the project under the same path. */
-const localMedia = (reel: Reel): string[] => {
+/** Audio the spec points at by local path, copied into the project under the same path. */
+const localAudio = (reel: Reel): string[] => {
   const paths: string[] = [];
-  for (const scene of reel.scenes) {
-    for (const block of scene.blocks) {
-      if (block.type === "post" && block.avatar) {
-        paths.push(block.avatar);
-      }
-      if (block.type === "cut" && block.logo && !isLogoName(block.logo)) {
-        paths.push(block.logo);
-      }
-    }
-  }
   if (reel.audio?.voiceover) {
     paths.push(reel.audio.voiceover);
   }
@@ -73,6 +65,64 @@ const localMedia = (reel: Reel): string[] => {
     paths.push(reel.audio.music);
   }
   return paths.filter((p) => !URL_SCHEME.test(p));
+};
+
+/** Spec fields that hold an image: post avatars and every logo (cards, rows, options, windows…). */
+const IMAGE_KEYS = new Set(["avatar", "logo"]);
+const IMAGE_EXT = /\.(png|jpe?g|gif|webp|svg)$/i;
+
+export interface CollectedImages {
+  /** The spec with every remote image rewritten to its project-relative asset path. */
+  readonly reel: Reel;
+  /** Remote images to download at build time. */
+  readonly remote: readonly MediaFile[];
+  /** Local images to copy from the spec folder. */
+  readonly local: readonly string[];
+}
+
+/**
+ * Find every image the spec references, at any depth. Built-in logo names and data: URLs need
+ * nothing. Remote URLs are rewritten to `assets/media/…` and downloaded at build time, so a
+ * render never touches the network; local paths are copied as they are.
+ */
+export const collectImages = (reel: Reel): CollectedImages => {
+  const remote = new Map<string, MediaFile>();
+  const local = new Set<string>();
+  const walk = (value: unknown, key?: string): unknown => {
+    if (Array.isArray(value)) {
+      return value.map((v) => walk(v));
+    }
+    if (value && typeof value === "object") {
+      return Object.fromEntries(
+        Object.entries(value).map(([k, v]) => [k, walk(v, k)])
+      );
+    }
+    if (
+      typeof value !== "string" ||
+      !(key && IMAGE_KEYS.has(key)) ||
+      isLogoName(value) ||
+      value.startsWith("data:")
+    ) {
+      return value;
+    }
+    if (URL_SCHEME.test(value)) {
+      const ext =
+        IMAGE_EXT.exec(new URL(value).pathname)?.[0].toLowerCase() ?? ".png";
+      const to = `assets/media/${sha256(Buffer.from(value)).slice(0, 16)}${ext}`;
+      remote.set(value, { url: value, to });
+      return to;
+    }
+    local.add(value);
+    return value;
+  };
+  const scenes = reel.scenes.map((scene) =>
+    walk(scene)
+  ) as unknown as Reel["scenes"];
+  return {
+    reel: { ...reel, scenes },
+    remote: [...remote.values()],
+    local: [...local],
+  };
 };
 
 const CACHE_DIR = join(
@@ -109,14 +159,20 @@ const cached = async (url: string, expected: string): Promise<string> => {
   return file;
 };
 
-/** Remote media with no known checksum (avatars): cached by URL, fetched once. */
-const cachedUrl = async (url: string): Promise<string> => {
+/**
+ * Remote media with no known checksum (avatars, logos): cached by URL, fetched once. Avatars
+ * resolved from a post refuse redirects (the URL was validated); images written into the spec by
+ * its author may follow them.
+ */
+const cachedUrl = async (
+  url: string,
+  redirect: "error" | "follow" = "error"
+): Promise<string> => {
   const file = join(CACHE_DIR, "media", sha256(Buffer.from(url)));
   if (existsSync(file)) {
     return file;
   }
-  // No redirects: the URL was validated, so the bytes must come from exactly there.
-  const res = await fetch(url, { redirect: "error" });
+  const res = await fetch(url, { redirect });
   if (!res.ok) {
     throw new Error(`Download failed (${res.status}): ${url}`);
   }
@@ -161,8 +217,11 @@ export const writeProject = async (
   outDir: string,
   options: WriteProjectOptions = {}
 ): Promise<Composition> => {
+  // Images first (on the spec as written), then real posts: a post's fetched avatar is already a
+  // project-relative path, so it is not mistaken for a local file.
+  const images = collectImages(reel);
   const resolved = await resolveSources(
-    reel,
+    images.reel,
     cachedTweet(options.refresh ?? false)
   );
   const composition = compose(resolved.reel, options);
@@ -231,9 +290,14 @@ export const writeProject = async (
     mkdirSync(dirname(target), { recursive: true });
     copyFileSync(await cachedUrl(item.url), target);
   }
+  for (const item of images.remote) {
+    const target = join(outDir, item.to);
+    mkdirSync(dirname(target), { recursive: true });
+    copyFileSync(await cachedUrl(item.url, "follow"), target);
+  }
 
   const mediaRoot = options.mediaRoot ?? process.cwd();
-  for (const media of localMedia(reel)) {
+  for (const media of [...images.local, ...localAudio(reel)]) {
     if (isAbsolute(media) || media.split(PATH_SEP).includes("..")) {
       throw new Error(
         `Media paths must be relative and inside the spec folder: ${media}`

@@ -59,14 +59,17 @@ export const launches = (
     const gone = Array.from({ length: count }, (_, i) => i).filter(
       (i) => !keep.has(i)
     );
-    cues.push({
-      k: "vanish",
-      s: gone.map((i) => `#${id}-t${i}`).join(","),
-      t,
-      d: 0.3,
-      stagger: 0.012,
-      sfx: "whoosh",
-    });
+    // Nothing to collapse when every tile is kept (an empty selector would break the runtime).
+    if (gone.length > 0) {
+      cues.push({
+        k: "vanish",
+        s: gone.map((i) => `#${id}-t${i}`).join(","),
+        t,
+        d: 0.3,
+        stagger: 0.012,
+        sfx: "whoosh",
+      });
+    }
     for (const i of keep) {
       cues.push({
         k: "fill",

@@ -298,6 +298,28 @@ describe("compose", () => {
     expect(inline).toContain("\\u003c/script>");
   });
 
+  it("emits no collapse cue when every launch tile is kept", () => {
+    const all = compose(
+      decodeReel({
+        scenes: [
+          {
+            duration: 3,
+            blocks: [
+              {
+                type: "launches",
+                tiles: [{ title: "A" }, { title: "B" }],
+                keep: [0, 1],
+                collapseAt: 1,
+              },
+            ],
+          },
+        ],
+      })
+    );
+    expect(all.plan.cues.every((c) => c.s.trim().length > 0)).toBe(true);
+    expect(all.plan.cues.some((c) => c.k === "vanish")).toBe(false);
+  });
+
   it("keeps a static stat still (its count is an entrance)", () => {
     const still = compose(
       decodeReel({
