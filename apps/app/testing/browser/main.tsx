@@ -1,3 +1,5 @@
+/// <reference types="vite/client" />
+
 import { lazy, Suspense } from "react";
 import "../../app/styles.css";
 import { DesignSystemProvider } from "@delulu/design-system";
