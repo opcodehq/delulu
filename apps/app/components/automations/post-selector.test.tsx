@@ -71,6 +71,50 @@ describe("DM automation post selector", () => {
     loadScheduled.mockReset().mockResolvedValue({ data: [] });
   });
 
+  it("explains expired Instagram sessions and offers reconnect instead of retry", async () => {
+    loadMedia.mockRejectedValueOnce(
+      new Error(
+        'Instagram API error (400): {"error":{"message":"Error validating access token: Session has expired on Friday, 11-Sep-26 02:48:22 PDT.","type":"OAuthException","code":190,"error_subcode":0,"fbtrace_id":"trace"}}'
+      )
+    );
+    render(<Harness />);
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(
+      "Reconnect Instagram to continue using DM automations."
+    );
+    expect(alert.textContent).not.toContain("OAuthException");
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+    expect(
+      screen
+        .getByRole("link", { name: "Reconnect Instagram" })
+        .getAttribute("href")
+    ).toBe("/socials");
+  });
+
+  it("reloads media when returning after reconnecting", async () => {
+    loadMedia.mockRejectedValueOnce(
+      new Error("Access token expired and the account must be reconnected")
+    );
+    render(<Harness />);
+    await screen.findByRole("link", { name: "Reconnect Instagram" });
+    fireEvent(window, new Event("focus"));
+    expect(
+      await screen.findByRole("button", { name: "Select Latest launch" })
+    ).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("keeps retry available for temporary media failures", async () => {
+    loadMedia.mockRejectedValueOnce(
+      new Error("Instagram API error (503): unavailable")
+    );
+    render(<Harness />);
+    fireEvent.click(await screen.findByRole("button", { name: "Retry" }));
+    expect(
+      await screen.findByRole("button", { name: "Select Latest launch" })
+    ).toBeTruthy();
+  });
+
   it("defaults to an empty specific selection and uses one tile indicator", async () => {
     render(<Harness />);
 

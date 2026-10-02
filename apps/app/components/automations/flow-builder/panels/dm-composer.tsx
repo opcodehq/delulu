@@ -33,7 +33,7 @@ export function DmComposer({
     : (step.buttons ?? []);
 
   return (
-    <div className="space-y-3">
+    <div className="min-w-0 space-y-3 [overflow-wrap:anywhere]">
       <div>
         <h3 className="font-semibold text-sm">Compose your DM</h3>
         <p className="text-muted-foreground text-xs">
@@ -102,7 +102,7 @@ export function DmComposer({
                 {/* Button title + delete */}
                 <div className="flex items-center gap-1.5">
                   <input
-                    className="flex-1 rounded-lg bg-background/80 px-3 py-2 text-center text-foreground text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-ring dark:bg-neutral-700"
+                    className="min-w-0 flex-1 rounded-lg bg-background/80 px-3 py-2 text-center text-foreground text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-ring dark:bg-neutral-700"
                     maxLength={20}
                     onChange={(e) => {
                       const newButtons = [...(step.buttons ?? [])];
@@ -127,7 +127,7 @@ export function DmComposer({
                 </div>
 
                 {/* Action selector */}
-                <div className="flex items-center gap-2 px-1">
+                <div className="flex flex-wrap items-center gap-2 px-1">
                   <span className="text-[10px] text-muted-foreground">
                     When tapped:
                   </span>
@@ -184,7 +184,7 @@ export function DmComposer({
                       size={12}
                     />
                     <input
-                      className="flex-1 rounded-md bg-background/60 px-2.5 py-1.5 text-foreground text-xs placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-ring dark:bg-neutral-700/50"
+                      className="min-w-0 flex-1 rounded-md bg-background/60 px-2.5 py-1.5 text-foreground text-xs placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-ring dark:bg-neutral-700/50"
                       onChange={(e) => {
                         const newButtons = [...(step.buttons ?? [])];
                         newButtons[i] = { ...btn, url: e.target.value };
