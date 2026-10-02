@@ -1,0 +1,329 @@
+{
+  "title": "OpenAI just cut your $200 plan in half",
+  "format": "reel",
+  "loop": true,
+  "scenes": [
+    {
+      "id": "hook",
+      "duration": 3,
+      "blocks": [
+        {
+          "type": "cut",
+          "static": true,
+          "logo": "codex",
+          "label": "Codex \u00b7 Pro plan",
+          "price": "$200",
+          "priceSub": "/month",
+          "usageLabel": "Usage vs Plus",
+          "from": 20,
+          "to": 10,
+          "cutAt": 0.75
+        },
+        {
+          "type": "headline",
+          "size": "m",
+          "align": "center",
+          "lines": ["Same $200.", "_Half the usage._"],
+          "at": 1.5
+        }
+      ]
+    },
+    {
+      "id": "tweet",
+      "duration": 3,
+      "blocks": [
+        {
+          "type": "post",
+          "platform": "x",
+          "highlightAt": 1.0,
+          "source": "https://x.com/thsottiaux/status/2104823812042940713",
+          "timeZone": "America/Los_Angeles",
+          "text": "Tomorrow we are re-opening the Pro $200 subscriptions to new subscribers, but together with it we are also changing how we calculate the usage for it. In effect, if you do the math, it will net out at [[half the dollar in API spend]] compared to the old Pro $200 plan.",
+          "key": "plan"
+        }
+      ]
+    },
+    {
+      "id": "context",
+      "duration": 3.5,
+      "blocks": [
+        {
+          "type": "headline",
+          "size": "m",
+          "kicker": "The night before DevDay",
+          "lines": ["Pro used to be", "*20x* Plus."]
+        },
+        {
+          "type": "bars",
+          "suffix": "x",
+          "rows": [
+            {
+              "name": "Plus",
+              "note": "Baseline",
+              "value": 1,
+              "max": 20,
+              "tone": "muted",
+              "at": 0.5
+            },
+            {
+              "name": "Pro $200",
+              "note": "Before",
+              "value": 20,
+              "max": 20,
+              "change": {
+                "at": 2.25,
+                "value": 10,
+                "note": "Now"
+              },
+              "key": "card",
+              "at": 0.75
+            }
+          ],
+          "key": "plan"
+        }
+      ]
+    },
+    {
+      "id": "his-words",
+      "duration": 2.5,
+      "blocks": [
+        {
+          "type": "quote",
+          "text": "It will net out at *half the dollar in API spend* compared to the old Pro $200 plan.",
+          "by": "Tibo \u00b7 @thsottiaux",
+          "stamp": {
+            "text": "\u221250%",
+            "at": 1.0
+          },
+          "key": "card"
+        }
+      ]
+    },
+    {
+      "id": "but",
+      "duration": 13,
+      "blocks": [
+        {
+          "type": "headline",
+          "size": "m",
+          "kicker": "But nobody's posting this",
+          "lines": ["Already subscribed?"],
+          "at": 2.2
+        },
+        {
+          "type": "checklist",
+          "items": [
+            {
+              "text": "You keep *20x*",
+              "note": "for now",
+              "at": 2.8
+            },
+            {
+              "text": "Plus extra credits",
+              "at": 5.0
+            },
+            {
+              "text": "5-hour limit: _gone_",
+              "at": 7.2
+            },
+            {
+              "text": "Burn a week in one day",
+              "note": "if you want",
+              "at": 9.7
+            }
+          ],
+          "key": "card"
+        }
+      ]
+    },
+    {
+      "id": "pitch",
+      "duration": 5.5,
+      "blocks": [
+        {
+          "type": "headline",
+          "size": "m",
+          "kicker": "Their pitch",
+          "lines": ["Models keep getting", "*cheaper.*"]
+        },
+        {
+          "type": "chart",
+          "label": "API price over time",
+          "note": "\u2193 cheaper",
+          "points": [100, 94, 82, 76, 60, 52, 40, 31],
+          "key": "card"
+        }
+      ]
+    },
+    {
+      "id": "math",
+      "duration": 4,
+      "blocks": [
+        {
+          "type": "headline",
+          "size": "m",
+          "lines": ["*10x* next month", "beats 20x last month?"]
+        },
+        {
+          "type": "versus",
+          "left": {
+            "label": "Last month",
+            "value": "20x",
+            "sub": "old models",
+            "meter": 0.62,
+            "tone": "muted"
+          },
+          "right": {
+            "label": "Next month",
+            "value": "10x",
+            "sub": "*more work*",
+            "meter": 0.9,
+            "tone": "indigo"
+          },
+          "key": "card"
+        }
+      ]
+    },
+    {
+      "id": "proof",
+      "duration": 5.5,
+      "blocks": [
+        {
+          "type": "headline",
+          "size": "m",
+          "kicker": "To prove it",
+          "lines": ["*GPT-6 Sol* and *Luna*", "at half the price."]
+        },
+        {
+          "type": "bars",
+          "suffix": "%",
+          "label": "API price",
+          "rows": [
+            {
+              "name": "GPT-6 Sol",
+              "note": "Before",
+              "value": 100,
+              "max": 100,
+              "change": {
+                "at": 1.9,
+                "value": 50,
+                "note": "\u221250%"
+              }
+            },
+            {
+              "name": "GPT-6 Luna",
+              "note": "Before",
+              "value": 100,
+              "max": 100,
+              "change": {
+                "at": 2.5,
+                "value": 50,
+                "note": "\u221250%"
+              }
+            }
+          ],
+          "key": "card"
+        }
+      ]
+    },
+    {
+      "id": "catch",
+      "duration": 2.5,
+      "blocks": [
+        {
+          "type": "tile",
+          "logo": "openai",
+          "tone": "red",
+          "label": "Here's",
+          "value": "The catch.",
+          "at": 0.4
+        }
+      ],
+      "transition": "flood"
+    },
+    {
+      "id": "promise-fact",
+      "duration": 4.5,
+      "blocks": [
+        {
+          "type": "rows",
+          "rows": [
+            {
+              "text": "Cheaper models",
+              "tag": "PROMISE",
+              "style": "outline",
+              "tone": "muted",
+              "at": 0.4
+            },
+            {
+              "text": "Half the usage",
+              "tag": "FACT",
+              "style": "solid",
+              "tone": "red",
+              "at": 2.3
+            }
+          ],
+          "key": "verdict"
+        }
+      ]
+    },
+    {
+      "id": "want-it-back",
+      "duration": 5,
+      "blocks": [
+        {
+          "type": "headline",
+          "size": "m",
+          "align": "center",
+          "lines": ["Want *20x* back?"]
+        },
+        {
+          "type": "versus",
+          "left": {
+            "label": "Pro \u00b7 now",
+            "value": "$200",
+            "sub": "10x",
+            "meter": 0.5,
+            "tone": "indigo"
+          },
+          "right": {
+            "label": "New plan",
+            "value": "$500",
+            "sub": "20x",
+            "meter": 1,
+            "tone": "red",
+            "count": {
+              "from": 200,
+              "to": 500,
+              "prefix": "$"
+            }
+          },
+          "key": "verdict"
+        }
+      ]
+    },
+    {
+      "id": "cta",
+      "duration": 8,
+      "blocks": [
+        {
+          "type": "poll",
+          "options": [
+            {
+              "text": "Downgrade",
+              "tone": "red"
+            },
+            {
+              "text": "Upgrade",
+              "tone": "indigo"
+            }
+          ],
+          "prompt": "Tell me below",
+          "promptAt": 5.0,
+          "question": "Is this a downgrade or an upgrade?"
+        }
+      ]
+    }
+  ],
+  "bpm": 120
+}

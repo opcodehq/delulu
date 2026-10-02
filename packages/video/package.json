@@ -1,0 +1,35 @@
+{
+  "name": "@delulu/video",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Brand-consistent motion-graphics reels for Delulu: a typed reel spec compiled to a HyperFrames project.",
+  "bin": {
+    "delulu-video": "./src/cli.ts"
+  },
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit --emitDeclarationOnly false",
+    "test": "vitest run",
+    "video": "tsx src/cli.ts"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.2.5",
+    "effect": "catalog:",
+    "geist": "^1.4.2",
+    "gsap": "3.14.2"
+  },
+  "devDependencies": {
+    "@delulu/typescript-config": "workspace:*",
+    "@types/node": "22.14.1",
+    "jsdom": "^26.1.0",
+    "tsx": "^4.19.3",
+    "typescript": "catalog:",
+    "vitest": "^3.1.1"
+  }
+}

@@ -1,0 +1,284 @@
+{
+  "title": "OpenAI just made Astra pointless",
+  "format": "reel",
+  "bpm": 120,
+  "loop": true,
+  "scenes": [
+    {
+      "id": "hook",
+      "duration": 3.5,
+      "blocks": [
+        {
+          "type": "headline",
+          "static": true,
+          "size": "m",
+          "lines": ["OpenAI just made", "Astra _pointless._"]
+        },
+        {
+          "type": "leaderboard",
+          "static": true,
+          "key": "board",
+          "title": "DeepSWE leaderboard",
+          "column": "Cost / task",
+          "rows": [
+            {
+              "name": "Astra",
+              "logo": "openai",
+              "note": "OpenAI \u00b7 flagship",
+              "value": "$4\u20137"
+            },
+            {
+              "name": "GPT-6.1 Sol",
+              "logo": "openai",
+              "note": "OpenAI \u00b7 new",
+              "value": "<$1"
+            }
+          ],
+          "rerank": {
+            "at": 1.25,
+            "order": ["GPT-6.1 Sol", "Astra"]
+          },
+          "highlight": {
+            "name": "GPT-6.1 Sol",
+            "at": 1.75,
+            "badge": "#1"
+          },
+          "strike": {
+            "name": "Astra",
+            "at": 2.5
+          }
+        }
+      ]
+    },
+    {
+      "id": "dropped",
+      "duration": 4.5,
+      "blocks": [
+        {
+          "type": "headline",
+          "size": "m",
+          "kicker": "DevDay",
+          "lines": ["*GPT-6.1 Sol* dropped."]
+        },
+        {
+          "type": "picker",
+          "key": "board",
+          "app": "ChatGPT",
+          "logo": "chatgpt",
+          "options": [
+            {
+              "name": "Astra",
+              "logo": "openai",
+              "note": "Most expensive"
+            },
+            {
+              "name": "GPT-6.1 Sol",
+              "logo": "openai",
+              "note": "Astra-level",
+              "badge": "New"
+            }
+          ],
+          "selected": 0,
+          "pick": {
+            "index": 1,
+            "at": 2.5
+          }
+        }
+      ]
+    },
+    {
+      "id": "price",
+      "duration": 5.5,
+      "blocks": [
+        {
+          "type": "headline",
+          "size": "m",
+          "lines": ["Astra-level.", "*A fifth* of the price."]
+        },
+        {
+          "type": "leaderboard",
+          "key": "board",
+          "title": "Price, relative",
+          "column": "Price",
+          "rows": [
+            {
+              "name": "Astra",
+              "logo": "openai",
+              "value": "5\u00d7",
+              "bar": 1,
+              "tone": "red"
+            },
+            {
+              "name": "GPT-6.1 Sol",
+              "logo": "openai",
+              "value": "1\u00d7",
+              "bar": 0.2,
+              "tone": "indigo"
+            }
+          ],
+          "highlight": {
+            "name": "GPT-6.1 Sol",
+            "at": 2.5,
+            "badge": "\u2155 PRICE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "deepswe",
+      "duration": 7.5,
+      "blocks": [
+        {
+          "type": "headline",
+          "size": "m",
+          "kicker": "DeepSWE",
+          "lines": ["Sol *beats* Astra."]
+        },
+        {
+          "type": "terminal",
+          "key": "board",
+          "title": "deepswe \u00b7 gpt-6.1-sol",
+          "logo": "openai",
+          "lines": [
+            {
+              "text": "$ deepswe run --model gpt-6.1-sol",
+              "at": 0.6
+            },
+            {
+              "text": "\u203a solving task\u2026",
+              "tone": "muted",
+              "at": 1.8
+            },
+            {
+              "text": "\u2713 passed \u2014 beats Astra",
+              "tone": "ok",
+              "at": 3.3
+            },
+            {
+              "text": "\u2713 cost: under $1 a task",
+              "tone": "ok",
+              "at": 4.5
+            }
+          ],
+          "meters": [
+            {
+              "label": "Astra / task",
+              "from": 4,
+              "to": 7,
+              "prefix": "$4\u2013",
+              "at": 4.5,
+              "d": 1.2,
+              "tone": "red"
+            },
+            {
+              "label": "Sol / task",
+              "from": 0,
+              "to": 1,
+              "prefix": "<$",
+              "at": 4.5,
+              "d": 1.2,
+              "tone": "indigo"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "doa",
+      "duration": 6,
+      "blocks": [
+        {
+          "type": "headline",
+          "size": "m",
+          "lines": ["A week ago:"]
+        },
+        {
+          "type": "rows",
+          "key": "board",
+          "window": {
+            "title": "Sol, a week ago",
+            "logo": "openai"
+          },
+          "rows": [
+            {
+              "text": "Dead on arrival",
+              "tag": "WEEK AGO",
+              "style": "outline",
+              "at": 0.9,
+              "strikeAt": 3.5
+            },
+            {
+              "text": "Beats Astra",
+              "tag": "NOW",
+              "tone": "indigo",
+              "at": 2.6
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "salt",
+      "duration": 6,
+      "blocks": [
+        {
+          "type": "headline",
+          "size": "m",
+          "lines": ["Grain of salt."]
+        },
+        {
+          "type": "terminal",
+          "key": "board",
+          "title": "~/my-repo",
+          "lines": [
+            {
+              "text": "$ deepswe run --model gpt-6.1-sol ./my-repo",
+              "at": 0.8
+            },
+            {
+              "text": "\u203a not run yet",
+              "tone": "muted",
+              "at": 2.6
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "why",
+      "duration": 7,
+      "transition": "flood",
+      "blocks": [
+        {
+          "type": "headline",
+          "size": "m",
+          "lines": ["Why keep paying", "for _Astra?_"],
+          "at": 0.5
+        },
+        {
+          "type": "picker",
+          "app": "ChatGPT",
+          "logo": "chatgpt",
+          "options": [
+            {
+              "name": "Astra",
+              "logo": "openai",
+              "note": "$4\u20137 a task"
+            },
+            {
+              "name": "GPT-6.1 Sol",
+              "logo": "openai",
+              "note": "under $1 a task",
+              "badge": "New"
+            }
+          ],
+          "selected": 1,
+          "strike": {
+            "index": 0,
+            "at": 2
+          }
+        }
+      ]
+    }
+  ]
+}

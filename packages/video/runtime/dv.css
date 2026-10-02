@@ -1,0 +1,1543 @@
+/* @delulu/video runtime styles.
+   The Delulu app's dark theme as a film: the app background as the canvas, light cards in front,
+   Delulu indigo as the actor and red for loss/cuts. Buttons, tags, stamps and chart fills are ordered
+   dither (Dither Kit) painted on canvas; the background stays plain. No CSS gradients, glows,
+   blur or glass. Sizes are authored for a
+   1080px-wide canvas; radii follow the app's 0.75rem at video scale. */
+
+:root {
+  --dv-canvas: #09090b;
+  --dv-surface: #131317;
+  --dv-card: #f9f9fb;
+  --dv-card-2: #ececf1;
+  --dv-card-3: #dedee6;
+  --dv-text: #f1f1f4;
+  --dv-muted: #878792;
+  --dv-ink: #21212c;
+  --dv-ink-muted: #71717a;
+  --dv-indigo: #474deb;
+  --dv-indigo-dark: #5c60d6;
+  --dv-indigo-soft: #9599f7;
+  --dv-red: #ef4444;
+  --dv-red-soft: #ff7b7b;
+  --dv-marker: #d4d5fd;
+  --dv-radius: 24px;
+  --dv-radius-sm: 14px;
+  --dv-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --dv-mono: "Geist Mono", ui-monospace, monospace;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  overflow: hidden;
+  background: var(--dv-canvas);
+  color: var(--dv-text);
+  font-family: var(--dv-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+#dv-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--dv-canvas);
+}
+
+/* ---------- dither canvases ---------- */
+.dv-dither {
+  display: block;
+  image-rendering: pixelated;
+}
+
+/* ---------- scenes: stage (push-in + page) → cam (focus zoom) → content ---------- */
+.dv-scene {
+  position: absolute;
+  inset: 0;
+}
+.dv-stage {
+  position: absolute;
+  inset: 0;
+  /* Opaque, so a scene pushed in over the previous one covers it. */
+  background: var(--dv-canvas);
+  overflow: hidden;
+}
+.dv-cam {
+  position: absolute;
+  inset: 0;
+  padding: var(--dv-safe-top) var(--dv-safe-x) var(--dv-stage-bottom);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 56px;
+}
+.dv-cam > * {
+  /* Blocks keep their natural size; never squeezed (that would clip a card). */
+  flex: none;
+}
+.dv-cam.dv-top {
+  justify-content: flex-start;
+}
+
+/* ---------- morph: an empty card that flows from one scene's card to the next ---------- */
+#dv-morph {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  z-index: 890;
+  background: var(--dv-card);
+  will-change: transform;
+}
+
+/* ---------- shared-element proxies (one per key, above every scene) ---------- */
+#dv-proxies {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 895;
+}
+.dv-proxy {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: hidden;
+  will-change: transform;
+}
+.dv-proxy-texture {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---------- flood: the indigo shape the big moments are made of ---------- */
+#dv-flood {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 900;
+  background: var(--dv-indigo);
+  will-change: transform;
+}
+
+/* ---------- cursor ---------- */
+.dv-cursor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 44px;
+  height: 64px;
+  transform-origin: 4px 4px;
+  z-index: 50;
+}
+.dv-cursor svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+.dv-ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 72px;
+  height: 72px;
+  margin: -36px 0 0 -36px;
+  border: 4px solid var(--dv-indigo);
+  border-radius: 50%;
+  opacity: 0;
+  z-index: 49;
+}
+
+/* ---------- text atoms ---------- */
+.dv-mask {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.1em;
+  margin-bottom: -0.1em;
+}
+.dv-mask.dv-inline {
+  display: inline-block;
+  vertical-align: bottom;
+}
+.dv-rise {
+  display: block;
+}
+.dv-inline > .dv-rise {
+  display: inline-block;
+}
+.dv-i {
+  color: var(--dv-indigo-soft);
+}
+.dv-r {
+  color: var(--dv-red-soft);
+}
+.dv-card .dv-i {
+  color: var(--dv-indigo);
+}
+.dv-card .dv-r {
+  color: var(--dv-red);
+}
+
+.dv-kicker {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-family: var(--dv-mono);
+  font-size: 28px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dv-muted);
+}
+.dv-kicker .dv-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--dv-indigo-dark);
+  display: block;
+  flex: none;
+}
+
+/* ---------- headline ---------- */
+.dv-headline {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.dv-headline .dv-lines {
+  font-weight: 600;
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+  color: var(--dv-text);
+}
+.dv-headline.dv-xl .dv-lines {
+  font-size: 150px;
+  font-weight: 700;
+  letter-spacing: -0.055em;
+  line-height: 0.92;
+}
+.dv-headline.dv-l .dv-lines {
+  font-size: 104px;
+}
+.dv-headline.dv-m .dv-lines {
+  font-size: 78px;
+}
+.dv-headline.dv-center {
+  align-items: center;
+  text-align: center;
+}
+
+/* ---------- card (every hero surface) ---------- */
+.dv-card {
+  position: relative;
+  background: var(--dv-card);
+  color: var(--dv-ink);
+  border-radius: var(--dv-radius);
+  overflow: hidden;
+}
+.dv-card-body {
+  position: relative;
+  padding: 52px;
+}
+.dv-label {
+  font-family: var(--dv-mono);
+  font-size: 24px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dv-ink-muted);
+}
+
+/* ---------- post ---------- */
+.dv-post .dv-post-head {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.dv-avatar {
+  width: 92px;
+  height: 92px;
+  border-radius: 16px;
+  flex: none;
+  overflow: hidden;
+  background: var(--dv-surface);
+}
+.dv-avatar canvas,
+.dv-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.dv-post-who {
+  flex: 1;
+  min-width: 0;
+}
+.dv-post-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 38px;
+  letter-spacing: -0.02em;
+}
+.dv-badge {
+  width: 34px;
+  height: 34px;
+  display: block;
+  flex: none;
+}
+.dv-post-handle {
+  font-size: 30px;
+  color: var(--dv-ink-muted);
+  margin-top: 4px;
+}
+.dv-platform {
+  width: 46px;
+  height: 46px;
+  display: block;
+  flex: none;
+  color: var(--dv-ink);
+}
+.dv-post-text {
+  margin-top: 36px;
+  font-size: 46px;
+  line-height: 1.34;
+  letter-spacing: -0.015em;
+}
+.dv-hl {
+  color: inherit;
+  border-radius: 6px;
+  padding: 0 6px;
+  margin: 0 -6px;
+  background-image: linear-gradient(var(--dv-marker), var(--dv-marker));
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-size: 0% 100%;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.dv-post-meta {
+  margin-top: 32px;
+  font-family: var(--dv-mono);
+  font-size: 24px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dv-ink-muted);
+}
+.dv-post-stats {
+  margin-top: 28px;
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--dv-mono);
+  font-size: 26px;
+  color: var(--dv-ink-muted);
+}
+.dv-post-stats span {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.dv-post-stats svg {
+  width: 30px;
+  height: 30px;
+  display: block;
+}
+
+/* ---------- X post (x.com post view, light theme, at 2.3× scale) ---------- */
+.dv-x {
+  --x-text: #0f1419;
+  --x-muted: #536471;
+  --x-line: #eff3f4;
+  --x-blue: #1d9bf0;
+  background: #ffffff;
+  color: var(--x-text);
+  border-radius: 28px;
+  font-family: "Inter", var(--dv-sans);
+  font-feature-settings: "cv11", "ss01";
+}
+.dv-x .dv-card-body {
+  padding: 40px 40px 14px;
+}
+.dv-x-head {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+}
+.dv-x-avatar {
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex: none;
+  background: var(--x-line);
+}
+.dv-x-avatar img,
+.dv-x-avatar canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.dv-x-who {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.25;
+}
+.dv-x-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 35px;
+  letter-spacing: -0.01em;
+}
+.dv-x-badge {
+  width: 40px;
+  height: 40px;
+  display: block;
+  flex: none;
+}
+.dv-x-handle {
+  display: block;
+  font-size: 34px;
+  color: var(--x-muted);
+}
+.dv-x-more {
+  width: 44px;
+  height: 44px;
+  display: block;
+  color: var(--x-muted);
+  align-self: flex-start;
+  margin-top: 4px;
+}
+.dv-x-text {
+  margin-top: 30px;
+  font-size: 39px;
+  line-height: 1.32;
+  letter-spacing: -0.003em;
+}
+.dv-x-text p + p {
+  margin-top: 34px;
+}
+.dv-x-more-link {
+  color: var(--x-blue);
+  margin-top: 6px;
+}
+.dv-x .dv-hl {
+  /* A real text selection, the way a browser paints it on x.com. */
+  background-image: linear-gradient(#b4d7fb, #b4d7fb);
+  border-radius: 2px;
+  padding: 0 2px;
+  margin: 0 -2px;
+}
+.dv-x-when {
+  margin-top: 34px;
+  padding-bottom: 34px;
+  border-bottom: 2px solid var(--x-line);
+  font-size: 34px;
+  color: var(--x-muted);
+}
+.dv-x-when b {
+  color: var(--x-text);
+  font-weight: 700;
+}
+.dv-x-dot {
+  padding: 0 10px;
+}
+.dv-x-actions {
+  display: flex;
+  justify-content: space-between;
+  padding: 22px 6px 12px;
+  color: var(--x-muted);
+}
+.dv-x-act {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 30px;
+}
+.dv-x-act b {
+  font-weight: 400;
+}
+.dv-x-act svg {
+  width: 44px;
+  height: 44px;
+  display: block;
+}
+
+/* ---------- stat (from → to) ---------- */
+.dv-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.dv-stat .dv-kicker {
+  justify-content: center;
+}
+.dv-stat-row {
+  display: flex;
+  align-items: center;
+  gap: 36px;
+  font-weight: 700;
+  font-size: 220px;
+  line-height: 1;
+  letter-spacing: -0.06em;
+  font-variant-numeric: tabular-nums;
+}
+.dv-stat-from {
+  position: relative;
+  color: var(--dv-muted);
+  display: block;
+}
+.dv-strike {
+  position: absolute;
+  left: -10px;
+  right: -10px;
+  top: 52%;
+  height: 18px;
+  margin-top: -9px;
+  border-radius: 4px;
+  background: var(--dv-red);
+  transform-origin: left center;
+  display: block;
+}
+.dv-stat-arrow {
+  width: 110px;
+  height: 110px;
+  display: block;
+  color: var(--dv-text);
+}
+.dv-stat-to {
+  display: block;
+}
+
+/* ---------- bars ---------- */
+.dv-bars .dv-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 44px;
+}
+.dv-bar-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+.dv-bar-name {
+  font-weight: 600;
+  font-size: 44px;
+  letter-spacing: -0.02em;
+}
+.dv-bar-note {
+  display: block;
+  margin-top: 6px;
+}
+.dv-bar-value {
+  font-weight: 700;
+  font-size: 84px;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+}
+.dv-track {
+  position: relative;
+  margin-top: 22px;
+  height: 44px;
+  border-radius: 8px;
+  background: var(--dv-card-2);
+  overflow: hidden;
+}
+.dv-track .dv-dither {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+}
+.dv-swap {
+  position: relative;
+  display: inline-block;
+}
+.dv-swap > span {
+  display: block;
+}
+.dv-swap > span + span {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+/* ---------- checklist ---------- */
+.dv-checklist .dv-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
+.dv-check {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+}
+.dv-box {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  flex: none;
+  border-radius: 12px;
+  background: var(--dv-card-2);
+  display: block;
+}
+.dv-box-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background: var(--dv-indigo);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dv-box-fill svg {
+  width: 40px;
+  height: 40px;
+  display: block;
+}
+.dv-check-text {
+  font-weight: 600;
+  font-size: 46px;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+}
+.dv-check-text .dv-label {
+  display: block;
+  margin-top: 8px;
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- chart ---------- */
+.dv-chart-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.dv-chart-note {
+  font-weight: 700;
+  font-size: 40px;
+  letter-spacing: -0.02em;
+  display: block;
+}
+.dv-chart-plot {
+  position: relative;
+  margin-top: 40px;
+  height: 520px;
+}
+.dv-chart-plot .dv-dither,
+.dv-chart-plot svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* ---------- versus ---------- */
+.dv-versus .dv-card-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 16px;
+}
+.dv-vs-col {
+  padding: 44px 32px;
+  border-radius: 16px;
+  background: var(--dv-card-2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+}
+.dv-vs-value {
+  font-weight: 700;
+  font-size: 140px;
+  line-height: 1;
+  letter-spacing: -0.06em;
+  font-variant-numeric: tabular-nums;
+}
+.dv-vs-sub {
+  font-weight: 700;
+  font-size: 60px;
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  text-align: center;
+}
+.dv-meter {
+  position: relative;
+  width: 120px;
+  height: 300px;
+  border-radius: 10px;
+  background: var(--dv-card-3);
+  overflow: hidden;
+}
+.dv-meter .dv-dither {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+}
+
+/* ---------- tagged rows ---------- */
+.dv-rows .dv-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+.dv-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  padding: 44px 36px;
+  border-radius: 16px;
+  background: var(--dv-card-2);
+}
+.dv-row-text {
+  position: relative;
+  font-weight: 600;
+  font-size: 64px;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+}
+.dv-row-text .dv-strike {
+  height: 10px;
+  margin-top: -5px;
+}
+
+/* ---------- dithered buttons, tags and stamps (Dither Kit button) ---------- */
+.dv-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: var(--dv-radius-sm);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: #fff;
+  flex: none;
+}
+.dv-btn > .dv-dither {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+}
+.dv-btn.dv-quiet {
+  color: var(--dv-ink-muted);
+}
+.dv-tag {
+  font-family: var(--dv-mono);
+  font-weight: 500;
+  font-size: 32px;
+  letter-spacing: 0.08em;
+  padding: 16px 26px;
+}
+.dv-stamp {
+  font-size: 64px;
+  padding: 12px 28px;
+}
+
+/* ---------- quote ---------- */
+.dv-quote-text {
+  font-weight: 600;
+  font-size: 60px;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+}
+.dv-quote-foot {
+  margin-top: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ---------- poll / cta ---------- */
+.dv-poll-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+.dv-poll .dv-card-body {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 20px;
+}
+.dv-poll-q {
+  font-weight: 600;
+  font-size: 56px;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  margin-bottom: 16px;
+}
+.dv-option {
+  font-size: 76px;
+  padding: 40px 44px;
+  justify-content: space-between;
+  display: flex;
+}
+.dv-option .dv-pick {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dv-option .dv-pick svg {
+  width: 38px;
+  height: 38px;
+  display: block;
+}
+.dv-poll-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  font-weight: 600;
+  font-size: 64px;
+  letter-spacing: -0.035em;
+}
+.dv-poll-arrow {
+  width: 64px;
+  height: 84px;
+  display: block;
+  color: var(--dv-red-soft);
+}
+
+/* ---------- tile + chip ---------- */
+.dv-tile {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: var(--dv-radius);
+  color: #fff;
+  min-height: 420px;
+  display: flex;
+  align-items: flex-end;
+}
+.dv-tile > .dv-dither {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+}
+.dv-tile-body {
+  padding: 48px 52px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dv-tile-label {
+  font-family: var(--dv-mono);
+  font-size: 28px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.dv-tile-value {
+  font-weight: 700;
+  font-size: 220px;
+  line-height: 0.9;
+  letter-spacing: -0.06em;
+}
+.dv-chip {
+  align-self: flex-start;
+  background: var(--dv-surface);
+  color: var(--dv-text);
+  border-radius: 999px;
+  padding: 18px 30px;
+  font-family: var(--dv-mono);
+  font-size: 30px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ---------- cut (same price, usage slashed) ---------- */
+.dv-cut {
+  position: relative;
+  z-index: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+}
+.dv-cut-logo-line {
+  /* Stays in front of everything that flies around it. */
+  position: relative;
+  z-index: 4;
+}
+.dv-cut-logo {
+  display: block;
+  width: 168px;
+  height: 168px;
+  border-radius: 38px;
+  overflow: hidden;
+}
+.dv-cut-logo img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.dv-cut-card {
+  align-self: stretch;
+  /* The tumbling piece must be able to leave the card. */
+  overflow: visible;
+}
+.dv-cut-card .dv-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.dv-cut-price {
+  margin-top: 6px;
+}
+.dv-cut-price .dv-rise {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+.dv-cut-price-value {
+  font-weight: 700;
+  font-size: 150px;
+  line-height: 0.95;
+  letter-spacing: -0.055em;
+}
+.dv-cut-price-sub {
+  font-family: var(--dv-mono);
+  font-size: 34px;
+  color: var(--dv-ink-muted);
+}
+.dv-cut-usage {
+  margin-top: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+.dv-cut-num {
+  font-weight: 700;
+  font-size: 120px;
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+}
+.dv-cut-bar {
+  position: relative;
+  height: 150px;
+  margin-top: 10px;
+}
+.dv-cut-piece {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  transform-origin: 50% 50%;
+}
+.dv-cut-piece .dv-dither {
+  width: 100%;
+  height: 100%;
+}
+.dv-cut-blade {
+  position: absolute;
+  inset: -90px 0;
+  pointer-events: none;
+  z-index: 2;
+}
+.dv-cut-blade > i {
+  position: absolute;
+  inset: 0;
+  background: var(--dv-red);
+  display: block;
+}
+/* Text sits above the card pieces, so the half that drops passes behind it. */
+.dv-headline {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- brand marks + app windows ---------- */
+.dv-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  line-height: 0;
+}
+.dv-logo svg,
+.dv-logo img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.dv-winbar {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin: -20px -20px 28px;
+  padding: 0 4px 22px;
+  border-bottom: 2px solid var(--dv-card-2);
+  font-family: "Inter", var(--dv-sans);
+}
+.dv-lights {
+  display: flex;
+  gap: 10px;
+  flex: none;
+}
+.dv-lights i {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: block;
+  background: #ff5f57;
+}
+.dv-lights i:nth-child(2) {
+  background: #febc2e;
+}
+.dv-lights i:nth-child(3) {
+  background: #28c840;
+}
+.dv-wintitle {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--dv-ink);
+}
+.dv-winlogo {
+  width: 40px;
+  height: 40px;
+}
+.dv-logo-openai,
+.dv-logo-chatgpt,
+.dv-logo-anthropic {
+  color: var(--dv-ink);
+}
+
+/* ---------- leaderboard ---------- */
+.dv-lb {
+  font-family: "Inter", var(--dv-sans);
+}
+.dv-lb-head {
+  display: grid;
+  grid-template-columns: 70px 1fr auto;
+  gap: 20px;
+  padding: 0 8px 14px;
+  font-family: var(--dv-mono);
+  font-size: 22px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dv-ink-muted);
+}
+.dv-lb-head > * {
+  display: block;
+}
+.dv-lb-rows {
+  position: relative;
+}
+.dv-lb-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 118px;
+  display: grid;
+  grid-template-columns: 54px 72px 1fr auto;
+  align-items: center;
+  gap: 20px;
+  padding: 0 16px;
+  border-radius: 18px;
+  background: rgba(71, 77, 235, 0);
+}
+.dv-lb-rank {
+  font-family: var(--dv-mono);
+  font-size: 34px;
+  color: var(--dv-ink-muted);
+}
+.dv-lb-logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: var(--dv-card-2);
+  padding: 12px;
+}
+.dv-lb-name {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.dv-lb-model {
+  position: relative;
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  align-self: flex-start;
+}
+.dv-lb-model .dv-strike {
+  height: 7px;
+  margin-top: -3px;
+  clip-path: inset(0% 100% 0% 0%);
+}
+.dv-lb-note {
+  font-size: 24px;
+  color: var(--dv-ink-muted);
+}
+.dv-lb-bar {
+  height: 14px;
+  border-radius: 7px;
+  background: var(--dv-card-2);
+  overflow: hidden;
+  position: relative;
+}
+.dv-lb-bar .dv-dither {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+}
+.dv-lb-value {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 44px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.dv-lb-badge {
+  font-family: var(--dv-mono);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: var(--dv-indigo);
+  border-radius: 10px;
+  padding: 8px 14px;
+}
+
+/* ---------- picker ---------- */
+.dv-pk {
+  font-family: "Inter", var(--dv-sans);
+}
+.dv-pk-current {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 22px;
+  border-radius: 18px;
+  background: var(--dv-card-2);
+  font-size: 34px;
+  font-weight: 600;
+}
+.dv-pk-label {
+  font-family: var(--dv-mono);
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dv-ink-muted);
+}
+.dv-pk-current .dv-swap > span {
+  /* The incoming model name overlays the outgoing one; keep both on one line. */
+  white-space: nowrap;
+}
+.dv-pk-caret {
+  margin-left: auto;
+  color: var(--dv-ink-muted);
+}
+.dv-pk-list {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dv-pk-option {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 20px 22px;
+  border-radius: 18px;
+  background: rgba(71, 77, 235, 0);
+}
+.dv-pk-logo {
+  width: 60px;
+  height: 60px;
+  border-radius: 14px;
+  background: var(--dv-card-2);
+  padding: 11px;
+}
+.dv-pk-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.dv-pk-name {
+  position: relative;
+  align-self: flex-start;
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.dv-pk-name .dv-strike {
+  height: 7px;
+  margin-top: -3px;
+  clip-path: inset(0% 100% 0% 0%);
+}
+.dv-pk-note {
+  font-size: 26px;
+  color: var(--dv-ink-muted);
+}
+.dv-pk-badge {
+  font-family: var(--dv-mono);
+  font-size: 22px;
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: var(--dv-indigo);
+  border-radius: 10px;
+  padding: 8px 14px;
+}
+.dv-pk-tick {
+  width: 46px;
+  height: 46px;
+  color: var(--dv-indigo);
+  display: block;
+  flex: none;
+}
+.dv-pk-tick svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.dv-pk-toggle {
+  margin-top: 18px;
+  padding: 22px 22px 6px;
+  border-top: 2px solid var(--dv-card-2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 34px;
+  font-weight: 600;
+}
+.dv-switch {
+  position: relative;
+  width: 100px;
+  height: 54px;
+  border-radius: 27px;
+  background: #dedee6;
+  display: block;
+}
+.dv-switch > i {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #fff;
+  display: block;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+.dv-pk-warn {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ---------- terminal / agent run ---------- */
+.dv-term-body {
+  font-family: var(--dv-mono);
+  font-size: 30px;
+  line-height: 1.55;
+  min-height: 180px;
+}
+.dv-term-line {
+  white-space: pre-wrap;
+}
+.dv-term-muted {
+  color: var(--dv-ink-muted);
+}
+.dv-term-ok {
+  color: var(--dv-indigo);
+}
+.dv-term-warn {
+  color: var(--dv-red);
+}
+.dv-term-caret {
+  display: inline-block;
+  width: 16px;
+  height: 34px;
+  background: var(--dv-ink);
+  vertical-align: middle;
+}
+.dv-term-meters {
+  margin-top: 26px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 14px;
+}
+.dv-term-meter {
+  border-radius: 18px;
+  background: var(--dv-card-2);
+  padding: 20px 22px;
+}
+.dv-term-num {
+  font-family: "Inter", var(--dv-sans);
+  font-size: 56px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- launch wall ---------- */
+.dv-launches {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  align-self: stretch;
+}
+.dv-lt-head .dv-rise {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-weight: 700;
+  font-size: 44px;
+  letter-spacing: -0.02em;
+}
+.dv-lt-logo {
+  width: 64px;
+  height: 64px;
+  color: var(--dv-text);
+}
+.dv-lt-grid {
+  display: grid;
+  gap: 16px;
+}
+.dv-lt {
+  min-height: 150px;
+  border-radius: 18px;
+  background: var(--dv-card);
+  color: var(--dv-ink);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 6px;
+  font-family: "Inter", var(--dv-sans);
+}
+.dv-lt-title {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+.dv-lt-note {
+  font-size: 20px;
+  line-height: 1.25;
+  opacity: 0.7;
+}
+.dv-lt-blank {
+  background: var(--dv-surface);
+}
+.dv-lt-blank i {
+  display: block;
+  height: 14px;
+  border-radius: 7px;
+  background: #24242c;
+  width: 70%;
+}
+.dv-lt-blank i + i {
+  width: 45%;
+}
+
+/* ---------- always-on agent ---------- */
+.dv-ag {
+  font-family: "Inter", var(--dv-sans);
+}
+.dv-ag-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.dv-ag-name {
+  font-size: 56px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.dv-ag-live {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--dv-mono);
+  font-size: 26px;
+  color: var(--dv-indigo);
+}
+.dv-ag-live i {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #28c840;
+  display: block;
+}
+.dv-ag-browser {
+  margin-top: 22px;
+  border-radius: 18px;
+  background: var(--dv-card-2);
+  overflow: hidden;
+}
+.dv-ag-bar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 18px;
+}
+.dv-ag-bar .dv-lights i {
+  width: 14px;
+  height: 14px;
+}
+.dv-ag-url {
+  flex: 1;
+  background: #fff;
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-family: var(--dv-mono);
+  font-size: 22px;
+  color: var(--dv-ink-muted);
+  min-height: 42px;
+}
+.dv-ag-view {
+  height: 220px;
+  overflow: hidden;
+  background: #fff;
+  margin: 0 10px 10px;
+  border-radius: 12px;
+}
+.dv-ag-page {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.dv-ag-page i {
+  display: block;
+  height: 18px;
+  border-radius: 9px;
+  background: var(--dv-card-3);
+}
+.dv-ag-page i:nth-child(4n + 1) {
+  height: 70px;
+  border-radius: 12px;
+  background: var(--dv-card-2);
+}
+.dv-ag-tasks {
+  margin-top: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.dv-ag-task {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 34px;
+  font-weight: 600;
+}
+.dv-ag-task .dv-box {
+  width: 48px;
+  height: 48px;
+}
+.dv-ag-task .dv-box-fill svg {
+  width: 30px;
+  height: 30px;
+}
+.dv-ag-usage {
+  margin-top: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.dv-ag-meter {
+  position: relative;
+  height: 28px;
+  border-radius: 14px;
+  background: var(--dv-card-2);
+  overflow: hidden;
+}
+.dv-ag-meter .dv-dither {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+}
+.dv-ag-note {
+  margin-top: 8px;
+  display: flex;
+}
+
+/* ---------- tile logo ---------- */
+.dv-tile-logo {
+  width: 72px;
+  height: 72px;
+  margin-bottom: 18px;
+  color: #fff;
+}
+
+/* ---------- wordmark ---------- */
+.dv-wordmark {
+  font-weight: 800;
+  font-size: 200px;
+  letter-spacing: -0.065em;
+  line-height: 0.9;
+  text-align: center;
+}
+
+/* ---------- captions (spoken lines) ---------- */
+#dv-captions {
+  position: absolute;
+  left: var(--dv-safe-x);
+  right: var(--dv-safe-x);
+  bottom: var(--dv-safe-bottom);
+  height: var(--dv-caption-h);
+  /* Under the flood: during a transition everything becomes the shape, captions included. */
+  z-index: 800;
+}
+.dv-cap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  text-align: center;
+  font-weight: 600;
+  font-size: 54px;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  color: var(--dv-text);
+}
+.dv-cap .dv-mask {
+  margin-right: 0.24em;
+}
