@@ -1,3 +1,5 @@
+const listEndpoint =
+  /^\/v1\/workspaces\/workspace_[ab]\/(posts|connections|tags|members|automations\/instagram\/dm)$/;
 const now = "2026-10-02T12:00:00.000Z";
 const list = (data: unknown[] = []) => ({
   data,
@@ -14,9 +16,24 @@ const memberships = list(
     role: "owner",
   }))
 );
+export interface FixtureConfig {
+  latency?: number;
+  failures?: Record<string, number>;
+  workspaceLatency?: Record<string, number>;
+  totalPosts?: Record<string, number>;
+}
+declare global {
+  interface Window {
+    fixtureConfig?: FixtureConfig;
+  }
+}
+export const unhandled: string[] = [];
 export const requests: { url: string; start: number; end?: number }[] = [];
 export let pending = 0;
 export function installFixtures() {
+  window.fixtureConfig ??= {};
+  const config = window.fixtureConfig;
+  Object.assign(window, { fixtureUnhandled: unhandled });
   const realFetch = window.fetch.bind(window);
   window.fetch = async (input, init) => {
     const url = new URL(
@@ -26,6 +43,9 @@ export function installFixtures() {
     if (url.hostname !== "fixture.local") {
       return realFetch(input, init);
     }
+    const workspaceId = url.pathname.split("/")[3];
+    const method =
+      init?.method ?? (input instanceof Request ? input.method : "GET");
     const entry = {
       url: url.pathname + url.search,
       start: performance.now(),
@@ -33,16 +53,38 @@ export function installFixtures() {
     };
     requests.push(entry);
     pending++;
-    await new Promise((resolve) => setTimeout(resolve, 150));
-    let body: unknown = list();
-    if (url.pathname === "/v1/me/workspaces") {
+    await new Promise((resolve) =>
+      setTimeout(
+        resolve,
+        config.workspaceLatency?.[workspaceId] ?? config.latency ?? 150
+      )
+    );
+    const failure = Object.entries(config.failures ?? {}).find(
+      ([path, count]) => url.pathname.endsWith(path) && count > 0
+    );
+    if (failure && config.failures) {
+      config.failures[failure[0]]--;
+      entry.end = performance.now();
+      pending--;
+      return Response.json(
+        { message: "Fixture service unavailable" },
+        { status: 503 }
+      );
+    }
+    let body: unknown;
+    let status = 200;
+    if (method !== "GET") {
+      unhandled.push(`${method} ${url.pathname}`);
+      status = 501;
+      body = { message: `Missing fixture: ${method} ${url.pathname}` };
+    } else if (url.pathname === "/v1/me/workspaces") {
       body = memberships;
     } else if (url.pathname.endsWith("/analytics/operational")) {
       body = {
         workspaceId: url.pathname.split("/")[3],
         statsVersion: 1,
         counts: {
-          totalPosts: 0,
+          totalPosts: config.totalPosts?.[workspaceId] ?? 0,
           drafts: 0,
           pendingReview: 0,
           scheduled: 0,
@@ -69,9 +111,15 @@ export function installFixtures() {
           transcriptionsUsed: 0,
         },
       };
+    } else if (listEndpoint.test(url.pathname)) {
+      body = list();
+    } else {
+      unhandled.push(`${init?.method ?? "GET"} ${url.pathname}`);
+      status = 501;
+      body = { message: `Missing fixture: ${url.pathname}` };
     }
     entry.end = performance.now();
     pending--;
-    return Response.json(body);
+    return Response.json(body, { status });
   };
 }

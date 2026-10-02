@@ -125,3 +125,10 @@ in-flight work. Mutations already invalidate their resource domain; add explicit
 invalidations only for other affected domains. Background read failures preserve
 cached content, but authorization failures do not expose it. Processing-list polling
 runs only while mounted and visible.
+
+## Browser and feature verification
+
+See [Local verification](docs/TESTING.md) for the deterministic browser harness,
+Postgres integration checks, failure traces, and repository-local pstack
+verification skills. Run `pnpm verify:browser` for app/shared UI changes and add
+acceptance assertions for new behavior.

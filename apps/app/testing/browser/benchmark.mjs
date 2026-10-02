@@ -57,7 +57,7 @@ try {
     observer.observe({ type: "longtask" });
     const timings = await window.runNavigationBenchmark(10);
     observer.disconnect();
-    return { timings, longTasks: tasks, javascriptDecodedBytes: performance.getEntriesByType("resource").filter(e => e.initiatorType === "script").reduce((total, e) => total + e.decodedBodySize, 0), requests: window.fixtureRequests };
+    return { buildMode: window.fixtureBuildMode, timings, longTasks: tasks, javascriptDecodedBytes: performance.getEntriesByType("resource").filter(e => e.initiatorType === "script").reduce((total, e) => total + e.decodedBodySize, 0), requests: window.fixtureRequests };
   })()`,
       awaitPromise: true,
       returnByValue: true,
@@ -74,8 +74,7 @@ try {
         cpuSlowdown: 4,
         fixtureLatencyMs: 150,
         runs: 10,
-        runtime:
-          "Vite development harness; warm modules, fresh app state per run",
+        runtime: "Vite fixture harness; warm modules, fresh app state per run",
         ...result.value,
       },
       null,

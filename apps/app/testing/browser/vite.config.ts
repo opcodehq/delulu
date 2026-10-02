@@ -7,6 +7,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const app = path.resolve(here, "../..");
 export default defineConfig({
   root: here,
+  publicDir: path.join(app, "public"),
   cacheDir: path.resolve(here, "node_modules/.vite"),
   plugins: [react()],
   server: {

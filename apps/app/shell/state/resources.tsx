@@ -313,7 +313,8 @@ export function ResourceBoundary({
   const store = useResourceStore();
   const registry = useContext(RegistryContext);
   const atoms = useRef(new Set<Atom.Atom<unknown>>());
-  atoms.current.clear();
+  // Failed children are unmounted. Keep their reads across parent renders so
+  // Retry can still refresh them; page boundaries reset on route/workspace changes.
   const retry = useCallback(() => {
     for (const atom of atoms.current) {
       registry.refresh(atom);
@@ -383,7 +384,7 @@ export function useResourceAtom<A, E>(
     ? Cause.squash(result.cause)
     : null;
   const error =
-    failure === null
+    failure === null || result.waiting
       ? null
       : failure instanceof Error
         ? failure
@@ -462,10 +463,14 @@ export function useResourceAtom<A, E>(
     isFetching: enabled && result.waiting,
     isLoading:
       (options.enabled ?? true) &&
-      (!clientReady || AsyncResult.isInitial(result)),
+      (!clientReady ||
+        AsyncResult.isInitial(result) ||
+        (result.waiting && data === undefined)),
     isPending:
       (options.enabled ?? true) &&
-      (!clientReady || AsyncResult.isInitial(result)),
+      (!clientReady ||
+        AsyncResult.isInitial(result) ||
+        (result.waiting && data === undefined)),
     refetch: refresh,
   };
 }

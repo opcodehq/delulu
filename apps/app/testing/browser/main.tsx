@@ -15,7 +15,10 @@ import { navigate, usePathname } from "./navigation";
 installFixtures();
 document.body.dataset.density = "compact";
 document.body.dataset.texture = "dither";
-Object.assign(window, { fixtureRequests: requests });
+Object.assign(window, {
+  fixtureRequests: requests,
+  fixtureBuildMode: import.meta.env.DEV ? "development" : "built preview",
+});
 const EngagementChart = lazy(() =>
   import("@/features/analytics/engagement-chart").then((module) => ({
     default: module.EngagementChart,

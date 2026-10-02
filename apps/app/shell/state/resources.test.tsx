@@ -363,7 +363,10 @@ describe("Effect Atom resources", () => {
     await waitFor(() => expect(screen.getByText("2")).toBeTruthy());
   });
 
-  it("shows the resource error message and a retry action", async () => {
+  it.each([
+    true,
+    false,
+  ])("shows errors and recovers on retry (suspense=%s)", async (suspense) => {
     let shouldFail = true;
     const descriptor = resourceEffect({
       queryKey: ["test", "forbidden"] as const,
@@ -377,24 +380,32 @@ describe("Effect Atom resources", () => {
                 }
               )
             )
-          : Effect.succeed("recovered"),
+          : Effect.succeed("recovered").pipe(Effect.delay(30)),
     });
     const Probe = () => {
-      const query = useResourceAtom({ ...descriptor, retry: 0 });
-      return <div>{query.data}</div>;
+      const query = useResourceAtom({ ...descriptor, retry: 0, suspense });
+      return <div>{query.isPending ? "Retry loading" : query.data}</div>;
     };
 
-    render(
-      <AppStateProvider>
-        <ResourceBoundary>
-          <Probe />
-        </ResourceBoundary>
-      </AppStateProvider>
-    );
+    function Parent() {
+      const [version, setVersion] = useState(0);
+      return (
+        <AppStateProvider>
+          <button onClick={() => setVersion(version + 1)} type="button">
+            Rerender parent
+          </button>
+          <ResourceBoundary>
+            <Probe />
+          </ResourceBoundary>
+        </AppStateProvider>
+      );
+    }
+    render(<Parent />);
 
     expect(
       await screen.findByText("You are not a member of this workspace")
     ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Rerender parent" }));
     shouldFail = false;
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(await screen.findByText("recovered")).toBeTruthy();
