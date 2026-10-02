@@ -15,6 +15,7 @@ import PostsClient from "@/features/publishing/posts/posts-client";
 import { AppShell } from "@/shell/app-shell";
 import { PageLoading } from "@/shell/loading";
 import { ControlPreview } from "@/testing/browser/control-preview";
+import { DmPreview } from "@/testing/browser/dm-preview";
 import { installFixtures, pending, requests } from "@/testing/browser/fixtures";
 import { navigate, usePathname } from "@/testing/browser/navigation";
 
@@ -59,7 +60,9 @@ function App() {
           <ExtensionAuthSuccessPage />
         ) : (
           <AppShell>
-            {route === "/__controls" ? (
+            {route === "/__dm" ? (
+              <DmPreview />
+            ) : route === "/__controls" ? (
               <ControlPreview />
             ) : route === "/__loader" ? (
               <PageLoading label="Loading Delulu" />

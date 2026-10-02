@@ -15,8 +15,8 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useApiClient } from "@/shell/providers/api-client";
 import { useWorkspace } from "@/shell/providers/workspace";
-import { requiresInstagramReconnect } from "./connection-errors";
 import { useMutationAtom } from "@/shell/state/resources";
+import { requiresInstagramReconnect } from "./connection-errors";
 
 interface PostSelectorProps {
   socialProviderId: string | null;
@@ -294,12 +294,7 @@ export function PostSelector({
                 Reconnect your account in Connected Accounts, then return here.
                 Your automation stays open in this tab.
               </p>
-              <Button
-                asChild
-                className="mt-2"
-                size="sm"
-                variant="outline"
-              >
+              <Button asChild className="mt-2" size="sm" variant="outline">
                 <a href="/socials" rel="noopener noreferrer" target="_blank">
                   Reconnect Instagram
                 </a>

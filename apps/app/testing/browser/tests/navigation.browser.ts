@@ -437,3 +437,37 @@ test("LinkedIn loading and unavailable Pages keep the same frame", async ({
     4
   );
 });
+
+test("DM sidebar contains long pasted links and wraps the preview", async ({
+  page,
+}) => {
+  await page.goto("/__dm");
+  const dialog = page.getByRole("dialog");
+  await expect(
+    dialog.getByRole("heading", { name: "Send DM", exact: true })
+  ).toBeVisible();
+  const url = "https://example.com/" + "a".repeat(2000);
+  await dialog.getByPlaceholder("https://your-link.com").fill(url);
+  await expect(dialog.getByText(url, { exact: true })).toBeVisible();
+  const message = "b".repeat(500);
+  await dialog.getByPlaceholder("Type your message...").fill(message);
+  await expect(dialog.locator("p").filter({ hasText: message })).toBeVisible();
+  const viewport = dialog.locator('[data-slot="scroll-area-viewport"]');
+  await expect
+    .poll(() =>
+      viewport.evaluate((element) => element.scrollWidth - element.clientWidth)
+    )
+    .toBe(0);
+  await expect
+    .poll(async () => (await dialog.boundingBox())!.x)
+    .toBeGreaterThanOrEqual(0);
+  await expect
+    .poll(async () => {
+      const bounds = (await dialog.boundingBox())!;
+      return bounds.x + bounds.width;
+    })
+    .toBeLessThanOrEqual(page.viewportSize()!.width);
+  await expect(
+    dialog.getByRole("button", { name: "Close", exact: true })
+  ).toBeVisible();
+});
