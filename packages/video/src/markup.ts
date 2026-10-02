@@ -26,7 +26,9 @@ export interface Run {
 }
 
 const WHITESPACE = /\s+/;
-const TOKEN = /\[\[(.+?)\]\]|\*(.+?)\*|_(.+?)_/g;
+// Emphasis markers only count at word edges: `my_var and other_var` stays plain text.
+const TOKEN =
+  /\[\[(.+?)\]\]|(?<![\w*])\*(?!\s)(.+?)(?<!\s)\*(?![\w*])|(?<!\w)_(?!\s)(.+?)(?<!\s)_(?!\w)/g;
 
 /** Split marked-up copy into styled runs. */
 export const parseRuns = (source: string): Run[] => {

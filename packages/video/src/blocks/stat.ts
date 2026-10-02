@@ -55,6 +55,7 @@ export const stat = (
       t,
       d: 0.8,
       ...block.count,
+      entrance: true,
     });
   }
   if (block.from) {

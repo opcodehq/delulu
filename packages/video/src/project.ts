@@ -16,7 +16,12 @@ import { fileURLToPath } from "node:url";
 import { type ComposeOptions, type Composition, compose } from "./compose";
 import { LOGOS } from "./logos";
 import { sfxSource, TRACKS, trackFile } from "./sfx";
-import { fetchTweet, resolveSources, type Tweet } from "./sources";
+import {
+  decodeCachedTweet,
+  fetchTweet,
+  resolveSources,
+  type Tweet,
+} from "./sources";
 import type { Reel } from "./spec";
 
 /** HyperFrames CLI version the generated projects are pinned to. */
@@ -110,12 +115,16 @@ const cachedUrl = async (url: string): Promise<string> => {
   if (existsSync(file)) {
     return file;
   }
-  const res = await fetch(url);
+  // No redirects: the URL was validated, so the bytes must come from exactly there.
+  const res = await fetch(url, { redirect: "error" });
   if (!res.ok) {
     throw new Error(`Download failed (${res.status}): ${url}`);
   }
   mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, Buffer.from(await res.arrayBuffer()));
+  // Write then rename, so an interrupted download never leaves a truncated file in the cache.
+  const tmp = `${file}.${process.pid}.tmp`;
+  writeFileSync(tmp, Buffer.from(await res.arrayBuffer()));
+  renameSync(tmp, file);
   return file;
 };
 
@@ -129,11 +138,17 @@ const cachedTweet =
       `${sha256(Buffer.from(url.split("?")[0] ?? url))}.json`
     );
     if (!refresh && existsSync(file)) {
-      return JSON.parse(readFileSync(file, "utf8")) as Tweet;
+      // A cache entry is only trusted if it still decodes; anything else is fetched again.
+      const cached = decodeCachedTweet(readFileSync(file, "utf8"));
+      if (cached) {
+        return cached;
+      }
     }
     const tweet = await fetchTweet(url);
     mkdirSync(dirname(file), { recursive: true });
-    writeFileSync(file, JSON.stringify(tweet, null, 2));
+    const tmp = `${file}.${process.pid}.tmp`;
+    writeFileSync(tmp, JSON.stringify(tweet, null, 2));
+    renameSync(tmp, file);
     return tweet;
   };
 
@@ -276,45 +291,49 @@ export const renderProject = (
 ): void => {
   const output = resolve(options.output);
   const raw = join(tmpdir(), `delulu-video-${process.pid}-${Date.now()}.mp4`);
-  hyperframes(
-    [
-      "render",
-      ".",
-      "-q",
-      options.quality ?? "high",
-      "-f",
-      String(options.fps ?? 30),
-      "-o",
+  try {
+    hyperframes(
+      [
+        "render",
+        ".",
+        "-q",
+        options.quality ?? "high",
+        "-f",
+        String(options.fps ?? 30),
+        "-o",
+        raw,
+      ],
+      projectDir
+    );
+    mkdirSync(dirname(output), { recursive: true });
+    const audio =
+      options.loudness === undefined
+        ? ["-c:a", "copy"]
+        : [
+            "-af",
+            `loudnorm=I=${options.loudness}:TP=-1.5:LRA=11`,
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            "-ar",
+            "48000",
+          ];
+    execFileSync("ffmpeg", [
+      "-v",
+      "error",
+      "-y",
+      "-i",
       raw,
-    ],
-    projectDir
-  );
-  mkdirSync(dirname(output), { recursive: true });
-  const audio =
-    options.loudness === undefined
-      ? ["-c:a", "copy"]
-      : [
-          "-af",
-          `loudnorm=I=${options.loudness}:TP=-1.5:LRA=11`,
-          "-c:a",
-          "aac",
-          "-b:a",
-          "192k",
-          "-ar",
-          "48000",
-        ];
-  execFileSync("ffmpeg", [
-    "-v",
-    "error",
-    "-y",
-    "-i",
-    raw,
-    "-c:v",
-    "copy",
-    ...audio,
-    "-movflags",
-    "+faststart",
-    output,
-  ]);
-  rmSync(raw, { force: true });
+      "-c:v",
+      "copy",
+      ...audio,
+      "-movflags",
+      "+faststart",
+      output,
+    ]);
+  } finally {
+    // Remove the intermediate render whether the render or the mastering step failed.
+    rmSync(raw, { force: true });
+  }
 };

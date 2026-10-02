@@ -7,26 +7,44 @@ import type { Block, Reel } from "./spec";
  * a render), cached, and turned into plain spec fields, so `compose` stays a pure function.
  */
 
-export interface Tweet {
-  readonly id: string;
-  readonly url: string;
-  readonly name: string;
-  readonly handle: string;
-  readonly verified: boolean;
-  readonly avatarUrl: string;
-  readonly text: string;
-  readonly createdAt: string;
-  readonly replies: number;
-  readonly reposts: number;
-  readonly likes: number;
-  readonly bookmarks: number;
-  readonly views: number | null;
-}
+/** X usernames: 1–15 letters, digits or underscores. Safe to use in a file name. */
+const HANDLE = /^[A-Za-z0-9_]{1,15}$/;
+/** Avatars are only ever downloaded from X's image host, over HTTPS. */
+const AVATAR_URL = /^https:\/\/pbs\.twimg\.com\//;
+
+/** A post as the build uses (and caches) it. Decoding enforces the handle and avatar rules. */
+export const TweetSchema = Schema.Struct({
+  id: Schema.String,
+  url: Schema.String,
+  name: Schema.String,
+  handle: Schema.String.check(Schema.isPattern(HANDLE)),
+  verified: Schema.Boolean,
+  avatarUrl: Schema.String.check(Schema.isPattern(AVATAR_URL)),
+  text: Schema.String,
+  createdAt: Schema.String,
+  replies: Schema.Number,
+  reposts: Schema.Number,
+  likes: Schema.Number,
+  bookmarks: Schema.Number,
+  views: Schema.NullOr(Schema.Number),
+});
+export type Tweet = typeof TweetSchema.Type;
+
+const decodeTweet = Schema.decodeUnknownSync(TweetSchema);
+
+/** A cached post, or undefined when the cache entry is missing fields or malformed. */
+export const decodeCachedTweet = (json: string): Tweet | undefined => {
+  try {
+    return decodeTweet(JSON.parse(json));
+  } catch {
+    return undefined;
+  }
+};
 
 /** X avatar URLs end in a size suffix; we ask for the largest square one. */
 const AVATAR_SIZE = /_(normal|bigger|200x200)\./;
 const STATUS_URL =
-  /^https?:\/\/(?:www\.|mobile\.)?(?:x|twitter)\.com\/([A-Za-z0-9_]{1,15})\/status\/(\d+)/;
+  /^https?:\/\/(?:www\.|mobile\.)?(?:x|twitter)\.com\/([A-Za-z0-9_]{1,15})\/status\/(\d+)(?=$|[/?#])/;
 
 /** Parse an x.com / twitter.com status link. */
 export const parseStatusUrl = (url: string): { handle: string; id: string } => {
@@ -62,7 +80,8 @@ const FxTweet = Schema.Struct({
 /** Turn the FxTwitter API response (https://github.com/FxEmbed/FxEmbed) into a Tweet. */
 export const tweetFromFx = (json: unknown): Tweet => {
   const { tweet: t } = Schema.decodeUnknownSync(FxTweet)(json);
-  return {
+  // Validated: the handle becomes a file name and the avatar URL is fetched.
+  return decodeTweet({
     id: t.id,
     url: t.url,
     name: t.author.name,
@@ -77,7 +96,7 @@ export const tweetFromFx = (json: unknown): Tweet => {
     likes: t.likes,
     bookmarks: t.bookmarks ?? 0,
     views: t.views ?? null,
-  };
+  });
 };
 
 export const fetchTweet = async (
@@ -105,23 +124,25 @@ export const fetchTweet = async (
 
 /** 7194 → "7.2K", 16962514 → "17M", 1619 → "1.6K", 812 → "812". */
 export const compactCount = (n: number): string => {
-  const unit = (value: number, suffix: string) => {
-    const fixed =
-      value >= 100
-        ? Math.round(value).toString()
-        : (Math.round(value * 10) / 10).toString();
-    return `${fixed}${suffix}`;
-  };
-  if (n >= 1e9) {
-    return unit(n / 1e9, "B");
+  const units = [
+    { size: 1e9, suffix: "B" },
+    { size: 1e6, suffix: "M" },
+    { size: 1e3, suffix: "K" },
+  ];
+  const round = (v: number) =>
+    v >= 100 ? Math.round(v) : Math.round(v * 10) / 10;
+  const i = units.findIndex((u) => n >= u.size);
+  const unit = units[i];
+  if (!unit) {
+    return String(n);
   }
-  if (n >= 1e6) {
-    return unit(n / 1e6, "M");
+  const value = round(n / unit.size);
+  // A value that rounds up to 1000 moves to the next unit: 999,999 reads "1M", not "1000K".
+  const bigger = units[i - 1];
+  if (value >= 1000 && bigger) {
+    return `${round(n / bigger.size)}${bigger.suffix}`;
   }
-  if (n >= 1e3) {
-    return unit(n / 1e3, "K");
-  }
-  return String(n);
+  return `${value}${unit.suffix}`;
 };
 
 /** "11:41 PM · Sep 28, 2026" in the given time zone. */

@@ -16,7 +16,7 @@ import { decodeReel } from "./spec";
 const JSON_EXT = /\.json$/;
 
 const USAGE = `Usage:
-  delulu-video build  <spec.json> [--out dir] [--no-captions]
+  delulu-video build  <spec.json> [--out dir] [--no-captions] [--refresh]
   delulu-video check  <spec.json> [--out dir] [--no-captions]
   delulu-video render <spec.json> [--out dir] [--no-captions] [-o out.mp4] [--fps 30|60] [--draft]`;
 

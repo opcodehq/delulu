@@ -20,6 +20,17 @@ describe("markup", () => {
     expect(escapeHtml(`"'`)).toBe("&quot;&#39;");
   });
 
+  it("never treats markers inside words as emphasis", () => {
+    expect(parseRuns("my_var and other_var")).toEqual([
+      { text: "my_var and other_var" },
+    ]);
+    expect(parseRuns("2*3*4 = 24")).toEqual([{ text: "2*3*4 = 24" }]);
+    expect(parseRuns("plan _in half._")).toEqual([
+      { text: "plan " },
+      { text: "in half.", tone: "red" },
+    ]);
+  });
+
   it("leaves plain words with underscores inside them alone", () => {
     expect(parseRuns("snake_case is fine")).toEqual([
       { text: "snake_case is fine" },

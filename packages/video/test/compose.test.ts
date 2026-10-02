@@ -6,6 +6,7 @@ import { decodeReel } from "../src/spec";
 import { sampleReel } from "./fixtures";
 
 const AT_LEAST = /at least/;
+const RESERVED = /reserved/;
 const dom = (html: string) =>
   new DOMParser().parseFromString(html, "text/html");
 
@@ -262,6 +263,60 @@ describe("compose", () => {
 
   it("is deterministic", () => {
     expect(compose(sampleReel()).html).toBe(out.html);
+  });
+
+  it("rejects scene ids compose uses itself", () => {
+    for (const id of ["loop", "dv-root", "cap-1"]) {
+      const clash = decodeReel({
+        scenes: [
+          { id, duration: 2, blocks: [{ type: "wordmark", text: "x" }] },
+        ],
+      });
+      expect(() => compose(clash)).toThrow(RESERVED);
+    }
+  });
+
+  it("keeps spec text from closing the inline script", () => {
+    const sneaky = compose(
+      decodeReel({
+        scenes: [
+          {
+            duration: 2,
+            blocks: [
+              {
+                type: "stat",
+                to: "1",
+                count: { from: 0, to: 1, suffix: "</script><b>" },
+              },
+            ],
+          },
+        ],
+      })
+    );
+    const inline = sneaky.html.slice(sneaky.html.indexOf("DV.mount("));
+    expect(inline.indexOf("</script>")).toBe(inline.lastIndexOf("</script>"));
+    expect(inline).toContain("\\u003c/script>");
+  });
+
+  it("keeps a static stat still (its count is an entrance)", () => {
+    const still = compose(
+      decodeReel({
+        scenes: [
+          {
+            duration: 2,
+            blocks: [
+              {
+                type: "stat",
+                static: true,
+                to: "10",
+                count: { from: 0, to: 10 },
+              },
+            ],
+          },
+        ],
+      })
+    );
+    expect(still.plan.cues.some((c) => c.k === "count")).toBe(false);
   });
 
   it("refuses a loop when the last scene is too short to give up its tail", () => {

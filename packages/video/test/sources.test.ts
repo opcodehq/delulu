@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertExcerpt,
   compactCount,
+  decodeCachedTweet,
   opening,
   parseStatusUrl,
   resolveSources,
@@ -49,6 +50,12 @@ describe("X sources", () => {
       id: "2104823812042940713",
     });
     expect(parseStatusUrl("https://twitter.com/jack/status/20").id).toBe("20");
+    expect(parseStatusUrl("https://x.com/jack/status/20/photo/1").id).toBe(
+      "20"
+    );
+    expect(() => parseStatusUrl("https://x.com/jack/status/20oops")).toThrow(
+      NOT_A_POST
+    );
     expect(() => parseStatusUrl("https://x.com/thsottiaux")).toThrow(
       NOT_A_POST
     );
@@ -74,6 +81,20 @@ describe("X sources", () => {
       "11:41 PM · Sep 28, 2026"
     );
     expect(xTimestamp(tweet.createdAt)).toBe("6:41 AM · Sep 29, 2026");
+  });
+
+  it("rejects posts whose handle or avatar could escape their boundary", () => {
+    const evil = (author: object) => ({
+      ...FX,
+      tweet: { ...FX.tweet, author: { ...FX.tweet.author, ...author } },
+    });
+    expect(() => tweetFromFx(evil({ screen_name: "../../etc" }))).toThrow();
+    expect(() =>
+      tweetFromFx(evil({ avatar_url: "http://169.254.169.254/latest" }))
+    ).toThrow();
+    expect(decodeCachedTweet(JSON.stringify(tweet))).toEqual(tweet);
+    expect(decodeCachedTweet('{"handle": 1}')).toBeUndefined();
+    expect(decodeCachedTweet("not json")).toBeUndefined();
   });
 
   it("only accepts excerpts that are the post's own words", () => {

@@ -91,6 +91,8 @@ export interface Composition {
 
 /** The opening tag of a block's root element (where its shared-element key goes). */
 const FIRST_TAG = /^<(\w+)/;
+/** `<` in inline JSON is escaped so spec text can never close the <script> element. */
+const SCRIPT_LT = /</g;
 const round = (n: number) => Math.round(n * 1000) / 1000;
 const snapTo = (n: number, step: number) => round(Math.round(n / step) * step);
 
@@ -138,6 +140,13 @@ const layout = (reel: Reel, beat: number): Timed[] => {
   const ids = scenes.map((s, i) => s.id ?? `s${i + 1}`);
   if (new Set(ids).size !== ids.length) {
     throw new Error("Scene ids must be unique.");
+  }
+  // compose generates these ids itself (the loop beat, runtime layers, captions).
+  const reserved = ids.filter(
+    (id) => id === "loop" || id.startsWith("dv-") || id.startsWith("cap-")
+  );
+  if (reserved.length > 0) {
+    throw new Error(`Scene ids are reserved: ${reserved.join(", ")}`);
   }
   const timed: Timed[] = [];
   let t = 0;
@@ -622,7 +631,7 @@ const documentHtml = ({
       ${audio.join("\n      ")}
     </div>
     <script>
-      DV.mount(${JSON.stringify(plan)});
+      DV.mount(${JSON.stringify(plan).replace(SCRIPT_LT, "\\u003c")});
     </script>
   </body>
 </html>
