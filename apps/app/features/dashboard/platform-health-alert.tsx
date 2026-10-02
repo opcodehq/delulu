@@ -33,20 +33,20 @@ export function PlatformHealthAlert() {
   }
 
   return (
-    <Card className="gap-0 border-amber-200/70 bg-amber-50/40 p-0 dark:border-amber-900/50 dark:bg-amber-950/20">
+    <Card className="gap-0 p-0">
       <div className="flex items-center gap-2 px-4 py-2.5">
         <Icon
           className="text-amber-600 dark:text-amber-400"
           icon={Alert01Icon}
           size={16}
         />
-        <p className="font-medium text-amber-800 text-sm dark:text-amber-200">
+        <p className="font-medium text-sm">
           {expired} account{expired === 1 ? "" : "s"} need
           {expired === 1 ? "s" : ""} reconnecting
         </p>
         <Button
           asChild
-          className="ml-auto text-amber-700 hover:bg-amber-500/10 hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200"
+          className="ml-auto text-muted-foreground"
           size="sm"
           variant="ghost"
         >

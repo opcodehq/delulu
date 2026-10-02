@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  Draft,
-  Home,
-  Network,
-  Pencil,
-  Robot,
-} from "@delulu/design-system/icons";
+import { Draft, Home, Network, Pencil } from "@delulu/design-system/icons";
 import { cn } from "@delulu/design-system/lib/utils";
 import { usePathname } from "next/navigation";
 import { AppLink as Link } from "@/shell/navigation/app-link";
@@ -33,11 +27,6 @@ export function MobileBottomTabs() {
       url: "/post",
       icon: Pencil,
       isPrimary: true,
-    },
-    {
-      title: "Agent",
-      url: "/agent",
-      icon: Robot,
     },
     {
       title: "Accounts",
