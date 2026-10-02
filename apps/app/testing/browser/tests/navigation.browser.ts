@@ -1,5 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 
+const LONG_CHOICE = /^A longer choice/;
+
 interface RequestRecord {
   url: string;
   start: number;
@@ -259,4 +261,179 @@ test("dashboard recovery is neutral with a ghost retry action", async ({
   await expect(retry).toHaveCSS("background-image", "none");
   await expect(retry).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   await expect(page.locator('a[href="/agent"]')).toHaveCount(0);
+});
+
+test("connection choices contain their icons and descriptions", async ({
+  page,
+}, info) => {
+  if (info.project.name === "mobile-dark") {
+    await page.setViewportSize({ width: 320, height: 640 });
+  }
+  await page.goto("/socials");
+  await ready(page, "Connected Accounts");
+  await page
+    .getByRole("button", { name: "Connect Account", exact: true })
+    .first()
+    .click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  const choices = dialog
+    .getByRole("button")
+    .filter({ hasText: "Connect your" });
+  await expect(choices).toHaveCount(7);
+  for (const choice of await choices.all()) {
+    await choice.scrollIntoViewIfNeeded();
+    const overflow = await choice.evaluate((button) => {
+      const outer = button.getBoundingClientRect();
+      return [...button.querySelectorAll("div, span, svg")].some((child) => {
+        const inner = child.getBoundingClientRect();
+        return (
+          inner.top < outer.top ||
+          inner.bottom > outer.bottom ||
+          inner.left < outer.left ||
+          inner.right > outer.right
+        );
+      });
+    });
+    expect(overflow, await choice.innerText()).toBe(false);
+    expect((await choice.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+  }
+  expect(await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
+    true
+  );
+  await page.keyboard.press("Escape");
+  await expect(dialog).not.toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Connect Account", exact: true }).first()
+  ).toBeFocused();
+});
+
+test("button density preserves variants and content sizing", async ({
+  page,
+}, info) => {
+  await page.goto("/__controls");
+  const mobile = info.project.name === "mobile-dark";
+  const sizes = [
+    ["Standard", 32, 36],
+    ["Small", 28, 32],
+    ["Extra small", 28, 28],
+    ["Large", 36, 40],
+    ["Icon", 32, 36],
+    ["Small icon", 32, 32],
+    ["Dialog trigger", 32, 36],
+    ["Custom height", 56, 56],
+  ] as const;
+  for (const [name, compact] of sizes) {
+    await expect(page.getByRole("button", { name, exact: true })).toHaveCSS(
+      "height",
+      `${mobile ? Math.max(44, compact) : compact}px`
+    );
+  }
+  const content = page.getByRole("button", { name: LONG_CHOICE });
+  expect(
+    await content.evaluate((el) => el.scrollHeight <= el.clientHeight)
+  ).toBe(true);
+  expect((await content.boundingBox())?.height).toBeGreaterThan(44);
+  const customIcon = page.getByRole("button", {
+    name: "Custom icon",
+    exact: true,
+  });
+  await expect(customIcon).toHaveCSS("width", mobile ? "44px" : "24px");
+  await expect(customIcon).toHaveCSS("height", mobile ? "44px" : "24px");
+  await page.evaluate(() => delete document.body.dataset.density);
+  for (const [name, , normal] of sizes) {
+    await expect(page.getByRole("button", { name, exact: true })).toHaveCSS(
+      "height",
+      `${normal}px`
+    );
+  }
+});
+
+test("LinkedIn destinations use the authorization frame and compact choices", async ({
+  page,
+}) => {
+  await page.goto("/linkedin-account-select?selection=fixture&state=fixture");
+  await expect(page.locator('[data-slot="authorization-guide"]')).toHaveCount(
+    4
+  );
+  const radios = page.getByRole("radio");
+  await expect(radios).toHaveCount(2);
+  await expect(radios.first()).toBeChecked();
+  for (const choice of await page
+    .locator('[data-slot="account-choice"]')
+    .all()) {
+    const box = await choice.boundingBox();
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+    expect(box!.height).toBeLessThanOrEqual(58);
+    expect(
+      await choice.evaluate((el) => el.scrollWidth <= el.clientWidth)
+    ).toBe(true);
+    const dot = await choice.getByRole("radio").boundingBox();
+    expect(dot!.height).toBe(dot!.width);
+  }
+  await radios.first().focus();
+  await page.keyboard.down("ArrowDown");
+  await expect(radios.last()).toBeFocused();
+  await expect(radios.last()).toBeChecked();
+  await page.keyboard.up("ArrowDown");
+  await expect(
+    page.getByRole("button", { name: "Connect destination" })
+  ).toBeEnabled();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth
+    )
+  ).toBe(true);
+});
+
+test("authorization frame stays present for invalid LinkedIn links and extension success", async ({
+  page,
+}) => {
+  await page.goto("/linkedin-account-select");
+  await expect(page.getByRole("alert")).toHaveText(
+    "This LinkedIn connection attempt is invalid. Start again."
+  );
+  await expect(page.locator('[data-slot="authorization-guide"]')).toHaveCount(
+    4
+  );
+  await expect(
+    page.getByRole("button", { name: "Connect destination" })
+  ).toBeDisabled();
+  await page.goto("/extension-auth-success");
+  await expect(page.locator('[data-slot="authorization-guide"]')).toHaveCount(
+    4
+  );
+  await expect(
+    page.getByRole("link", { name: "Go to Delulu Social" })
+  ).toHaveAttribute("href", "/");
+});
+
+test("LinkedIn loading and unavailable Pages keep the same frame", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.fixtureConfig = {
+      latency: 1000,
+      linkedInTargets: [{ id: "member", name: "Alex Morgan", type: "member" }],
+    };
+  });
+  await page.goto(
+    "/linkedin-account-select?selection=fixture&state=fixture&pages=unavailable"
+  );
+  await expect(page.getByRole("status")).toHaveText(
+    "Loading LinkedIn destinations…"
+  );
+  await expect(page.locator('[data-slot="authorization-guide"]')).toHaveCount(
+    4
+  );
+  await expect(page.getByRole("radio")).toBeChecked();
+  await expect(
+    page.getByText("We couldn't load your LinkedIn Pages.", { exact: false })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Connect destination" })
+  ).toBeEnabled();
+  await expect(page.locator('[data-slot="authorization-guide"]')).toHaveCount(
+    4
+  );
 });

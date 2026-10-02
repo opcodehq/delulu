@@ -1,16 +1,20 @@
 /// <reference types="vite/client" />
 
 import { lazy, Suspense } from "react";
+import ExtensionAuthSuccessPage from "@/app/extension-auth-success/page";
+import { LinkedInAccountSelect } from "@/app/linkedin-account-select/linkedin-account-select";
 import "@/app/styles.css";
 import { DesignSystemProvider } from "@delulu/design-system";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { createRoot } from "react-dom/client";
 import { AnalyticsClient } from "@/features/analytics/analytics-client";
+import ConnectedAccounts from "@/features/connections/connected-accounts";
 import { DashboardClient } from "@/features/dashboard/dashboard-client";
 import { CalendarClient } from "@/features/publishing/calendar/calendar-client";
 import PostsClient from "@/features/publishing/posts/posts-client";
 import { AppShell } from "@/shell/app-shell";
 import { PageLoading } from "@/shell/loading";
+import { ControlPreview } from "@/testing/browser/control-preview";
 import { installFixtures, pending, requests } from "@/testing/browser/fixtures";
 import { navigate, usePathname } from "@/testing/browser/navigation";
 
@@ -49,21 +53,31 @@ function App() {
   return (
     <DesignSystemProvider>
       <NuqsTestingAdapter>
-        <AppShell>
-          {route === "/__loader" ? (
-            <PageLoading label="Loading Delulu" />
-          ) : route === "/__charts" ? (
-            <ChartPreview />
-          ) : route === "/posts" ? (
-            <PostsClient />
-          ) : route === "/calendar" ? (
-            <CalendarClient />
-          ) : route === "/analytics" ? (
-            <AnalyticsClient />
-          ) : (
-            <DashboardClient />
-          )}
-        </AppShell>
+        {route === "/linkedin-account-select" ? (
+          <LinkedInAccountSelect />
+        ) : route === "/extension-auth-success" ? (
+          <ExtensionAuthSuccessPage />
+        ) : (
+          <AppShell>
+            {route === "/__controls" ? (
+              <ControlPreview />
+            ) : route === "/__loader" ? (
+              <PageLoading label="Loading Delulu" />
+            ) : route === "/__charts" ? (
+              <ChartPreview />
+            ) : route === "/socials" ? (
+              <ConnectedAccounts />
+            ) : route === "/posts" ? (
+              <PostsClient />
+            ) : route === "/calendar" ? (
+              <CalendarClient />
+            ) : route === "/analytics" ? (
+              <AnalyticsClient />
+            ) : (
+              <DashboardClient />
+            )}
+          </AppShell>
+        )}
       </NuqsTestingAdapter>
     </DesignSystemProvider>
   );

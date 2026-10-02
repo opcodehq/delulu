@@ -341,33 +341,22 @@ body {
 [data-density="compact"] {
   --control-height: 2rem;
   --control-height-small: 1.75rem;
+  --control-height-large: 2.25rem;
   --page-gutter: 1rem;
 }
 [data-density="compact"]
-  :is(
-    [data-slot="button"],
-    [data-slot="input"],
-    [data-slot="select-trigger"],
-    [data-slot="toggle"]
-  ) {
+  :is([data-slot="input"], [data-slot="select-trigger"], [data-slot="toggle"]) {
   height: var(--control-height);
   min-height: var(--control-height);
   padding-block: 0.25rem;
   font-size: 0.875rem;
 }
-[data-density="compact"]
-  [data-slot="button"]:is([data-size="sm"], [data-size="xs"]),
+/* Button sizes consume density tokens in their variants, so className sizing
+   and content-sized choices are not overridden by an unlayered fixed height.
+   This also works when a Radix trigger replaces the button's data-slot. */
 [data-density="compact"] [data-slot="select-trigger"][data-size="sm"] {
   height: var(--control-height-small);
   min-height: var(--control-height-small);
-}
-[data-density="compact"]
-  [data-slot="button"]:is([data-size="icon"], [data-size="icon-sm"]) {
-  width: var(--control-height);
-  padding: 0;
-}
-[data-density="compact"] [data-slot="button"][data-size="lg"] {
-  height: 2.25rem;
 }
 [data-density="compact"] [data-slot="tabs-list"] {
   height: 2rem;
@@ -415,6 +404,7 @@ body {
   [data-density="compact"] {
     --control-height: 2.75rem;
     --control-height-small: 2.75rem;
+    --control-height-large: 2.75rem;
   }
   [data-density="compact"]
     :is(
@@ -428,6 +418,13 @@ body {
       [data-slot="chart-data"] > summary
     ) {
     min-height: 2.75rem;
+  }
+  [data-density="compact"] :is([data-size="icon"], [data-size="icon-sm"]) {
+    min-width: 2.75rem;
+  }
+  /* The enclosing choice label supplies the touch target, not its radio dot. */
+  [data-density="compact"] [data-slot="account-choice"] [role="radio"] {
+    min-height: 1rem;
   }
   [data-density="compact"] [data-slot="tabs-list"] {
     height: auto;

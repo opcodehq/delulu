@@ -2,7 +2,6 @@
 
 import { Logo } from "@delulu/design-system/components/logo";
 import { Button } from "@delulu/design-system/components/ui/button";
-import { Card } from "@delulu/design-system/components/ui/card";
 import {
   RadioGroup,
   RadioGroupItem,
@@ -12,6 +11,8 @@ import { Icon } from "@delulu/design-system/providers/icon";
 import { Loading03Icon } from "@delulu/icons";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+
+import { AuthorizationShell } from "@/shell/navigation/authorization-shell";
 
 interface LinkedInTarget {
   readonly id: string;
@@ -170,41 +171,42 @@ export function LinkedInAccountSelect() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted/20 p-6">
-      <section className="w-full max-w-lg space-y-6 rounded-2xl border bg-background p-7 shadow-sm">
+    <AuthorizationShell>
+      <section className="space-y-4">
         <Logo />
         <div className="space-y-2">
-          <h1 className="font-semibold text-2xl tracking-tight">
+          <h1 className="font-semibold text-lg tracking-tight">
             Where do you want to post?
           </h1>
-          <p className="text-muted-foreground leading-relaxed">
+          <p className="text-muted-foreground text-sm leading-relaxed">
             Choose your LinkedIn profile or a Page you manage. You can connect
             another destination later.
           </p>
         </div>
 
         {loading ? (
-          <Card
-            className="flex min-h-28 items-center justify-center gap-3"
-            role="status"
-          >
+          <output className="flex items-center gap-2 py-3">
             <Icon className="animate-spin" icon={Loading03Icon} size={20} />
             <span className="text-muted-foreground text-sm">
               Loading LinkedIn destinations…
             </span>
-          </Card>
+          </output>
         ) : error && targets.length === 0 ? (
-          <Card className="p-4 text-destructive text-sm">{error}</Card>
+          <p className="text-muted-foreground text-sm" role="alert">
+            {error}
+          </p>
         ) : (
           <RadioGroup
-            className="gap-3"
+            aria-label="LinkedIn destination"
+            className="gap-2"
             disabled={submitting}
             onValueChange={setSelected}
             value={selected}
           >
             {targets.map((target, index) => (
               <label
-                className="flex min-h-16 cursor-pointer items-center gap-3 rounded-xl border p-4 transition-colors hover:bg-muted/40 has-[[data-state=checked]]:border-sky-600 has-[[data-state=checked]]:bg-sky-600/5"
+                className="flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition-colors hover:bg-muted/40 has-[[data-state=checked]]:border-primary/50 has-[[data-state=checked]]:bg-primary/5 has-focus-visible:ring-2 has-focus-visible:ring-ring"
+                data-slot="account-choice"
                 htmlFor={`linkedin-target-${index}`}
                 key={target.id}
               >
@@ -212,8 +214,8 @@ export function LinkedInAccountSelect() {
                   id={`linkedin-target-${index}`}
                   value={target.id}
                 />
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-sky-700">
-                  <SocialIcon className="size-5 text-white" type="LINKEDIN" />
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-sky-700">
+                  <SocialIcon className="size-4 text-white" type="LINKEDIN" />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium text-sm">
@@ -232,12 +234,14 @@ export function LinkedInAccountSelect() {
         )}
 
         {error && targets.length > 0 ? (
-          <p className="text-destructive text-sm">{error}</p>
+          <p className="text-muted-foreground text-sm" role="alert">
+            {error}
+          </p>
         ) : null}
         {!loading &&
         targets.length > 0 &&
         !targets.some((target) => target.type === "organization") ? (
-          <output className="block space-y-2 rounded-xl border p-4 text-sm">
+          <output className="block space-y-1 text-muted-foreground text-sm">
             <p>
               {searchParams.get("pages") === "unavailable"
                 ? "We couldn't load your LinkedIn Pages. You can continue with your profile, or go back and reconnect to try again."
@@ -249,7 +253,7 @@ export function LinkedInAccountSelect() {
           </output>
         ) : null}
         <Button
-          className="min-h-11 w-full"
+          className="w-full"
           disabled={loading || submitting || !selected}
           onClick={connect}
         >
@@ -275,6 +279,6 @@ export function LinkedInAccountSelect() {
           </a>
         ) : null}
       </section>
-    </main>
+    </AuthorizationShell>
   );
 }

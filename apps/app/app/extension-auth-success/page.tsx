@@ -1,24 +1,25 @@
+import { Button } from "@delulu/design-system/components/ui/button";
 import Link from "next/link";
+import { AuthorizationShell } from "@/shell/navigation/authorization-shell";
 
 export default function ExtensionAuthSuccessPage() {
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-background">
-      <div className="mx-auto max-w-md space-y-6 px-6 text-center">
-        <div className="text-6xl">🎉</div>
-        <h1 className="font-bold text-2xl tracking-tight">You're signed in!</h1>
-        <p className="text-muted-foreground">
+    <AuthorizationShell>
+      <div className="space-y-4 text-center">
+        <div className="text-3xl">🎉</div>
+        <h1 className="font-semibold text-lg tracking-tight">
+          You're signed in!
+        </h1>
+        <p className="text-muted-foreground text-sm">
           You have been signed into the Sorted extension. You can safely close
           this tab and return to the extension popup.
         </p>
         <div className="flex flex-col items-center gap-3">
-          <Link
-            className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-6 font-medium text-primary-foreground text-sm transition-colors hover:bg-primary/90"
-            href="/"
-          >
-            Go to Delulu Social
-          </Link>
+          <Button asChild>
+            <Link href="/">Go to Delulu Social</Link>
+          </Button>
         </div>
       </div>
-    </div>
+    </AuthorizationShell>
   );
 }
