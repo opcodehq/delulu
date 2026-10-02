@@ -65,7 +65,7 @@ afterEach(() => {
 describe("failed post recovery", () => {
   it("uses a ghost action that still queues a retry and refreshes the list", async () => {
     render(<FailedPostsAlert />);
-    const button = screen.getByRole("button", { name: "Retry", exact: true });
+    const button = screen.getByRole("button", { name: "Retry" });
     expect(button.getAttribute("data-variant")).toBe("ghost");
     fireEvent.click(button);
     await waitFor(() => expect(state.retry).toHaveBeenCalledWith("target_a"));
