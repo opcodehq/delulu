@@ -101,6 +101,8 @@ export function installFixtures() {
         streak: { currentDays: 0, longestDays: 0, lastPublishedDate: null },
         generatedAt: now,
       };
+    } else if (url.pathname.endsWith("/billing/subscription")) {
+      body = null;
     } else if (url.pathname.endsWith("/billing/usage")) {
       body = {
         billingOwnerUserId: "fixture-user",

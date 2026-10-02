@@ -1,5 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 
+const LONG_CHOICE = /^A longer choice/;
+
 interface RequestRecord {
   url: string;
   start: number;
@@ -259,4 +261,90 @@ test("dashboard recovery is neutral with a ghost retry action", async ({
   await expect(retry).toHaveCSS("background-image", "none");
   await expect(retry).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   await expect(page.locator('a[href="/agent"]')).toHaveCount(0);
+});
+
+test("connection choices contain their icons and descriptions", async ({
+  page,
+}, info) => {
+  if (info.project.name === "mobile-dark") {
+    await page.setViewportSize({ width: 320, height: 640 });
+  }
+  await page.goto("/socials");
+  await ready(page, "Connected Accounts");
+  await page
+    .getByRole("button", { name: "Connect Account", exact: true })
+    .first()
+    .click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  const choices = dialog
+    .getByRole("button")
+    .filter({ hasText: "Connect your" });
+  await expect(choices).toHaveCount(7);
+  for (const choice of await choices.all()) {
+    await choice.scrollIntoViewIfNeeded();
+    const overflow = await choice.evaluate((button) => {
+      const outer = button.getBoundingClientRect();
+      return [...button.querySelectorAll("div, span, svg")].some((child) => {
+        const inner = child.getBoundingClientRect();
+        return (
+          inner.top < outer.top ||
+          inner.bottom > outer.bottom ||
+          inner.left < outer.left ||
+          inner.right > outer.right
+        );
+      });
+    });
+    expect(overflow, await choice.innerText()).toBe(false);
+    expect((await choice.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+  }
+  expect(await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
+    true
+  );
+  await page.keyboard.press("Escape");
+  await expect(dialog).not.toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Connect Account", exact: true }).first()
+  ).toBeFocused();
+});
+
+test("button density preserves variants and content sizing", async ({
+  page,
+}, info) => {
+  await page.goto("/__controls");
+  const mobile = info.project.name === "mobile-dark";
+  const sizes = [
+    ["Standard", 32, 36],
+    ["Small", 28, 32],
+    ["Extra small", 28, 28],
+    ["Large", 36, 40],
+    ["Icon", 32, 36],
+    ["Small icon", 32, 32],
+    ["Dialog trigger", 32, 36],
+    ["Custom height", 56, 56],
+  ] as const;
+  for (const [name, compact] of sizes) {
+    await expect(page.getByRole("button", { name, exact: true })).toHaveCSS(
+      "height",
+      `${mobile ? Math.max(44, compact) : compact}px`
+    );
+  }
+  const content = page.getByRole("button", { name: LONG_CHOICE });
+  expect(
+    await content.evaluate((el) => el.scrollHeight <= el.clientHeight)
+  ).toBe(true);
+  expect((await content.boundingBox())?.height).toBeGreaterThan(44);
+  const customIcon = page.getByRole("button", {
+    name: "Custom icon",
+    exact: true,
+  });
+  await expect(customIcon).toHaveCSS("width", mobile ? "44px" : "24px");
+  await expect(customIcon).toHaveCSS("height", mobile ? "44px" : "24px");
+  await page.evaluate(() => delete document.body.dataset.density);
+  for (const [name, , normal] of sizes) {
+    await expect(page.getByRole("button", { name, exact: true })).toHaveCSS(
+      "height",
+      `${normal}px`
+    );
+  }
 });

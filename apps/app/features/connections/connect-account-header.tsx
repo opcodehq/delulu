@@ -56,66 +56,19 @@ function ConnectPlatformButton({
     resources.connections.mint(workspaceId ?? "", platform)
   );
 
-  if (platform === "FARCASTER") {
-    return (
-      <Button
-        className="flex h-14 items-center justify-start space-x-4 px-4"
-        disabled
-        variant="outline"
-      >
-        <div
-          className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-            socialBackgroundColors[platform]
-          } shadow-sm`}
-        >
-          <SocialIcon className="text-white" size="md" type={platform} />
-        </div>
-        <div className="flex flex-col items-start">
-          <span className="font-medium">{socialDisplayNames[platform]}</span>
-          <span className="text-muted-foreground text-sm">
-            {socialDescriptions[platform]}
-          </span>
-        </div>
-      </Button>
-    );
-  }
-
-  if (!workspaceId) {
-    return (
-      <Button
-        className="flex h-14 items-center justify-start space-x-4 px-4"
-        disabled
-        variant="outline"
-      >
-        <div
-          className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-            socialBackgroundColors[platform]
-          } shadow-sm`}
-        >
-          <SocialIcon className="text-white" size="md" type={platform} />
-        </div>
-        <div className="flex flex-col items-start">
-          <span className="font-medium">{socialDisplayNames[platform]}</span>
-          <span className="text-muted-foreground text-sm">
-            {socialDescriptions[platform]}
-          </span>
-        </div>
-      </Button>
-    );
-  }
-
   return (
     <Button
-      className="flex h-14 items-center justify-start space-x-4 px-4"
-      disabled={connect.isPending}
+      className="justify-start gap-3"
+      disabled={!workspaceId || platform === "FARCASTER" || connect.isPending}
       onClick={async () => {
         const result = await connect.mutateAsync({ includeInsights: true });
         window.location.assign(result.url);
       }}
+      size="content"
       variant="outline"
     >
       <div
-        className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
           socialBackgroundColors[platform]
         } shadow-sm`}
       >
@@ -129,7 +82,7 @@ function ConnectPlatformButton({
           <SocialIcon className="text-white" size="md" type={platform} />
         )}
       </div>
-      <div className="flex flex-col items-start">
+      <div className="flex min-w-0 flex-col items-start">
         <span className="font-medium">{socialDisplayNames[platform]}</span>
         <span className="text-muted-foreground text-sm">
           {connect.isPending ? "Connecting…" : socialDescriptions[platform]}
@@ -182,7 +135,7 @@ function ConnectAccountDialogContent() {
               : "All connections use official platform APIs. Your passwords never touch our servers."}
           </DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-1 gap-4 py-4">
+        <div className="grid grid-cols-1 gap-2 py-2">
           {isAtLimit ? (
             <InlineUpgradePrompt feature="socialAccounts" />
           ) : (

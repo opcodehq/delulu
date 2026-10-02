@@ -6,11 +6,13 @@ import { DesignSystemProvider } from "@delulu/design-system";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { createRoot } from "react-dom/client";
 import { AnalyticsClient } from "@/features/analytics/analytics-client";
+import ConnectedAccounts from "@/features/connections/connected-accounts";
 import { DashboardClient } from "@/features/dashboard/dashboard-client";
 import { CalendarClient } from "@/features/publishing/calendar/calendar-client";
 import PostsClient from "@/features/publishing/posts/posts-client";
 import { AppShell } from "@/shell/app-shell";
 import { PageLoading } from "@/shell/loading";
+import { ControlPreview } from "@/testing/browser/control-preview";
 import { installFixtures, pending, requests } from "@/testing/browser/fixtures";
 import { navigate, usePathname } from "@/testing/browser/navigation";
 
@@ -50,10 +52,14 @@ function App() {
     <DesignSystemProvider>
       <NuqsTestingAdapter>
         <AppShell>
-          {route === "/__loader" ? (
+          {route === "/__controls" ? (
+            <ControlPreview />
+          ) : route === "/__loader" ? (
             <PageLoading label="Loading Delulu" />
           ) : route === "/__charts" ? (
             <ChartPreview />
+          ) : route === "/socials" ? (
+            <ConnectedAccounts />
           ) : route === "/posts" ? (
             <PostsClient />
           ) : route === "/calendar" ? (
