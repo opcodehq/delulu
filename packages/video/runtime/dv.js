@@ -107,6 +107,26 @@
         c.t
       );
     },
+    /** Deterministic typing: the text's characters are revealed by timeline progress. */
+    type: (tl, els, c) => {
+      for (const el of els) {
+        const text = el.textContent;
+        const o = { p: 0 };
+        const paint = () => {
+          el.textContent = text.slice(0, Math.round(o.p * text.length));
+        };
+        start(tl, o, { p: 0, onUpdate: paint }, c);
+        tl.to(o, { p: 1, duration: c.d, ease: "none", onUpdate: paint }, c.t);
+      }
+    },
+    /** Shrink away to nothing (a tile leaving the wall, a tick moving off). */
+    vanish: (tl, els, c) => {
+      tl.to(
+        els,
+        { scale: 0, duration: c.d, ease: "power2.in", stagger: c.stagger || 0 },
+        c.t
+      );
+    },
     /** Start scaled to zero (something a later cue pops in). */
     hidden: (tl, els, c) => {
       start(tl, els, { scale: 0 }, c);

@@ -1,5 +1,6 @@
 import { escapeHtml, inline } from "../markup";
 import type { CutBlock } from "../spec";
+import { logo } from "./brand";
 import { ditherCanvas, SEED } from "./dither";
 import {
   type BlockContext,
@@ -34,13 +35,10 @@ export const cut = (
   });
   const band = `polygon(calc(${split + lean}% - 7px) 0,calc(${split + lean}% + 7px) 0,calc(${split - lean}% + 7px) 100%,calc(${split - lean}% - 7px) 100%)`;
   // In a mask line, so the logo rises in and sinks out with the text.
-  const logo = block.logo
-    ? maskLine(
-        `<span class="dv-cut-logo"><img src="${escapeHtml(block.logo)}" alt=""></span>`,
-        "dv-cut-logo-line"
-      )
+  const mark = block.logo
+    ? maskLine(logo(block.logo, "dv-cut-logo"), "dv-cut-logo-line")
     : "";
-  const html = `<div class="dv-cut" id="${id}">${logo}<div class="dv-card dv-cut-card"><div class="dv-card-body">
+  const html = `<div class="dv-cut" id="${id}">${mark}<div class="dv-card dv-cut-card"><div class="dv-card-body">
   ${block.label ? maskLine(`<span class="dv-label">${escapeHtml(block.label)}</span>`) : ""}
   <div class="dv-cut-price">${maskLine(`<span class="dv-cut-price-value">${inline(block.price)}</span>${block.priceSub ? `<span class="dv-cut-price-sub">${escapeHtml(block.priceSub)}</span>` : ""}`)}</div>
   <div class="dv-cut-usage">

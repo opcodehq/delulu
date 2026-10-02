@@ -109,6 +109,98 @@ export const sampleReel = (overrides: Partial<Reel> = {}): Reel =>
         ],
       },
       {
+        id: "board",
+        duration: 3,
+        blocks: [
+          {
+            type: "leaderboard",
+            title: "DeepSWE",
+            column: "Cost / task",
+            rows: [
+              { name: "Astra", logo: "openai", value: "$4–7", bar: 1 },
+              { name: "Sol", logo: "openai", value: "<$1", bar: 0.2 },
+            ],
+            rerank: { at: 1, order: ["Sol", "Astra"] },
+            highlight: { name: "Sol", at: 1.5, badge: "#1" },
+            strike: { name: "Astra", at: 2 },
+          },
+        ],
+      },
+      {
+        id: "pick",
+        duration: 4,
+        blocks: [
+          {
+            type: "picker",
+            app: "Claude",
+            logo: "claude",
+            options: [
+              { name: "Opus", logo: "claude" },
+              { name: "Sonnet", logo: "claude", badge: "New" },
+            ],
+            pick: { index: 1, at: 1.5 },
+            strike: { index: 1, at: 2.5 },
+            toggle: { label: "Max", at: 3, warn: "≈ Fable" },
+          },
+        ],
+      },
+      {
+        id: "term",
+        duration: 3,
+        blocks: [
+          {
+            type: "terminal",
+            title: "agent",
+            lines: [
+              { text: "› run", at: 0.5 },
+              { text: "✓ done", tone: "ok", at: 1.5 },
+            ],
+            meters: [
+              {
+                label: "Tokens",
+                from: 0,
+                to: 1.8,
+                suffix: "M",
+                decimals: 1,
+                at: 0.5,
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: "wall",
+        duration: 3,
+        blocks: [
+          {
+            type: "launches",
+            logo: "openai",
+            title: "DevDay",
+            tiles: [{ title: "Sol" }, { title: "DOTS" }],
+            count: 8,
+            keep: [2, 6],
+            collapseAt: 1.5,
+          },
+        ],
+      },
+      {
+        id: "dots",
+        duration: 4,
+        blocks: [
+          {
+            type: "agent",
+            app: "ChatGPT",
+            logo: "chatgpt",
+            name: "DOTS",
+            status: "Running · 24/7",
+            tasks: [{ text: "Booked", at: 1 }],
+            usage: 0.3,
+            usageNote: "Doesn't touch your usage",
+          },
+          { type: "tile", logo: "openai", value: "24/7" },
+        ],
+      },
+      {
         id: "quote",
         duration: 3,
         blocks: [

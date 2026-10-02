@@ -1,5 +1,6 @@
 import { escapeHtml, inline } from "../markup";
 import type { ChipBlock, TileBlock } from "../spec";
+import { logo } from "./brand";
 import { ditherCanvas, SEED } from "./dither";
 import { type BlockContext, maskLine, type RenderedBlock, rise } from "./types";
 
@@ -8,7 +9,7 @@ export const tile = (
   block: typeof TileBlock.Type,
   { id, at }: BlockContext
 ): RenderedBlock => ({
-  html: `<div class="dv-tile" id="${id}">${ditherCanvas({ kind: "fill", color: SEED[block.tone ?? "indigo"], variant: "gradient", cell: 6, floor: 0.72 })}<div class="dv-tile-body">${
+  html: `<div class="dv-tile" id="${id}">${ditherCanvas({ kind: "fill", color: SEED[block.tone ?? "indigo"], variant: "gradient", cell: 6, floor: 0.72 })}<div class="dv-tile-body">${block.logo ? logo(block.logo, "dv-tile-logo") : ""}${
     block.label
       ? maskLine(
           `<span class="dv-tile-label">${escapeHtml(block.label)}</span>`

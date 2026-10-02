@@ -9,6 +9,7 @@
 import { readFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
+import { textOnlyScenes } from "./compose";
 import { checkProject, renderProject, writeProject } from "./project";
 import { decodeReel } from "./spec";
 
@@ -56,6 +57,11 @@ const main = async () => {
     mediaRoot: dirname(specFile),
     refresh: values.refresh ?? false,
   });
+  for (const scene of textOnlyScenes(reel)) {
+    console.warn(
+      `Warning: scene "${scene}" is text only. Give it a graphic (a card, window, chart, tile…).`
+    );
+  }
   console.log(
     `Wrote ${outDir} (${composition.duration}s, ${composition.format.width}x${composition.format.height}, ${composition.sfx.length} sfx)`
   );

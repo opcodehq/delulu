@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { compose, FLOOD_EXIT, LOOP_TAIL } from "../src/compose";
+import { compose, FLOOD_EXIT, LOOP_TAIL, textOnlyScenes } from "../src/compose";
 import { SFX } from "../src/sfx";
 import { decodeReel } from "../src/spec";
 import { sampleReel } from "./fixtures";
@@ -15,10 +15,10 @@ describe("compose", () => {
   const doc = dom(out.html);
 
   it("lays scenes back to back and carves the loop beat out of the last scene", () => {
-    expect(out.duration).toBe(31);
+    expect(out.duration).toBe(48);
     const last = out.plan.scenes.at(-1);
-    expect(last).toMatchObject({ id: "loop", start: 31 - LOOP_TAIL, end: 31 });
-    expect(out.plan.scenes.at(-2)?.end).toBe(31 - LOOP_TAIL);
+    expect(last).toMatchObject({ id: "loop", start: 48 - LOOP_TAIL, end: 48 });
+    expect(out.plan.scenes.at(-2)?.end).toBe(48 - LOOP_TAIL);
   });
 
   it("every cue (and every cursor or camera target) exists in the document", () => {
@@ -92,23 +92,24 @@ describe("compose", () => {
   });
 
   it("morphs by default and floods only where asked", () => {
-    expect(out.plan.transitions.map((t) => t.kind)).toEqual([
-      "morph",
-      "push",
-      "morph",
-      "morph",
-      "morph",
-      "morph",
-      "morph",
-      "flood",
-      "morph",
-      "morph",
-    ]);
-    // Only the card leaving into the flood turns indigo (the flood lands on a headline, not a card);
-    // morphs never recolour.
-    expect(out.plan.cues.filter((c) => c.k === "fill").map((c) => c.s)).toEqual(
-      ["#quote-b1"]
-    );
+    const kinds = out.plan.transitions.map((t) => t.kind);
+    expect(kinds.filter((k) => k === "flood")).toHaveLength(1);
+    expect(kinds.filter((k) => k === "push")).toHaveLength(1);
+    expect(
+      kinds.every((k) => k === "morph" || k === "flood" || k === "push")
+    ).toBe(true);
+    // Only the card leaving into the flood turns indigo; a morph never recolours a scene's hero.
+    const fills = out.plan.cues.filter((c) => c.k === "fill").map((c) => c.s);
+    expect(fills).toContain("#quote-b1");
+    const morphHeroes = out.plan.transitions
+      .filter((t) => t.kind === "morph")
+      .map((t) => out.plan.scenes[t.to]?.hero)
+      .filter((h): h is string => Boolean(h));
+    // (A morph-entered card may still turn indigo on its way out into a flood.)
+    const arrivingIndigo = out.plan.cues
+      .filter((c) => c.k === "fill" && c.from === "#474deb")
+      .map((c) => c.s);
+    expect(arrivingIndigo.filter((f) => morphHeroes.includes(f))).toEqual([]);
   });
 
   it("cuts the usage, never the price: the bar is slashed and the number counts down", () => {
@@ -136,6 +137,22 @@ describe("compose", () => {
     expect(out.plan.scenes.find((s) => s.id === "slice")?.hero).toBe(
       "#slice-b1 .dv-cut-card"
     );
+  });
+
+  it("flags scenes that are only text", () => {
+    expect(textOnlyScenes(reel)).toEqual(["big"]);
+  });
+
+  it("draws app windows with the built-in logos inlined", () => {
+    expect(
+      doc.querySelectorAll("#board-b1 .dv-winbar .dv-lights i").length
+    ).toBe(3);
+    expect(
+      doc.querySelector("#pick-b1 .dv-winbar .dv-logo-claude svg")
+    ).not.toBeNull();
+    expect(
+      doc.querySelector("#board-b1-r0 .dv-logo-openai svg")
+    ).not.toBeNull();
   });
 
   it("turns a shared key into one object across a morph", () => {

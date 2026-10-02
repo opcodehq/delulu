@@ -1,32 +1,37 @@
 import type { SfxName } from "../spec";
 
-export type CueKind =
-  | "rise"
-  | "sink"
-  | "pop"
-  | "reveal"
-  | "retract"
-  | "highlight"
-  | "count"
-  | "type"
-  | "path"
-  | "fall"
-  | "swap"
-  | "color"
-  | "bob"
-  | "hidden"
-  | "move"
-  | "shake"
-  | "slam"
-  | "wipe"
-  | "fill"
-  | "clipTo"
-  | "ditherIn"
-  | "press"
-  | "cursorIn"
-  | "cursorTo"
-  | "cursorOut"
-  | "click";
+export const CUE_KINDS = [
+  "rise",
+  "sink",
+  "pop",
+  "reveal",
+  "retract",
+  "highlight",
+  "count",
+  "type",
+  "path",
+  "fall",
+  "swap",
+  "color",
+  "bob",
+  "hidden",
+  "vanish",
+  "move",
+  "shake",
+  "slam",
+  "wipe",
+  "fill",
+  "clipTo",
+  "ditherIn",
+  "press",
+  "cursorIn",
+  "cursorTo",
+  "cursorOut",
+  "click",
+] as const;
+
+/** Every motion the runtime (`runtime/dv.js`) knows; the tests check it implements each one. */
+export type CueKind = (typeof CUE_KINDS)[number];
 
 /**
  * One motion instruction for the runtime (`runtime/dv.js`). Times here are scene-local; compose

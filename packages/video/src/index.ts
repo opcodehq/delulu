@@ -9,9 +9,12 @@ export {
   LOOP_TAIL,
   MORPH_LAND,
   MORPH_LEAD,
+  textOnlyScenes,
 } from "./compose";
 export type { Format, FormatName } from "./formats";
 export { FORMATS } from "./formats";
+export type { LogoName } from "./logos";
+export { LOGOS } from "./logos";
 export { escapeHtml, inline, parseRuns } from "./markup";
 export {
   checkProject,

@@ -10,8 +10,8 @@
         {
           "type": "cut",
           "static": true,
-          "logo": "assets/logos/codex.svg",
-          "label": "Codex · Pro plan",
+          "logo": "codex",
+          "label": "Codex \u00b7 Pro plan",
           "price": "$200",
           "priceSub": "/month",
           "usageLabel": "Usage vs Plus",

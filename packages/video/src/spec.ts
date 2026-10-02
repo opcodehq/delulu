@@ -11,6 +11,8 @@ const Duration = Schema.Number.check(Schema.isGreaterThan(0));
 const Unit = Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 1 }));
 const Copy = Schema.NonEmptyString;
 const Key = Schema.String.check(Schema.isPattern(/^[a-z][a-z0-9-]*$/));
+/** A built-in logo name ("openai", "chatgpt", "claude", "anthropic", "codex") or an image path. */
+const LogoRef = Schema.NonEmptyString;
 
 export const Tone = Schema.Literals(["indigo", "red", "muted", "ink"]);
 export type Tone = typeof Tone.Type;
@@ -39,6 +41,10 @@ const common = {
    * there (position, size, corners and colour on one spring) instead of leaving and re-entering.
    */
   key: Schema.optional(Key),
+  /** Draw the block's card as an app window: traffic lights, a logo and a title. */
+  window: Schema.optional(
+    Schema.Struct({ title: Copy, logo: Schema.optional(LogoRef) })
+  ),
 };
 
 const Count = Schema.Struct({
@@ -229,6 +235,7 @@ export const PollBlock = Schema.Struct({
 export const TileBlock = Schema.Struct({
   type: Schema.Literal("tile"),
   ...common,
+  logo: Schema.optional(LogoRef),
   value: Copy,
   label: Schema.optional(Copy),
   tone: Schema.optional(Tone),
@@ -254,6 +261,131 @@ export const CutBlock = Schema.Struct({
   suffix: Schema.optional(Schema.String),
   /** Scene-local time the blade goes through. */
   cutAt: Schema.optional(Seconds),
+});
+
+/** A benchmark/pricing table, drawn like a real leaderboard; rows can re-rank (Sol passes Astra). */
+export const LeaderboardBlock = Schema.Struct({
+  type: Schema.Literal("leaderboard"),
+  ...common,
+  title: Copy,
+  /** Header of the value column, e.g. "Cost / task". */
+  column: Schema.optional(Copy),
+  rows: Schema.NonEmptyArray(
+    Schema.Struct({
+      name: Copy,
+      logo: Schema.optional(LogoRef),
+      note: Schema.optional(Copy),
+      value: Schema.optional(Copy),
+      /** Optional bar under the name, 0–1. */
+      bar: Schema.optional(Unit),
+      tone: Schema.optional(Tone),
+    })
+  ),
+  /** Re-rank: the row names from top to bottom after `at`. */
+  rerank: Schema.optional(
+    Schema.Struct({ at: Seconds, order: Schema.NonEmptyArray(Copy) })
+  ),
+  /** Highlight a row (by name), e.g. the new #1. */
+  highlight: Schema.optional(
+    Schema.Struct({ name: Copy, at: Seconds, badge: Schema.optional(Copy) })
+  ),
+  /** Strike a row out (by name). */
+  strike: Schema.optional(Schema.Struct({ name: Copy, at: Seconds })),
+});
+
+/** A model picker as the app draws it; a cursor picks a model or flips a mode toggle. */
+export const PickerBlock = Schema.Struct({
+  type: Schema.Literal("picker"),
+  ...common,
+  app: Copy,
+  logo: Schema.optional(LogoRef),
+  options: Schema.NonEmptyArray(
+    Schema.Struct({
+      name: Copy,
+      logo: Schema.optional(LogoRef),
+      note: Schema.optional(Copy),
+      badge: Schema.optional(Copy),
+    })
+  ),
+  /** The option ticked at the start. */
+  selected: Schema.optional(Schema.Number),
+  /** The cursor picks this option. */
+  pick: Schema.optional(Schema.Struct({ index: Schema.Number, at: Seconds })),
+  /** Strike an option out. */
+  strike: Schema.optional(Schema.Struct({ index: Schema.Number, at: Seconds })),
+  /** A mode switch at the bottom the cursor flips on, with a warning that appears. */
+  toggle: Schema.optional(
+    Schema.Struct({ label: Copy, at: Seconds, warn: Schema.optional(Copy) })
+  ),
+});
+
+/** An agent/terminal run: lines type out on their beat while live counters spin. */
+export const TerminalBlock = Schema.Struct({
+  type: Schema.Literal("terminal"),
+  ...common,
+  title: Copy,
+  logo: Schema.optional(LogoRef),
+  lines: Schema.NonEmptyArray(
+    Schema.Struct({
+      text: Copy,
+      at: Schema.optional(Seconds),
+      tone: Schema.optional(Schema.Literals(["muted", "ok", "warn", "ink"])),
+    })
+  ),
+  meters: Schema.optional(
+    Schema.Array(
+      Schema.Struct({
+        label: Copy,
+        from: Schema.Number,
+        to: Schema.Number,
+        prefix: Schema.optional(Schema.String),
+        suffix: Schema.optional(Schema.String),
+        decimals: Schema.optional(Schema.Number),
+        at: Seconds,
+        d: Schema.optional(Duration),
+        tone: Schema.optional(Tone),
+      })
+    )
+  ),
+});
+
+/** A keynote-style wall of launch tiles that collapses to the ones that matter. */
+export const LaunchesBlock = Schema.Struct({
+  type: Schema.Literal("launches"),
+  ...common,
+  logo: Schema.optional(LogoRef),
+  title: Schema.optional(Copy),
+  /** Named tiles; the wall is padded with blank tiles up to `count`. */
+  tiles: Schema.NonEmptyArray(
+    Schema.Struct({
+      title: Copy,
+      note: Schema.optional(Copy),
+      at: Schema.optional(Seconds),
+    })
+  ),
+  count: Schema.optional(Schema.Number),
+  cols: Schema.optional(Schema.Number),
+  /** Indices (in the padded wall) that survive the collapse and light up. */
+  keep: Schema.optional(Schema.Array(Schema.Number)),
+  collapseAt: Schema.optional(Seconds),
+  /** Every tile is swept away at this time ("moving on"). */
+  sweepAt: Schema.optional(Seconds),
+});
+
+/** An always-on agent in an app window: status, its own browser, a task log and a usage meter. */
+export const AgentBlock = Schema.Struct({
+  type: Schema.Literal("agent"),
+  ...common,
+  app: Copy,
+  logo: Schema.optional(LogoRef),
+  name: Copy,
+  status: Copy,
+  browse: Schema.optional(Copy),
+  tasks: Schema.NonEmptyArray(Schema.Struct({ text: Copy, at: Seconds })),
+  /** Your usage, 0–1; it does not move while the agent works. */
+  usage: Schema.optional(Unit),
+  usageNote: Schema.optional(Copy),
+  usageNoteAt: Schema.optional(Seconds),
 });
 
 /** A small label pill ("PRO · $200"). */
@@ -283,6 +415,11 @@ export const Block = Schema.Union([
   TileBlock,
   ChipBlock,
   CutBlock,
+  LeaderboardBlock,
+  PickerBlock,
+  TerminalBlock,
+  LaunchesBlock,
+  AgentBlock,
   WordmarkBlock,
 ]);
 export type Block = typeof Block.Type;

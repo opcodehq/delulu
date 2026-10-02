@@ -14,6 +14,7 @@ import { homedir, tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type ComposeOptions, type Composition, compose } from "./compose";
+import { LOGOS } from "./logos";
 import { sfxSource, TRACKS, trackFile } from "./sfx";
 import { fetchTweet, resolveSources, type Tweet } from "./sources";
 import type { Reel } from "./spec";
@@ -21,6 +22,7 @@ import type { Reel } from "./spec";
 /** HyperFrames CLI version the generated projects are pinned to. */
 export const HYPERFRAMES_VERSION = "0.8.109";
 
+const isLogoName = (ref: string) => Object.hasOwn(LOGOS, ref);
 const URL_SCHEME = /^[a-z]+:\/\//i;
 const PATH_SEP = /[\\/]/;
 const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -54,7 +56,7 @@ const localMedia = (reel: Reel): string[] => {
       if (block.type === "post" && block.avatar) {
         paths.push(block.avatar);
       }
-      if (block.type === "cut" && block.logo) {
+      if (block.type === "cut" && block.logo && !isLogoName(block.logo)) {
         paths.push(block.logo);
       }
     }

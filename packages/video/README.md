@@ -16,7 +16,7 @@ Rendering needs Node 22+, FFmpeg and a Chrome that HyperFrames can drive. Run
 
 The Delulu app's dark theme, as a film:
 
-- The app's dark background (`#0F0F12`) as the canvas, with light cards (`#F9F9FB`, 24px radius) in front.
+- The app's dark background (`#09090B`) as the canvas, with light cards (`#F9F9FB`, 24px radius) in front.
 - Delulu indigo (`#474DEB`) drives the story. Red (`#EF4444`) marks loss, cuts and warnings.
 - Geist for everything, Geist Mono for labels.
 - Buttons, tags, stamps, bar and meter fills and the chart area use ordered dither from
@@ -77,22 +77,36 @@ start of the scene. Any block (and any bar row) can take a `key` to carry on int
 | `rows` | Statements with a verdict tag each (`PROMISE` / `FACT`), with an optional strike. |
 | `quote` | A pulled quote with an optional stamp (`−50%`). |
 | `poll` | A card of two dithered buttons. A cursor can `pick` one, and a prompt asks for comments. |
-| `tile` | A big dithered value box ("10x"), the shape a bar or card can turn into. |
+| `leaderboard` | A benchmark or pricing table with logos; rows can `rerank`, `highlight` and `strike`. |
+| `picker` | A model picker (ChatGPT, Claude…); a cursor picks a model, strikes one, or flips a mode toggle. |
+| `terminal` | An agent/terminal run: lines type out on their beat, meters count up. |
+| `launches` | A keynote wall of launch tiles that collapses to the ones that matter, or gets swept away. |
+| `agent` | An always-on agent in an app window: status, its own browser, a task log, an unmoved usage meter. |
+| `cut` | Same price, usage slashed: the bar is cut, the frame jolts, the number counts down. |
+| `tile` | A big dithered value box ("10x") with an optional logo; the shape a bar or card can turn into. |
 | `chip` | A small label pill. |
 | `wordmark` | A closing wordmark. |
 
 Copy markup works in every text field: `*indigo*`, `_red_`, and `[[highlight]]` (post text only).
 
-Rules of thumb:
+Any card block can take `window: { title, logo }` to draw as an app window. Logos are built in
+(`openai`, `chatgpt`, `claude`, `anthropic`, `codex`, from [LobeHub Icons](https://github.com/lobehub/lobe-icons),
+MIT) or an image path.
 
-- One idea per scene: a headline plus one hero card.
+Rules of thumb (the full set is in `skills/make-motion-reel`):
+
+- Every scene is a graphic: realistic UI with logos, and text only as a short label. The CLI
+  warns about text-only scenes.
+- One idea per scene, and one object carried across scenes with shared `key`s.
 - Mark the first scene's hero `static` so the hook reads in the very first frame.
-- Never invent a post's wording. Use the real text, or say that it's a recreation.
+- Never invent a post's wording, prices or data. Use the real text, or say that it's a
+  recreation.
 
 ## Examples
 
 [`examples/`](examples) has complete, re-renderable specs: the 3-second "same $200, half the
-usage" hook and the full 60-second reel built around it. See [`examples/README.md`](examples/README.md)
+usage" hook, the full reel built around it, and three reels made of UI graphics (Astra,
+Sonnet 5.5, DevDay). See [`examples/README.md`](examples/README.md)
 for the render commands.
 
 ## Real posts

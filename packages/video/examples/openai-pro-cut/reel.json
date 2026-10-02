@@ -10,7 +10,7 @@
         {
           "type": "cut",
           "static": true,
-          "logo": "assets/logos/codex.svg",
+          "logo": "codex",
           "label": "Codex \u00b7 Pro plan",
           "price": "$200",
           "priceSub": "/month",
@@ -231,11 +231,12 @@
       "duration": 2.5,
       "blocks": [
         {
-          "type": "headline",
-          "size": "xl",
-          "align": "center",
-          "lines": ["Here's the", "_catch._"],
-          "at": 0.3
+          "type": "tile",
+          "logo": "openai",
+          "tone": "red",
+          "label": "Here's",
+          "value": "The catch.",
+          "at": 0.4
         }
       ],
       "transition": "flood"

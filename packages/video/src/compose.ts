@@ -1,3 +1,4 @@
+import { windowBar } from "./blocks/brand";
 import { type Cue, renderBlock } from "./blocks/index";
 import { FORMATS, type Format } from "./formats";
 import { escapeHtml, maskedWords } from "./markup";
@@ -101,6 +102,9 @@ const TIME_KEYS = new Set([
   "promptAt",
   "pickAt",
   "strikeAt",
+  "collapseAt",
+  "sweepAt",
+  "usageNoteAt",
 ]);
 const snapBlock = <T>(value: T, step: number): T => {
   if (Array.isArray(value)) {
@@ -162,6 +166,16 @@ const layout = (reel: Reel, beat: number): Timed[] => {
   }
   return timed;
 };
+
+const TEXT_ONLY = new Set<Block["type"]>(["headline", "wordmark", "chip"]);
+
+/** Scenes made only of text (headlines, chips): every scene should carry a graphic. */
+export const textOnlyScenes = (reel: Reel): string[] =>
+  reel.scenes.flatMap((scene, i) =>
+    scene.blocks.every((b) => TEXT_ONLY.has(b.type))
+      ? [scene.id ?? `s${i + 1}`]
+      : []
+  );
 
 export const compose = (
   reel: Reel,
@@ -239,9 +253,17 @@ export const compose = (
             : 0.1 + j * 0.1;
       const at = block.at ?? defaultAt;
       const rendered = renderBlock(block, { id: blockId, at });
-      const html = block.key
+      const keyed = block.key
         ? rendered.html.replace(FIRST_TAG, `<$1 data-key="${block.key}"`)
         : rendered.html;
+      // An app window: the title bar goes at the top of the card's body.
+      const html =
+        block.window && rendered.card
+          ? keyed.replace(
+              '<div class="dv-card-body">',
+              `<div class="dv-card-body">${windowBar(block.window.title, block.window.logo)}`
+            )
+          : keyed;
       // A bar that arrives as a shared element is already drawn: skip its own entrance.
       const arrivedRows =
         block.type === "bars"
@@ -356,13 +378,15 @@ export const compose = (
     }
     if ((exitsBy === "flood" || exitsBy === "morph") && !isLoop) {
       // Lines sink one after another, so the scene empties as a ripple rather than all at once.
-      local.push({
-        k: "sink",
-        s: `#${id} .dv-cam .dv-rise`,
-        t: exitAt,
-        d: 0.3,
-        stagger: 0.025,
-      });
+      if (blocksHtml.some((h) => h.includes("dv-rise"))) {
+        local.push({
+          k: "sink",
+          s: `#${id} .dv-cam .dv-rise`,
+          t: exitAt,
+          d: 0.3,
+          stagger: 0.025,
+        });
+      }
       if (heroSel && heroIsCard && keysOut.size === 0) {
         local.push({
           k: "retract",
