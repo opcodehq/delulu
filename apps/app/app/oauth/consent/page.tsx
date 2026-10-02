@@ -1,4 +1,4 @@
-import { ConsentClient } from "./consent-client";
+import { ConsentClient } from "@/app/oauth/consent/consent-client";
 
 /**
  * First-party OAuth consent screen (#149). The API's `GET /oauth/authorize`

@@ -1,7 +1,7 @@
-import { PageShell } from "@/components/layout/page-shell";
-import { EmailPreferences } from "@/components/operations/email-preferences";
-import { WorkspaceMembers } from "@/components/operations/workspace-members";
-import { WorkspaceSettings } from "@/components/operations/workspace-settings";
+import { EmailPreferences } from "@/features/workspace/email-preferences";
+import { WorkspaceMembers } from "@/features/workspace/workspace-members";
+import { WorkspaceSettings } from "@/features/workspace/workspace-settings";
+import { PageShell } from "@/shell/navigation/page-shell";
 
 export default function WorkspacePage() {
   return (

@@ -1,4 +1,4 @@
-import { DashboardClient } from "@/components/dashboard/dashboard-client";
+import { DashboardClient } from "@/features/dashboard/dashboard-client";
 
 export const dynamic = "force-dynamic";
 

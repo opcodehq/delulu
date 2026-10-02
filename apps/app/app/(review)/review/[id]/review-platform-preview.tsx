@@ -1,13 +1,13 @@
 "use client";
 
 import type { SupportedSocialPlatform } from "@delulu/design-system/lib/social-config";
-import { FacebookPreview } from "@/components/post/sidebar/previews/facebook-preview";
-import { InstagramPreview } from "@/components/post/sidebar/previews/instagram-preview";
-import { LinkedInPreview } from "@/components/post/sidebar/previews/linkedin-preview";
-import { ThreadsPreview } from "@/components/post/sidebar/previews/threads-preview";
-import { TikTokPreview } from "@/components/post/sidebar/previews/tiktok-preview";
-import { TwitterPreview } from "@/components/post/sidebar/previews/twitter-preview";
-import { YouTubePreview } from "@/components/post/sidebar/previews/youtube-preview";
+import { FacebookPreview } from "@/features/publishing/editor/sidebar/previews/facebook-preview";
+import { InstagramPreview } from "@/features/publishing/editor/sidebar/previews/instagram-preview";
+import { LinkedInPreview } from "@/features/publishing/editor/sidebar/previews/linkedin-preview";
+import { ThreadsPreview } from "@/features/publishing/editor/sidebar/previews/threads-preview";
+import { TikTokPreview } from "@/features/publishing/editor/sidebar/previews/tiktok-preview";
+import { TwitterPreview } from "@/features/publishing/editor/sidebar/previews/twitter-preview";
+import { YouTubePreview } from "@/features/publishing/editor/sidebar/previews/youtube-preview";
 
 interface PostData {
   content: Array<{

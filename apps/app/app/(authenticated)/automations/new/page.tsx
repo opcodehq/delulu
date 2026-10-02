@@ -1,4 +1,4 @@
-import { FlowBuilder } from "@/components/automations/flow-builder/flow-builder";
+import { FlowBuilder } from "@/features/automations/flow-builder/flow-builder";
 
 export default async function NewAutomationPage({
   searchParams,

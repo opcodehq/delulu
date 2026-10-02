@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { PostCreator } from "@/components/post/post-creator";
+import { PostCreator } from "@/features/publishing/editor/post-creator";
 
 export const dynamic = "force-dynamic";
 

@@ -71,7 +71,8 @@
     "three": "^0.177.0",
     "wrangler": "^4.16.1",
     "youtubei.js": "^17.2.0",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@delulu/auth": "workspace:*"
   },
   "devDependencies": {
     "@delulu/typescript-config": "workspace:*",

@@ -1,4 +1,4 @@
-import LifetimeClient from "./lifetime-client";
+import LifetimeClient from "@/features/billing/lifetime-client";
 
 export const dynamic = "force-dynamic";
 

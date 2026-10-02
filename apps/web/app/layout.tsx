@@ -1,3 +1,5 @@
+import { AnalyticsProvider } from "@delulu/analytics";
+import { AuthProvider } from "@delulu/auth/provider";
 import "./styles.css";
 import { DesignSystemProvider } from "@delulu/design-system";
 import { fonts } from "@delulu/design-system/lib/fonts";
@@ -55,10 +57,14 @@ const RootLayout = ({ children }: RootLayoutProperties) => {
         )}
       </head>
       <body>
-        <DesignSystemProvider platform="web">
-          <Navbar />
-          {children}
-          <Footer />
+        <DesignSystemProvider>
+          <AuthProvider>
+            <AnalyticsProvider platform="web">
+              <Navbar />
+              {children}
+              <Footer />
+            </AnalyticsProvider>
+          </AuthProvider>
         </DesignSystemProvider>
         <AffonsoCrossDomain />
         <CaptureAttribution />

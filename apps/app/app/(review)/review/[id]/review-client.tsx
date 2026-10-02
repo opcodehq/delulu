@@ -6,16 +6,17 @@ import { Card, CardContent } from "@delulu/design-system/components/ui/card";
 import { Icon } from "@delulu/design-system/providers/icon";
 import { ArrowLeft02Icon, Calendar01Icon } from "@delulu/icons";
 import Link from "next/link";
-import { ReviewActions } from "@/components/posts/review-actions";
-import { ReviewActivity } from "@/components/posts/review-activity";
-import { useApiClient } from "@/components/providers/api-client";
-import { useActiveWorkspace } from "@/hooks/use-active-workspace";
-import { usePermissions } from "@/hooks/use-permissions";
-import { useResourceAtom } from "@/state/resources";
+import { ReviewActions } from "@/features/publishing/posts/review-actions";
+import { ReviewActivity } from "@/features/publishing/posts/review-activity";
+import { useApiClient } from "@/shell/providers/api-client";
+import { useWorkspaceSelection } from "@/shell/providers/workspace";
+import { useResourceAtom } from "@/shell/state/resources";
+import { usePermissions } from "@/shell/use-permissions";
 
 export function ReviewClient({ postId }: { postId: string }) {
   const { canApprove } = usePermissions();
-  const { workspaceId, isPending: isWorkspacePending } = useActiveWorkspace();
+  const { workspaceId, isPending: isWorkspacePending } =
+    useWorkspaceSelection();
   const { resources } = useApiClient();
   const post = useResourceAtom({
     ...resources.posts.get(workspaceId ?? "", postId),

@@ -1,4 +1,4 @@
-import ConnectedAccounts from "@/components/socials/connected-accounts";
+import ConnectedAccounts from "@/features/connections/connected-accounts";
 
 export const dynamic = "force-dynamic";
 

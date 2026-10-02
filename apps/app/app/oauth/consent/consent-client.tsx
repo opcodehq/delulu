@@ -13,12 +13,12 @@ import {
   SelectValue,
 } from "@delulu/design-system/components/ui/select";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AuthorizationShell } from "../authorization-shell";
+import { AuthorizationShell } from "@/app/oauth/authorization-shell";
 import {
   ROLE_SCOPE_CEILING,
   SCOPE_LABELS,
   type WorkspaceRole,
-} from "../scope-labels";
+} from "@/app/oauth/scope-labels";
 
 // Same resolution the app-wide API client uses (see providers/api-client.tsx).
 const apiBaseUrl =

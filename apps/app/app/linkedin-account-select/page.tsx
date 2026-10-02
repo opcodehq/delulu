@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { LinkedInAccountSelect } from "./linkedin-account-select";
+import { LinkedInAccountSelect } from "@/app/linkedin-account-select/linkedin-account-select";
 
 export const dynamic = "force-dynamic";
 

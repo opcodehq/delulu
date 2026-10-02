@@ -2,7 +2,7 @@ import {
   getValidMediaUrls,
   type MediaType,
   type SocialPublishInputType,
-} from "@delulu/validators/post";
+} from "@delulu/core/publishing/post";
 import axios from "axios";
 import { Duration, Effect } from "effect";
 import {

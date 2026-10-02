@@ -7,7 +7,7 @@ import {
 } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import Page from "../app/connect/account/page";
+import Page from "@/app/connect/account/page";
 
 const mocks = vi.hoisted(() => ({
   signedIn: true,

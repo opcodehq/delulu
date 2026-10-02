@@ -21,7 +21,6 @@
   },
   "dependencies": {
     "@delulu/core": "workspace:*",
-    "@delulu/validators": "workspace:*",
     "@opennextjs/cloudflare": "1.6.0",
     "@xdevplatform/xdk": "0.6.6",
     "axios": "^1.9.0",
