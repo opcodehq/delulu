@@ -1,0 +1,32 @@
+{
+  "title": "Same $200. Half the usage.",
+  "format": "reel",
+  "bpm": 120,
+  "scenes": [
+    {
+      "id": "hook",
+      "duration": 3,
+      "blocks": [
+        {
+          "type": "cut",
+          "static": true,
+          "logo": "assets/logos/codex.svg",
+          "label": "Codex · Pro plan",
+          "price": "$200",
+          "priceSub": "/month",
+          "usageLabel": "Usage vs Plus",
+          "from": 20,
+          "to": 10,
+          "cutAt": 0.75
+        },
+        {
+          "type": "headline",
+          "size": "m",
+          "align": "center",
+          "lines": ["Same $200.", "_Half the usage._"],
+          "at": 1.5
+        }
+      ]
+    }
+  ]
+}
