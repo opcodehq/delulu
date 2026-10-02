@@ -1,4 +1,5 @@
-import { ConsentClient } from "./consent-client";
+import { ConsentClient } from "@/app/oauth/consent/consent-client";
+import { AuthorizationShell } from "@/shell/navigation/authorization-shell";
 
 /**
  * First-party OAuth consent screen (#149). The API's `GET /oauth/authorize`
@@ -45,13 +46,17 @@ export default async function OAuthConsentPage({
   const missing = REQUIRED_PARAMS.filter((key) => !first(params[key]));
   if (missing.length > 0 || request.responseType !== "code") {
     return (
-      <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-2 p-6 text-center">
-        <h1 className="font-semibold text-lg">Invalid authorization request</h1>
-        <p className="text-muted-foreground text-sm">
-          This authorization request is missing required parameters. Please
-          start the login again from your application.
-        </p>
-      </main>
+      <AuthorizationShell>
+        <div className="space-y-2">
+          <h1 className="font-semibold text-lg">
+            Invalid authorization request
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            This authorization request is missing required parameters. Please
+            start the login again from your application.
+          </p>
+        </div>
+      </AuthorizationShell>
     );
   }
 

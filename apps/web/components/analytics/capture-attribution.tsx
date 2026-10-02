@@ -9,7 +9,7 @@ import { useEffect } from "react";
  * into a first-party cookie on `.delulu.social` so it survives the cross-domain
  * hop to the app, where the user actually signs up. The app reads this cookie at
  * identify time and applies it as `$set_once` PostHog person properties (see
- * apps/app/components/layout/posthog-identifier.tsx). Because "became paid" is a
+ * apps/app/shell/navigation/posthog-identifier.tsx). Because "became paid" is a
  * server event attached to the same person, this is what lets us answer "which
  * sources produce paying users" as a PostHog breakdown.
  *

@@ -1,6 +1,6 @@
 import { auth } from "@delulu/auth/server";
 import { Suspense } from "react";
-import { OnboardingStepper } from "@/components/onboarding/onboarding-stepper";
+import { OnboardingStepper } from "@/features/onboarding/onboarding-stepper";
 
 export default async function OnboardingPage() {
   const { sessionClaims } = await auth();

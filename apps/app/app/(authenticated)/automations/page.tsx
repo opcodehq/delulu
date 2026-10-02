@@ -1,4 +1,4 @@
-import AutomationsClient from "@/components/automations/automations-client";
+import AutomationsClient from "@/features/automations/automations-client";
 
 export const metadata = {
   title: "Automations | Delulu Social",

@@ -107,12 +107,17 @@ apps/
   mcp/         MCP server and tool definitions
 packages/
   contracts/   Public request, response, and error schemas
-  core/        Domain types and policies
+  core/        Domain types, policies, publishing validation and defaults
   services/    Effect services and use cases
   db/          PostgreSQL migrations and tooling
   worker/      Social publishing runtime
   connections/ Social-provider integrations
 ```
+
+The authenticated product groups implementation under `apps/app/features`, with
+shared navigation and resource lifecycle in `apps/app/shell`. Routes remain in
+`apps/app/app`. See [Contributing](./CONTRIBUTING.md#product-code-organization) for
+module boundaries and local navigation measurements.
 
 ## Local development
 

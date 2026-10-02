@@ -1,4 +1,4 @@
-import type { SocialType } from '@delulu/validators/post';
+import type { SocialType } from '@delulu/core/publishing/post';
 import {
   FaFacebook,
   FaFacebookF,

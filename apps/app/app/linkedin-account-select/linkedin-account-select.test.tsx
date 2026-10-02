@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import { LinkedInAccountSelect } from "./linkedin-account-select";
+import { LinkedInAccountSelect } from "@/app/linkedin-account-select/linkedin-account-select";
 
 const navigation = vi.hoisted(() => ({ query: "selection=test&state=signed" }));
 vi.mock("next/navigation", () => ({

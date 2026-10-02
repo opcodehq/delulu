@@ -7,7 +7,7 @@ import {
 } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import Page from "../app/connect/telegram/page";
+import Page from "@/app/connect/telegram/page";
 
 const INVITE_ONLY = /currently invite-only/;
 const CONFIRM_IN_TELEGRAM = /Return to Telegram and confirm/;

@@ -51,3 +51,12 @@ shared solution elsewhere.
 - Preserve at least a 44-pixel touch target for buttons and action links on
   mobile. Use an established design-system size only when the surrounding UI
   clearly requires a different standard variant.
+
+## Feature verification
+
+For feature and bug-fix verification, read
+`.agents/skills/delulu-verify/SKILL.md`. For navigation/cache/rendering performance
+changes, also read `.agents/skills/delulu-performance/SKILL.md`.
+`docs/TESTING.md` owns local setup, CI coverage and evidence locations.
+Add acceptance assertions for new behavior; an unchanged green suite is not
+proof of a new feature. Keep staging and real publishing checks opt-in.

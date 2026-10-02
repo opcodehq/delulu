@@ -3,7 +3,7 @@ import type {
   MediaType,
   SocialPublishInputType,
   SocialType,
-} from "@delulu/validators/post";
+} from "@delulu/core/publishing/post";
 import type { Effect } from "effect";
 import type { ConnectionError } from "./errors";
 import type { ConnectionStore } from "./services/connection-store";
@@ -157,7 +157,7 @@ export interface SettingFieldOption {
  * control generically from the registry (instead of a bespoke per-platform
  * component). The user's chosen values flow back through
  * `content.providerSettings` and are validated by the Zod schemas in
- * `@delulu/validators` at the publish boundary.
+ * `@delulu/core/publishing` at the publish boundary.
  */
 export interface SettingField {
   key: string;

@@ -5,8 +5,8 @@ import { runEffect } from "@delulu/client";
 import { Button } from "@delulu/design-system/components/ui/button";
 import { DottedSeparator } from "@delulu/design-system/components/ui/dotted-separator";
 import { useEffect, useMemo, useState } from "react";
-import { createPublicApiClient } from "../../../lib/public-api-client";
-import { AuthorizationShell } from "../../oauth/authorization-shell";
+import { AuthorizationShell } from "@/shell/navigation/authorization-shell";
+import { createPublicApiClient } from "@/shell/public-api-client";
 
 const PLATFORMS: Record<string, string> = {
   LINKEDIN: "LinkedIn",
@@ -104,10 +104,10 @@ export default function ConnectAccountPage() {
       <DottedSeparator className="my-5" />
       {isLoaded && !isSignedIn ? (
         <SignInButton mode="modal">
-          <Button className="min-h-11 w-full">Sign in to Delulu</Button>
+          <Button className="w-full">Sign in to Delulu</Button>
         </SignInButton>
       ) : target ? (
-        <Button className="min-h-11 w-full" disabled={busy} onClick={connect}>
+        <Button className="w-full" disabled={busy} onClick={connect}>
           {busy
             ? "Opening authorization…"
             : `Continue to ${PLATFORMS[target.platform]}`}

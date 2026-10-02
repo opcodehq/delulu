@@ -1,4 +1,4 @@
-import { AnalyticsClient } from "@/components/analytics/analytics-client";
+import { AnalyticsClient } from "@/features/analytics/analytics-client";
 
 export const metadata = {
   title: "Analytics | Delulu Social",

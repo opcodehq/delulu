@@ -1,4 +1,4 @@
-import { AutomationAnalytics } from "@/components/automations/automation-analytics";
+import { AutomationAnalytics } from "@/features/automations/automation-analytics";
 
 export default async function AutomationAnalyticsPage({
   params,

@@ -1,4 +1,4 @@
-import { getValidMediaUrls } from "@delulu/validators/post";
+import { getValidMediaUrls } from "@delulu/core/publishing/post";
 import { Effect } from "effect";
 import {
   apiError,

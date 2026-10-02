@@ -9,6 +9,10 @@ export default defineConfig({
   resolve: {
     alias: [
       {
+        find: "@delulu/core/publishing",
+        replacement: path.resolve("../../packages/core/src/publishing"),
+      },
+      {
         find: "@delulu/client",
         replacement: fileURLToPath(
           new URL("../../packages/client/src/index.ts", import.meta.url)

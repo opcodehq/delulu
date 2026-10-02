@@ -335,3 +335,149 @@ body {
   --tw-prose-invert-th-borders: var(--color-border);
   --tw-prose-invert-td-borders: var(--color-border);
 }
+
+/* Explicit product density. Marketing and docs keep the default sizing.
+   Body scoping also covers Radix portals without introducing wrapper elements. */
+[data-density="compact"] {
+  --control-height: 2rem;
+  --control-height-small: 1.75rem;
+  --control-height-large: 2.25rem;
+  --page-gutter: 1rem;
+}
+[data-density="compact"]
+  :is([data-slot="input"], [data-slot="select-trigger"], [data-slot="toggle"]) {
+  height: var(--control-height);
+  min-height: var(--control-height);
+  padding-block: 0.25rem;
+  font-size: 0.875rem;
+}
+/* Button sizes consume density tokens in their variants, so className sizing
+   and content-sized choices are not overridden by an unlayered fixed height.
+   This also works when a Radix trigger replaces the button's data-slot. */
+[data-density="compact"] [data-slot="select-trigger"][data-size="sm"] {
+  height: var(--control-height-small);
+  min-height: var(--control-height-small);
+}
+[data-density="compact"] [data-slot="tabs-list"] {
+  height: 2rem;
+}
+[data-density="compact"] [data-slot="card"] {
+  gap: 1rem;
+  border-radius: 0.5rem;
+}
+[data-density="compact"]
+  :is(
+    [data-slot="card-header"],
+    [data-slot="card-content"],
+    [data-slot="card-footer"]
+  ) {
+  padding-inline: 1rem;
+}
+[data-density="compact"] [data-slot="table-cell"] {
+  padding-block: 0.5rem;
+}
+[data-density="compact"] [data-slot="table-head"] {
+  height: 2rem;
+}
+[data-density="compact"]
+  :is([data-slot="dialog-content"], [data-slot="alert-dialog-content"]) {
+  padding: 1rem;
+  gap: 1rem;
+}
+[data-density="compact"] .dotted-sections > * + * {
+  margin-top: 1.5rem;
+}
+[data-density="compact"] .dotted-sections > * + *::before {
+  top: -0.75rem;
+  left: -1rem;
+  right: -1rem;
+}
+[data-texture="dither"] [data-slot="dither-illustration"] {
+  background-image: url("./dither.svg");
+  background-size: 8px 8px;
+}
+[data-texture="dither"] [data-slot="dither-illustration"] {
+  background-color: var(--primary);
+  mask-image: linear-gradient(to top, black, transparent);
+}
+@media (max-width: 767px), (pointer: coarse) {
+  [data-density="compact"] {
+    --control-height: 2.75rem;
+    --control-height-small: 2.75rem;
+    --control-height-large: 2.75rem;
+  }
+  [data-density="compact"]
+    :is(
+      button,
+      [role="button"],
+      [role="tab"],
+      [role="combobox"],
+      [role="menuitem"],
+      [role="option"],
+      [data-slot="sidebar-menu-button"],
+      [data-slot="chart-data"] > summary
+    ) {
+    min-height: 2.75rem;
+  }
+  [data-density="compact"] :is([data-size="icon"], [data-size="icon-sm"]) {
+    min-width: 2.75rem;
+  }
+  /* The enclosing choice label supplies the touch target, not its radio dot. */
+  [data-density="compact"] [data-slot="account-choice"] [role="radio"] {
+    min-height: 1rem;
+  }
+  [data-density="compact"] [data-slot="tabs-list"] {
+    height: auto;
+    min-height: 2.75rem;
+  }
+  [data-density="compact"] [data-slot="input"] {
+    font-size: 1rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-density="compact"] *,
+  [data-density="compact"] *::before,
+  [data-density="compact"] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Delulu logo trace, inspired by dqnamo's logo-trace-loader experiment.
+   Only mounted loading surfaces animate; there are no timers or RAF loops. */
+@keyframes delulu-logo-trace {
+  to {
+    stroke-dashoffset: -1;
+  }
+}
+[data-slot="logo-loader"] .logo-loader-trace {
+  animation: delulu-logo-trace 1.8s linear infinite;
+}
+[data-slot="logo-loader"] .logo-loader-outline,
+[data-slot="logo-loader"] .logo-loader-fill {
+  opacity: 0;
+  transition: opacity 240ms ease;
+}
+[data-slot="logo-loader"][data-loading="false"] .logo-loader-trace {
+  animation: none;
+  opacity: 0;
+}
+[data-slot="logo-loader"][data-loading="false"] .logo-loader-outline,
+[data-slot="logo-loader"][data-loading="false"] .logo-loader-fill {
+  opacity: 1;
+}
+[data-slot="logo-loader"][data-loading="false"] .logo-loader-fill {
+  transition-delay: 120ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="logo-loader"] .logo-loader-trace {
+    animation: none;
+    opacity: 0;
+  }
+  [data-slot="logo-loader"] .logo-loader-fill {
+    opacity: 1;
+    transition: none;
+  }
+}

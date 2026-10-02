@@ -1,8 +1,8 @@
 import { secure } from "@delulu/security";
 import { env } from "env";
 import type { ReactNode } from "react";
-import { BackendProviders } from "@/components/providers/backend";
-import { StoreProvider } from "@/providers/store-provider";
+import { StoreProvider } from "@/features/publishing/store-provider";
+import { BackendProviders } from "@/shell/providers/backend";
 
 interface ReviewLayoutProps {
   readonly children: ReactNode;
