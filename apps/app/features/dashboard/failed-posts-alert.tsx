@@ -57,26 +57,22 @@ export function FailedPostsAlert() {
   const total = query.data?.total ?? failedPosts.length;
 
   return (
-    <Card className="gap-0 border-red-200/70 bg-red-50/40 p-0 dark:border-red-900/50 dark:bg-red-950/20">
+    <Card className="gap-0 p-0">
       <div className="flex items-center gap-2 px-4 py-2.5">
-        <Icon
-          className="text-red-600 dark:text-red-400"
-          icon={Alert01Icon}
-          size={16}
-        />
-        <p className="font-medium text-red-800 text-sm dark:text-red-200">
+        <Icon className="text-destructive/80" icon={Alert01Icon} size={16} />
+        <p className="font-medium text-sm">
           {total} post{total === 1 ? "" : "s"} failed to publish
         </p>
         <Button
           asChild
-          className="ml-auto text-red-700 hover:bg-red-500/10 hover:text-red-800 dark:text-red-300 dark:hover:text-red-200"
+          className="ml-auto text-muted-foreground"
           size="sm"
           variant="ghost"
         >
           <Link href="/posts?status=failed">View all</Link>
         </Button>
       </div>
-      <div className="divide-y divide-red-200/60 border-red-200/60 border-t dark:divide-red-900/40 dark:border-red-900/40">
+      <div className="divide-y divide-border/60 border-t">
         {failedPosts.slice(0, 3).map((post) => (
           <FailedPostRow
             key={post.id}
@@ -130,7 +126,7 @@ function FailedPostRow({
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm leading-tight">{excerpt}</p>
         <p
-          className="truncate text-red-600 text-xs leading-tight dark:text-red-400"
+          className="truncate text-muted-foreground text-xs leading-tight"
           title={error}
         >
           {error}
@@ -138,15 +134,17 @@ function FailedPostRow({
       </div>
       <Button
         aria-label="Edit post"
-        className="size-7 text-muted-foreground"
+        className="text-muted-foreground"
         onClick={onEdit}
-        size="icon"
+        size="icon-sm"
+        style={{ minHeight: 44, minWidth: 44 }}
         variant="ghost"
       >
         <Icon icon={PencilEdit02Icon} size={15} />
       </Button>
       <Button
-        className="gap-1.5 px-2.5"
+        aria-busy={retry.isPending}
+        className="text-muted-foreground"
         disabled={!failedTarget || retry.isPending}
         onClick={async () => {
           if (!failedTarget) {
@@ -163,8 +161,17 @@ function FailedPostRow({
           }
         }}
         size="sm"
+        variant="ghost"
       >
-        <Icon icon={RefreshIcon} size={14} />
+        <Icon
+          className={
+            retry.isPending
+              ? "animate-spin motion-reduce:animate-none"
+              : undefined
+          }
+          icon={RefreshIcon}
+          size={14}
+        />
         {retry.isPending ? "Retrying…" : "Retry"}
       </Button>
     </div>

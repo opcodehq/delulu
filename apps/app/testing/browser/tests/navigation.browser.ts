@@ -64,6 +64,10 @@ test.afterEach(async ({ page }, info) => {
 test("navigation retains fresh cached data on return", async ({ page }) => {
   await page.goto("/");
   await ready(page, "Overview");
+  await expect(page.locator('a[href="/agent"]')).toHaveCount(0);
+  await expect(
+    page.locator('[data-slot="button"][data-variant="default"]').first()
+  ).toHaveCSS("background-image", "none");
   await go(page, "/posts");
   await ready(page, "Posts");
   const before = (await records(page)).length;
@@ -121,7 +125,7 @@ test("loader respects reduced motion and viewport width", async ({
     info.project.name === "mobile-dark" ? "dark" : "light"
   );
   if (info.project.name === "mobile-dark") {
-    for (const name of ["Home", "Posts", "Create", "Agent", "Accounts"]) {
+    for (const name of ["Home", "Posts", "Create", "Accounts"]) {
       const bounds = await page
         .getByRole("link", { name, exact: true })
         .boundingBox();
@@ -236,4 +240,23 @@ test("late workspace response cannot replace the selected workspace", async ({
   ).toEqual([]);
   await expect(page.getByText("111", { exact: true })).toBeVisible();
   await expect(page.getByText("222", { exact: true })).toHaveCount(0);
+});
+
+test("dashboard recovery is neutral with a ghost retry action", async ({
+  page,
+}) => {
+  await page.goto("/?warnings");
+  await ready(page, "Overview");
+  await expect(
+    page.getByText("1 post failed to publish", { exact: true })
+  ).toBeVisible();
+  const edit = page.getByRole("button", { name: "Edit post", exact: true });
+  const hitArea = await edit.boundingBox();
+  expect(hitArea?.width).toBeGreaterThanOrEqual(44);
+  expect(hitArea?.height).toBeGreaterThanOrEqual(44);
+  const retry = page.getByRole("button", { name: "Retry", exact: true });
+  await expect(retry).toHaveAttribute("data-variant", "ghost");
+  await expect(retry).toHaveCSS("background-image", "none");
+  await expect(retry).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await expect(page.locator('a[href="/agent"]')).toHaveCount(0);
 });

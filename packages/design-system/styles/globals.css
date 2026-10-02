@@ -403,7 +403,6 @@ body {
   left: -1rem;
   right: -1rem;
 }
-[data-texture="dither"] [data-slot="button"][data-variant="default"],
 [data-texture="dither"] [data-slot="dither-illustration"] {
   background-image: url("./dither.svg");
   background-size: 8px 8px;

@@ -289,7 +289,7 @@ export function ResourceBoundary({
   fallback = null,
   renderError = (error, retry) => (
     <div
-      className="m-6 flex flex-col items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-6 py-10 text-center"
+      className="m-6 flex flex-col items-center gap-3 rounded-lg border border-border px-6 py-10 text-center"
       role="alert"
     >
       <div>
@@ -300,7 +300,7 @@ export function ResourceBoundary({
             : "An unexpected error occurred while loading this page."}
         </p>
       </div>
-      <Button onClick={retry} variant="outline">
+      <Button onClick={retry} variant="ghost">
         Retry
       </Button>
     </div>

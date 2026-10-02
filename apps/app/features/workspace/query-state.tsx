@@ -35,7 +35,7 @@ export function OperationsError({
   onRetry: () => void;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-6 py-10 text-center">
+    <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-border px-6 py-10 text-center">
       <Icon className="text-destructive" icon={Alert02Icon} size={24} />
       <div>
         <p className="font-medium">Unable to load data</p>
@@ -43,7 +43,7 @@ export function OperationsError({
           {taggedMessage(error)}
         </p>
       </div>
-      <Button onClick={onRetry} size="sm" variant="outline">
+      <Button onClick={onRetry} size="sm" variant="ghost">
         Retry
       </Button>
     </div>

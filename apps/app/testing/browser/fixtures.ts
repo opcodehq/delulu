@@ -17,6 +17,7 @@ const memberships = list(
   }))
 );
 export interface FixtureConfig {
+  dashboardWarnings?: boolean;
   latency?: number;
   failures?: Record<string, number>;
   workspaceLatency?: Record<string, number>;
@@ -31,7 +32,9 @@ export const unhandled: string[] = [];
 export const requests: { url: string; start: number; end?: number }[] = [];
 export let pending = 0;
 export function installFixtures() {
-  window.fixtureConfig ??= {};
+  window.fixtureConfig ??= {
+    dashboardWarnings: new URLSearchParams(location.search).has("warnings"),
+  };
   const config = window.fixtureConfig;
   Object.assign(window, { fixtureUnhandled: unhandled });
   const realFetch = window.fetch.bind(window);
@@ -111,6 +114,52 @@ export function installFixtures() {
           transcriptionsUsed: 0,
         },
       };
+    } else if (
+      config.dashboardWarnings &&
+      url.pathname.endsWith("/posts") &&
+      url.searchParams.get("status") === "failed,partially_failed"
+    ) {
+      body = list([
+        {
+          id: "post_failed",
+          workspaceId,
+          status: "failed",
+          source: "app",
+          externalSubmissionId: null,
+          createdAt: now,
+          updatedAt: now,
+          groups: [
+            {
+              id: "group_default",
+              isDefault: true,
+              segments: [
+                {
+                  text: "Our next product update is ready to share",
+                  media: [],
+                },
+              ],
+            },
+          ],
+          targets: [
+            {
+              id: "target_failed",
+              connectionId: "connection_instagram",
+              groupId: "group_default",
+              settings: {
+                platform: "THREADS",
+                values: { replyControl: "everyone" },
+              },
+              scheduledAt: null,
+              status: "failed",
+              platformPostId: null,
+              platformPostUrl: null,
+              postedAt: null,
+              error: "Connection expired. Reconnect your account and retry.",
+              attempts: 1,
+            },
+          ],
+        },
+      ]);
     } else if (listEndpoint.test(url.pathname)) {
       body = list();
     } else {
