@@ -442,6 +442,7 @@ test("DM sidebar contains long pasted links and wraps the preview", async ({
   page,
 }) => {
   await page.goto("/__dm");
+  await ready(page, "Send DM");
   const dialog = page.getByRole("dialog");
   await expect(
     dialog.getByRole("heading", { name: "Send DM", exact: true })
