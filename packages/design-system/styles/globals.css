@@ -422,6 +422,10 @@ body {
   [data-density="compact"] :is([data-size="icon"], [data-size="icon-sm"]) {
     min-width: 2.75rem;
   }
+  /* The enclosing choice label supplies the touch target, not its radio dot. */
+  [data-density="compact"] [data-slot="account-choice"] [role="radio"] {
+    min-height: 1rem;
+  }
   [data-density="compact"] [data-slot="tabs-list"] {
     height: auto;
     min-height: 2.75rem;

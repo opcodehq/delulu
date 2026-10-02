@@ -348,3 +348,92 @@ test("button density preserves variants and content sizing", async ({
     );
   }
 });
+
+test("LinkedIn destinations use the authorization frame and compact choices", async ({
+  page,
+}) => {
+  await page.goto("/linkedin-account-select?selection=fixture&state=fixture");
+  await expect(page.locator('[data-slot="authorization-guide"]')).toHaveCount(
+    4
+  );
+  const radios = page.getByRole("radio");
+  await expect(radios).toHaveCount(2);
+  await expect(radios.first()).toBeChecked();
+  for (const choice of await page
+    .locator('[data-slot="account-choice"]')
+    .all()) {
+    const box = await choice.boundingBox();
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+    expect(box!.height).toBeLessThanOrEqual(58);
+    expect(
+      await choice.evaluate((el) => el.scrollWidth <= el.clientWidth)
+    ).toBe(true);
+    const dot = await choice.getByRole("radio").boundingBox();
+    expect(dot!.height).toBe(dot!.width);
+  }
+  await radios.first().focus();
+  await page.keyboard.down("ArrowDown");
+  await expect(radios.last()).toBeFocused();
+  await expect(radios.last()).toBeChecked();
+  await page.keyboard.up("ArrowDown");
+  await expect(
+    page.getByRole("button", { name: "Connect destination" })
+  ).toBeEnabled();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth
+    )
+  ).toBe(true);
+});
+
+test("authorization frame stays present for invalid LinkedIn links and extension success", async ({
+  page,
+}) => {
+  await page.goto("/linkedin-account-select");
+  await expect(page.getByRole("alert")).toHaveText(
+    "This LinkedIn connection attempt is invalid. Start again."
+  );
+  await expect(page.locator('[data-slot="authorization-guide"]')).toHaveCount(
+    4
+  );
+  await expect(
+    page.getByRole("button", { name: "Connect destination" })
+  ).toBeDisabled();
+  await page.goto("/extension-auth-success");
+  await expect(page.locator('[data-slot="authorization-guide"]')).toHaveCount(
+    4
+  );
+  await expect(
+    page.getByRole("link", { name: "Go to Delulu Social" })
+  ).toHaveAttribute("href", "/");
+});
+
+test("LinkedIn loading and unavailable Pages keep the same frame", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.fixtureConfig = {
+      latency: 1000,
+      linkedInTargets: [{ id: "member", name: "Alex Morgan", type: "member" }],
+    };
+  });
+  await page.goto(
+    "/linkedin-account-select?selection=fixture&state=fixture&pages=unavailable"
+  );
+  await expect(page.getByRole("status")).toHaveText(
+    "Loading LinkedIn destinations…"
+  );
+  await expect(page.locator('[data-slot="authorization-guide"]')).toHaveCount(
+    4
+  );
+  await expect(page.getByRole("radio")).toBeChecked();
+  await expect(
+    page.getByText("We couldn't load your LinkedIn Pages.", { exact: false })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Connect destination" })
+  ).toBeEnabled();
+  await expect(page.locator('[data-slot="authorization-guide"]')).toHaveCount(
+    4
+  );
+});

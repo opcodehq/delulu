@@ -3,6 +3,8 @@ import { Logo } from "@delulu/design-system/components/logo";
 import { Button } from "@delulu/design-system/components/ui/button";
 import Link from "next/link";
 
+import { AuthorizationShell } from "@/shell/navigation/authorization-shell";
+
 export const dynamic = "force-dynamic";
 
 export default async function ConnectionResultPage() {
@@ -14,14 +16,14 @@ export default async function ConnectionResultPage() {
     metadata?.onboardingComplete === true ? "/socials" : "/onboarding";
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted/20 p-6">
-      <section className="w-full max-w-md space-y-6 rounded-2xl border bg-background p-7 shadow-sm">
+    <AuthorizationShell>
+      <section className="space-y-4">
         <Logo />
         <div className="space-y-2">
-          <h1 className="font-semibold text-2xl tracking-tight">
+          <h1 className="font-semibold text-lg tracking-tight">
             This connection attempt expired
           </h1>
-          <p className="text-muted-foreground leading-relaxed">
+          <p className="text-muted-foreground text-sm leading-relaxed">
             For your security, connection links only work for a short time.
             Nothing was changed. Start again from the app.
           </p>
@@ -30,6 +32,6 @@ export default async function ConnectionResultPage() {
           <Link href={destination}>Return to connections</Link>
         </Button>
       </section>
-    </main>
+    </AuthorizationShell>
   );
 }

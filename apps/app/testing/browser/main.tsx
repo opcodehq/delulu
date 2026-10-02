@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 
 import { lazy, Suspense } from "react";
+import ExtensionAuthSuccessPage from "@/app/extension-auth-success/page";
+import { LinkedInAccountSelect } from "@/app/linkedin-account-select/linkedin-account-select";
 import "@/app/styles.css";
 import { DesignSystemProvider } from "@delulu/design-system";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
@@ -51,25 +53,31 @@ function App() {
   return (
     <DesignSystemProvider>
       <NuqsTestingAdapter>
-        <AppShell>
-          {route === "/__controls" ? (
-            <ControlPreview />
-          ) : route === "/__loader" ? (
-            <PageLoading label="Loading Delulu" />
-          ) : route === "/__charts" ? (
-            <ChartPreview />
-          ) : route === "/socials" ? (
-            <ConnectedAccounts />
-          ) : route === "/posts" ? (
-            <PostsClient />
-          ) : route === "/calendar" ? (
-            <CalendarClient />
-          ) : route === "/analytics" ? (
-            <AnalyticsClient />
-          ) : (
-            <DashboardClient />
-          )}
-        </AppShell>
+        {route === "/linkedin-account-select" ? (
+          <LinkedInAccountSelect />
+        ) : route === "/extension-auth-success" ? (
+          <ExtensionAuthSuccessPage />
+        ) : (
+          <AppShell>
+            {route === "/__controls" ? (
+              <ControlPreview />
+            ) : route === "/__loader" ? (
+              <PageLoading label="Loading Delulu" />
+            ) : route === "/__charts" ? (
+              <ChartPreview />
+            ) : route === "/socials" ? (
+              <ConnectedAccounts />
+            ) : route === "/posts" ? (
+              <PostsClient />
+            ) : route === "/calendar" ? (
+              <CalendarClient />
+            ) : route === "/analytics" ? (
+              <AnalyticsClient />
+            ) : (
+              <DashboardClient />
+            )}
+          </AppShell>
+        )}
       </NuqsTestingAdapter>
     </DesignSystemProvider>
   );

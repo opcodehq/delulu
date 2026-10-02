@@ -17,6 +17,11 @@ const memberships = list(
   }))
 );
 export interface FixtureConfig {
+  linkedInTargets?: {
+    id: string;
+    name: string;
+    type: "member" | "organization";
+  }[];
   dashboardWarnings?: boolean;
   latency?: number;
   failures?: Record<string, number>;
@@ -80,6 +85,17 @@ export function installFixtures() {
       unhandled.push(`${method} ${url.pathname}`);
       status = 501;
       body = { message: `Missing fixture: ${method} ${url.pathname}` };
+    } else if (url.pathname === "/v1/connections/linkedin/targets") {
+      body = {
+        targets: config.linkedInTargets ?? [
+          { id: "member", name: "Alex Morgan", type: "member" },
+          {
+            id: "organization",
+            name: "A company with a long name that must fit a compact destination choice",
+            type: "organization",
+          },
+        ],
+      };
     } else if (url.pathname === "/v1/me/workspaces") {
       body = memberships;
     } else if (url.pathname.endsWith("/analytics/operational")) {
