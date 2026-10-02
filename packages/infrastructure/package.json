@@ -20,7 +20,6 @@
     "@delulu/services": "workspace:*",
     "@effect/sql-pg": "catalog:",
     "@delulu/typescript-config": "workspace:*",
-    "@delulu/validators": "workspace:*",
     "@delulu/worker": "workspace:*",
     "dotenv": "^16.4.7",
     "effect": "catalog:",

@@ -2,7 +2,7 @@ import { makeTokenCipher } from "@delulu/core";
 import {
   type FacebookPagesWithToken,
   FacebookPagesWithTokenSchema,
-} from "@delulu/validators/facebook";
+} from "@delulu/core/publishing/facebook";
 import { Effect } from "effect";
 import { nanoid } from "nanoid";
 import { callbackRedirect } from "../../callback-response";

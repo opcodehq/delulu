@@ -1,11 +1,11 @@
-import { DEFAULT_INSTAGRAM_SETTINGS } from "@delulu/validators/constants/settings";
+import { DEFAULT_INSTAGRAM_SETTINGS } from "@delulu/core/publishing/constants/settings";
 import type { PlatformSettings } from "../../types";
 
 /**
  * Instagram per-post settings. `defaults` seeds the values; `fields` describes
  * the controls the user can change. Chosen values flow back through
  * `content.providerSettings` (validated by `instagramSettingsSchema` in
- * @delulu/validators at the publish boundary).
+ * @delulu/core/publishing at the publish boundary).
  */
 export const instagramSettings: PlatformSettings = {
   defaults: DEFAULT_INSTAGRAM_SETTINGS,

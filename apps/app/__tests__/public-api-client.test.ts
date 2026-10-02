@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { createPublicApiClient } from "../lib/public-api-client";
+import { createPublicApiClient } from "../shell/public-api-client";
 
 const client = vi.hoisted(() => vi.fn((options) => options));
 vi.mock("@delulu/client", () => ({ createApiClient: client }));

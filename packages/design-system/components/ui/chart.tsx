@@ -354,3 +354,25 @@ export {
 
 // Re-export Recharts primitives so consuming apps don't need recharts as a direct dependency
 export { RechartsPrimitive }
+
+export { DitherPattern as ChartDitherPattern } from "./dither";
+
+/** Keyboard-accessible equivalent of the visible series, with exact values. */
+export function ChartDataTable({ data, columns, label }: {
+  data: readonly Record<string, string | number>[];
+  columns: readonly { key: string; label: string }[];
+  label: string;
+}) {
+  return (
+    <details data-slot="chart-data" className="mt-2 text-xs">
+      <summary className="w-fit cursor-pointer rounded-sm py-1 text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring">View {label} data</summary>
+      <div className="max-h-64 overflow-auto rounded-md border">
+        <table className="w-full text-left">
+          <caption className="sr-only">{label}</caption>
+          <thead><tr>{columns.map(column => <th key={column.key} scope="col" className="px-3 py-2 font-medium">{column.label}</th>)}</tr></thead>
+          <tbody>{data.map((row, index) => <tr key={String(row.date ?? index)} className="border-t">{columns.map(column => <td key={column.key} className="px-3 py-2 tabular-nums">{row[column.key]}</td>)}</tr>)}</tbody>
+        </table>
+      </div>
+    </details>
+  );
+}

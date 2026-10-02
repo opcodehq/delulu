@@ -2,14 +2,14 @@ import { POST_PUBLISH_FAILED, POST_PUBLISHED } from "@delulu/analytics/events";
 import { getConnection } from "@delulu/connections";
 import { ConnectionStore, runPublish } from "@delulu/connections/worker";
 import { rollupPostStatus, type TokenCipher } from "@delulu/core";
-import { makePostgresConnectionStore } from "@delulu/db";
-import { getPlanLimits } from "@delulu/payments";
-import { type DurableJob, JobService } from "@delulu/services";
 import type {
   ProviderSetting,
   SocialPublishInputType,
   SocialType,
-} from "@delulu/validators/post";
+} from "@delulu/core/publishing/post";
+import { makePostgresConnectionStore } from "@delulu/db";
+import { getPlanLimits } from "@delulu/payments";
+import { type DurableJob, JobService } from "@delulu/services";
 import { Effect, Layer } from "effect";
 import { SqlClient } from "effect/unstable/sql";
 import { resolveMediaUrls } from "./resolve-media-urls";

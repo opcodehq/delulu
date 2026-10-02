@@ -160,6 +160,9 @@ importers:
       '@delulu/analytics':
         specifier: workspace:*
         version: link:../../packages/analytics
+      '@delulu/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@delulu/client':
         specifier: workspace:*
         version: link:../../packages/client
@@ -172,6 +175,9 @@ importers:
       '@delulu/connections':
         specifier: workspace:*
         version: link:../../packages/connections
+      '@delulu/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@delulu/design-system':
         specifier: workspace:*
         version: link:../../packages/design-system
@@ -299,6 +305,9 @@ importers:
       '@delulu/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
+      '@tailwindcss/typography':
+        specifier: ^0.5.16
+        version: 0.5.16(tailwindcss@4.1.18)
       '@testing-library/dom':
         specifier: ^10.4.0
         version: 10.4.0
@@ -618,6 +627,9 @@ importers:
       '@delulu/articles':
         specifier: workspace:*
         version: link:../../packages/articles
+      '@delulu/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@delulu/cloudflare-types':
         specifier: workspace:*
         version: link:../../packages/cloudflare-types
@@ -1047,9 +1059,6 @@ importers:
       '@delulu/core':
         specifier: workspace:*
         version: link:../core
-      '@delulu/validators':
-        specifier: workspace:*
-        version: link:../validators
       '@opennextjs/cloudflare':
         specifier: 1.6.0
         version: 1.6.0(wrangler@4.110.0(@cloudflare/workers-types@5.20260713.1)(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -1106,6 +1115,9 @@ importers:
       nanoid:
         specifier: 5.1.6
         version: 5.1.6
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
     devDependencies:
       '@delulu/typescript-config':
         specifier: workspace:*
@@ -1156,15 +1168,12 @@ importers:
 
   packages/design-system:
     dependencies:
-      '@delulu/analytics':
+      '@delulu/core':
         specifier: workspace:*
-        version: link:../analytics
+        version: link:../core
       '@delulu/icons':
         specifier: npm:@hugeicons/core-free-icons@^3.1.1
         version: '@hugeicons/core-free-icons@3.1.1'
-      '@delulu/observability':
-        specifier: workspace:*
-        version: link:../observability
       '@dnd-kit/core':
         specifier: ^6.1.0
         version: 6.3.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -1437,9 +1446,6 @@ importers:
       '@delulu/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
-      '@delulu/validators':
-        specifier: workspace:*
-        version: link:../validators
       '@delulu/worker':
         specifier: workspace:*
         version: link:../worker
@@ -1492,7 +1498,7 @@ importers:
         version: link:../typescript-config
       next:
         specifier: 15.3.3
-        version: 15.3.3(@opentelemetry/api@1.9.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 15.3.3(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
 
   packages/notifications:
     dependencies:
@@ -1635,7 +1641,7 @@ importers:
         version: 19.2.3(@types/react@19.2.17)
       next:
         specifier: 15.3.3
-        version: 15.3.3(@opentelemetry/api@1.9.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 15.3.3(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
 
   packages/services:
     dependencies:
@@ -1707,15 +1713,6 @@ importers:
 
   packages/typescript-config: {}
 
-  packages/validators:
-    dependencies:
-      '@types/node':
-        specifier: 22.14.1
-        version: 22.14.1
-      zod:
-        specifier: 'catalog:'
-        version: 3.25.76
-
   packages/webhooks:
     dependencies:
       '@t3-oss/env-nextjs':
@@ -1764,9 +1761,6 @@ importers:
       '@delulu/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
-      '@delulu/validators':
-        specifier: workspace:*
-        version: link:../validators
       '@effect/sql-pg':
         specifier: 'catalog:'
         version: 4.0.0-beta.97(effect@4.0.0-beta.97)
@@ -32224,22 +32218,6 @@ snapshots:
       which: 1.2.4
       winreg: 0.0.12
 
-  gaxios@7.1.1:
-    dependencies:
-      extend: 3.0.2
-      https-proxy-agent: 7.0.6
-      node-fetch: 3.3.2
-    transitivePeerDependencies:
-      - supports-color
-
-  gcp-metadata@7.0.1:
-    dependencies:
-      gaxios: 7.1.1
-      google-logging-utils: 1.1.1
-      json-bigint: 1.0.0
-    transitivePeerDependencies:
-      - supports-color
-
   geist@1.4.2(next@15.3.3(@opentelemetry/api@1.9.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)):
     dependencies:
       next: 15.3.3(@opentelemetry/api@1.9.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -34919,7 +34897,7 @@ snapshots:
       postcss: 8.4.31
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
-      styled-jsx: 5.1.6(react@19.2.7)
+      styled-jsx: 5.1.6(@babel/core@7.29.7)(react@19.2.7)
     optionalDependencies:
       '@next/swc-darwin-arm64': 15.2.4
       '@next/swc-darwin-x64': 15.2.4
@@ -34997,7 +34975,7 @@ snapshots:
       postcss: 8.4.31
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
-      styled-jsx: 5.1.6(react@19.2.7)
+      styled-jsx: 5.1.6(@babel/core@7.29.7)(react@19.2.7)
     optionalDependencies:
       '@next/swc-darwin-arm64': 15.3.3
       '@next/swc-darwin-x64': 15.3.3
@@ -37838,11 +37816,6 @@ snapshots:
       react: 19.2.7
     optionalDependencies:
       '@babel/core': 7.29.7
-
-  styled-jsx@5.1.6(react@19.2.7):
-    dependencies:
-      client-only: 0.0.1
-      react: 19.2.7
 
   styled-jsx@5.1.7(@babel/core@7.27.7)(react@19.2.7):
     dependencies:

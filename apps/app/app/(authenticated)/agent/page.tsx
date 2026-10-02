@@ -1,6 +1,6 @@
 import { Suspense } from "react";
-import { AgentWorkspace } from "@/components/agent/agent-workspace";
-import { PageShell } from "@/components/layout/page-shell";
+import { AgentWorkspace } from "@/features/agent/agent-workspace";
+import { PageShell } from "@/shell/navigation/page-shell";
 
 export default function AgentPage() {
   return (

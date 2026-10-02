@@ -1,4 +1,4 @@
-import { ApiKeysClient } from "./api-keys-client";
+import { ApiKeysClient } from "../../../features/workspace/api-keys-client";
 
 export const dynamic = "force-dynamic";
 

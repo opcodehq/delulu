@@ -1,4 +1,4 @@
-import BillingClient from "./billing-client";
+import BillingClient from "../../../features/billing/billing-client";
 
 export const dynamic = "force-dynamic";
 

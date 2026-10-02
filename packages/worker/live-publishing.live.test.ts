@@ -11,11 +11,11 @@ import {
   PostTargetId,
   TokenCipher,
 } from "@delulu/core";
-import { JobService, JobTransport } from "@delulu/services";
 import {
   SocialPublishInputSchema,
   type SocialPublishInputType,
-} from "@delulu/validators/post";
+} from "@delulu/core/publishing/post";
+import { JobService, JobTransport } from "@delulu/services";
 import { PgClient } from "@effect/sql-pg";
 import { Effect, String as EffectString, Layer, Redacted } from "effect";
 import { SqlClient } from "effect/unstable/sql";

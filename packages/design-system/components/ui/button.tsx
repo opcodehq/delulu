@@ -22,6 +22,8 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
+        xs: "h-7 rounded-md gap-1 px-2 text-sm",
+        "icon-sm": "size-8",
         default: "h-9 px-4 py-1 has-[>svg]:px-3",
         sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
         lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
@@ -50,6 +52,8 @@ function Button({
   return (
     <Comp
       data-slot="button"
+      data-size={size ?? "default"}
+      data-variant={variant ?? "default"}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />

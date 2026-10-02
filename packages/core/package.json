@@ -15,6 +15,10 @@
     "./domain/*": {
       "import": "./src/domain/*.ts",
       "types": "./src/domain/*.ts"
+    },
+    "./publishing/*": {
+      "types": "./src/publishing/*.ts",
+      "import": "./src/publishing/*.ts"
     }
   },
   "scripts": {
@@ -23,7 +27,8 @@
   },
   "dependencies": {
     "effect": "catalog:",
-    "nanoid": "5.1.6"
+    "nanoid": "5.1.6",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@delulu/typescript-config": "workspace:*",
