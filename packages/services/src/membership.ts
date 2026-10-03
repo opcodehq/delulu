@@ -13,6 +13,7 @@ export interface WorkspaceMembershipItem {
   readonly slug: string | null;
   readonly isPersonal: boolean;
   readonly role: WorkspaceRole;
+  readonly clerkOrgId: string | null;
 }
 
 const MembershipRow = Schema.Struct({ id: MemberId, role: WorkspaceRole });
@@ -23,6 +24,7 @@ const MembershipListRow = Schema.Struct({
   slug: Schema.NullOr(Schema.String),
   isPersonal: Schema.Boolean,
   role: WorkspaceRole,
+  clerkOrgId: Schema.NullOr(Schema.String),
 });
 
 /**
@@ -62,7 +64,8 @@ export class MembershipService extends Context.Service<
         Request: Schema.String,
         Result: MembershipListRow,
         execute: (userId) =>
-          sql`SELECT w.id AS workspace_id, w.name, w.slug, w.is_personal, m.role
+          sql`SELECT w.id AS workspace_id, w.name, w.slug, w.is_personal, m.role,
+                w.clerk_org_id
               FROM workspace_members m
               JOIN workspaces w ON w.id = m.workspace_id
               WHERE m.user_id = ${userId}

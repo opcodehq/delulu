@@ -110,6 +110,19 @@ export const NotFoundErrorResponse = envelope(
   { resource: Schema.String }
 );
 
+// --- 410 ---------------------------------------------------------------------
+/** A share link that existed but has passed its expiry; it can be renewed. */
+export class ShareLinkExpiredError extends Schema.TaggedErrorClass<ShareLinkExpiredError>()(
+  "ShareLinkExpiredError",
+  { message: Schema.String }
+) {}
+export const ShareLinkExpiredErrorResponse = envelope(
+  ShareLinkExpiredError,
+  "ShareLinkExpiredError",
+  410,
+  {}
+);
+
 // --- 409 ---------------------------------------------------------------------
 export class ConflictError extends Schema.TaggedErrorClass<ConflictError>()(
   "ConflictError",

@@ -53,6 +53,7 @@ export * from "./r2";
 export * from "./rate-limiter";
 export * from "./reviews";
 export * from "./setup";
+export * from "./share-links";
 export * from "./signed-ingress";
 export * from "./sql-errors";
 export * from "./transcription-checkout";

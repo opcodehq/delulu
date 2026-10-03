@@ -1,13 +1,21 @@
 import type { ReactNode } from "react";
 
-const getToken = async () => "fixture-token";
+const signedOut = () =>
+  Boolean(
+    (window as { fixtureConfig?: { signedOut?: boolean } }).fixtureConfig
+      ?.signedOut
+  );
+const getToken = async () => (signedOut() ? null : "fixture-token");
 export const useAuth = () => ({
   getToken,
   isLoaded: true,
-  isSignedIn: true,
-  userId: "fixture-user",
-  sessionId: "fixture-session",
+  isSignedIn: !signedOut(),
+  userId: signedOut() ? null : "fixture-user",
+  sessionId: signedOut() ? null : "fixture-session",
+  orgId: null,
 });
+const setActive = async () => undefined;
+export const useClerk = () => ({ setActive });
 export const useUser = () => ({
   user: {
     id: "fixture-user",
@@ -23,5 +31,21 @@ export const UserButton = Object.assign(
       TU
     </button>
   ),
-  { MenuItems: () => null, Action: () => null, Link: () => null }
+  {
+    MenuItems: () => null,
+    Action: () => null,
+    Link: () => null,
+    UserProfilePage: () => null,
+  }
+);
+/** Renders custom pages inline so Delulu's sections can be exercised. */
+export const OrganizationProfile = Object.assign(
+  ({ children }: { children?: ReactNode }) => (
+    <div data-testid="clerk-organization-profile">{children}</div>
+  ),
+  {
+    Page: ({ label, children }: { label: string; children?: ReactNode }) => (
+      <section aria-label={label}>{children}</section>
+    ),
+  }
 );

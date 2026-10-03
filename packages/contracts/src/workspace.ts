@@ -439,6 +439,8 @@ export const WorkspaceView = Schema.Struct({
   slug: Schema.NullOr(Schema.String),
   isPersonal: Schema.Boolean,
   billingOwnerUserId: Schema.String,
+  /** Whether post share links may be opened by anyone, not only members. */
+  publicShareLinks: Schema.Boolean,
 });
 export const MemberView = Schema.Struct({
   id: Schema.String,
@@ -469,6 +471,7 @@ export const AdminGroup = HttpApiGroup.make("admin")
       payload: Schema.Struct({
         name: Schema.optional(Schema.String),
         slug: Schema.optional(Schema.NullOr(Schema.String)),
+        publicShareLinks: Schema.optional(Schema.Boolean),
       }),
       success: WorkspaceView,
       error: domainErrors,

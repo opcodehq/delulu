@@ -36,10 +36,12 @@ import {
   PencilEdit02Icon,
   RefreshIcon,
   Sent02Icon,
+  Share08Icon,
   ViewIcon,
 } from "@delulu/icons";
 import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
+import { ShareDialog } from "@/features/publishing/share/share-dialog";
 import type { PostView } from "@/shared/workspace-views";
 import { useAppRouter as useRouter } from "@/shell/navigation/route-transition";
 import { useApiClient } from "@/shell/providers/api-client";
@@ -65,6 +67,7 @@ export function PostActionsMenu({
   const analytics = useAnalytics();
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [scheduleDate, setScheduleDate] = useState<Date | undefined>();
 
   const remove = useMutationAtom(resources.posts.remove(workspaceId ?? ""));
@@ -189,6 +192,10 @@ export function PostActionsMenu({
             <Icon icon={PencilEdit02Icon} size={16} />
             Edit
           </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setShareOpen(true)}>
+            <Icon icon={Share08Icon} size={16} />
+            Share preview
+          </DropdownMenuItem>
           {hasFailedTargets && (
             <DropdownMenuItem
               disabled={retry.isPending}
@@ -258,6 +265,12 @@ export function PostActionsMenu({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ShareDialog
+        onOpenChange={setShareOpen}
+        open={shareOpen}
+        postId={post.id}
+      />
 
       <AlertDialog onOpenChange={setDeleteOpen} open={deleteOpen}>
         <AlertDialogContent>

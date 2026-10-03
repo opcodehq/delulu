@@ -39,6 +39,8 @@ export const WorkspaceMembershipItem = Schema.Struct({
   slug: Schema.NullOr(Schema.String),
   isPersonal: Schema.Boolean,
   role: WorkspaceRole,
+  /** The Clerk organization backing a team workspace; null for personal ones. */
+  clerkOrgId: Schema.optional(Schema.NullOr(Schema.String)),
 }).annotate({ identifier: "WorkspaceMembershipItem" });
 
 /** Offset/limit list envelope (#148): numbered pages, `total` always present. */

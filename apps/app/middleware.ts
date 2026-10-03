@@ -17,6 +17,8 @@ const publicRoutes = createRouteMatcher([
   "/connect/telegram",
   "/connect/account",
   "/.well-known(.*)",
+  // Post previews shared by link; the API enforces each link's access mode.
+  "/share/(.*)",
 ]);
 
 const authRoutes = createRouteMatcher([

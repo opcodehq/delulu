@@ -40,6 +40,7 @@ import type {
   RateLimiterService,
   ReviewService,
   SetupService,
+  ShareLinkService,
   SignedIngress,
   TranscriptionCheckoutService,
   TranscriptionService,
@@ -70,6 +71,10 @@ import {
 } from "./domain-handlers";
 import { HealthHandlers, InstanceHandlers, MeHandlers } from "./handlers";
 import { OAuthRoutes } from "./oauth-routes";
+import {
+  PublicSharesHandlers,
+  ShareLinksHandlers,
+} from "./share-link-handlers";
 import { TranscriptionHandlers } from "./transcription-handlers";
 import { WebhookRoutes } from "./webhook-routes";
 
@@ -101,6 +106,7 @@ export type AppServices =
   | ConnectionsService
   | ConnectionStateService
   | ReviewService
+  | ShareLinkService
   | AdminService
   | AgentRuntimeProvider
   | AgentWorkspaceService
@@ -145,6 +151,8 @@ export const buildWebHandler = (
       MeHandlers,
       PostsHandlers,
       ReviewsHandlers,
+      ShareLinksHandlers,
+      PublicSharesHandlers,
       MediaHandlers,
       ConnectionsHandlers,
       AdminHandlers,

@@ -10,10 +10,12 @@ import { createRoot } from "react-dom/client";
 import { AnalyticsClient } from "@/features/analytics/analytics-client";
 import ConnectedAccounts from "@/features/connections/connected-accounts";
 import { DashboardClient } from "@/features/dashboard/dashboard-client";
+import { OrganizationSettings } from "@/features/organization/organization-settings";
 import { CalendarClient } from "@/features/publishing/calendar/calendar-client";
 import { PostCreator } from "@/features/publishing/editor/post-creator";
 import PostsClient from "@/features/publishing/posts/posts-client";
 import { StoreProvider } from "@/features/publishing/store-provider";
+import { SharedPostPage } from "@/features/sharing/shared-post-page";
 import { AppShell } from "@/shell/app-shell";
 import { PageLoading } from "@/shell/loading";
 import { ControlPreview } from "@/testing/browser/control-preview";
@@ -56,7 +58,9 @@ function App() {
   return (
     <DesignSystemProvider>
       <NuqsTestingAdapter>
-        {route === "/linkedin-account-select" ? (
+        {route.startsWith("/share/") ? (
+          <SharedPostPage token={route.slice("/share/".length)} />
+        ) : route === "/linkedin-account-select" ? (
           <LinkedInAccountSelect />
         ) : route === "/extension-auth-success" ? (
           <ExtensionAuthSuccessPage />
@@ -76,6 +80,8 @@ function App() {
               <StoreProvider>
                 <PostCreator />
               </StoreProvider>
+            ) : route === "/organization" ? (
+              <OrganizationSettings />
             ) : route === "/posts" ? (
               <PostsClient />
             ) : route === "/calendar" ? (

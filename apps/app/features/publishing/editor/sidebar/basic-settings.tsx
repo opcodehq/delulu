@@ -6,10 +6,7 @@ import {
 } from "@delulu/design-system/components/ui/alert";
 import { Button } from "@delulu/design-system/components/ui/button";
 import { NaturalDatePicker } from "@delulu/design-system/components/ui/natural-date-picker";
-import {
-  RadioGroup,
-  RadioGroupItem,
-} from "@delulu/design-system/components/ui/radio-group";
+import { RadioGroup } from "@delulu/design-system/components/ui/radio-group";
 import { Icon } from "@delulu/design-system/providers/icon";
 import {
   Alert02Icon,
@@ -32,6 +29,7 @@ import {
   useStore,
 } from "@/features/publishing/store";
 import { usePostActions } from "@/features/publishing/use-post-actions";
+import { ChoiceRadio } from "@/shared/choice-radio";
 
 interface BasicSettingsProps {
   onOpenPreview?: () => void;
@@ -113,49 +111,25 @@ function ScheduleSection() {
         }}
         value={date ? "schedule" : "now"}
       >
-        <TimingOption
+        <ChoiceRadio
           description="As soon as you hit Publish"
+          id="publish-timing-now"
           label="Post now"
           value="now"
         />
-        <TimingOption
+        <ChoiceRadio
           description={
             date
               ? `Goes out ${format(date, "EEEE, MMM d 'at' h:mm a")}`
               : "Pick a date and time"
           }
+          id="publish-timing-schedule"
           label="Schedule"
           value="schedule"
         />
       </RadioGroup>
       {date && <NaturalDatePicker onChange={setDate} value={date} />}
     </section>
-  );
-}
-
-function TimingOption({
-  value,
-  label,
-  description,
-}: {
-  value: "now" | "schedule";
-  label: string;
-  description: string;
-}) {
-  const id = `publish-timing-${value}`;
-  return (
-    <label
-      className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-2 py-2 transition-colors hover:bg-muted/60 has-focus-visible:ring-2 has-focus-visible:ring-ring/50"
-      htmlFor={id}
-    >
-      <RadioGroupItem aria-label={label} id={id} value={value} />
-      <span className="min-w-0">
-        <span className="block font-medium text-sm">{label}</span>
-        <span className="block truncate text-muted-foreground text-xs">
-          {description}
-        </span>
-      </span>
-    </label>
   );
 }
 

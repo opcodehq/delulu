@@ -40,7 +40,11 @@ export class AdminService extends Context.Service<
     ) => Effect.Effect<WorkspaceOutput, NotFoundError>;
     readonly updateWorkspace: (
       id: WorkspaceId,
-      value: { readonly name?: string; readonly slug?: string | null }
+      value: {
+        readonly name?: string;
+        readonly slug?: string | null;
+        readonly publicShareLinks?: boolean;
+      }
     ) => Effect.Effect<WorkspaceOutput, NotFoundError>;
     readonly deleteWorkspace: (
       id: WorkspaceId
@@ -112,7 +116,7 @@ export class AdminService extends Context.Service<
       ) {
         const rows = yield* sql<
           Record<string, unknown>
-        >`SELECT id, name, slug, is_personal, billing_owner_user_id
+        >`SELECT id, name, slug, is_personal, billing_owner_user_id, public_share_links
           FROM workspaces WHERE id = ${id} AND deleted_at IS NULL`.pipe(
           Effect.orDie
         );
@@ -129,15 +133,21 @@ export class AdminService extends Context.Service<
           slug: row.slug === null ? null : String(row.slug),
           isPersonal: Boolean(row.isPersonal),
           billingOwnerUserId: String(row.billingOwnerUserId),
+          publicShareLinks: Boolean(row.publicShareLinks),
         };
       });
       const updateWorkspace = Effect.fn("AdminService.updateWorkspace")(
         function* (
           id: WorkspaceId,
-          value: { readonly name?: string; readonly slug?: string | null }
+          value: {
+            readonly name?: string;
+            readonly slug?: string | null;
+            readonly publicShareLinks?: boolean;
+          }
         ) {
           yield* sql`UPDATE workspaces SET name = COALESCE(${value.name ?? null}, name),
-          slug = CASE WHEN ${value.slug === undefined} THEN slug ELSE ${value.slug ?? null} END
+          slug = CASE WHEN ${value.slug === undefined} THEN slug ELSE ${value.slug ?? null} END,
+          public_share_links = COALESCE(${value.publicShareLinks ?? null}, public_share_links)
           WHERE id = ${id} AND deleted_at IS NULL`.pipe(Effect.orDie);
           return yield* getWorkspace(id);
         }

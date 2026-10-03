@@ -49,10 +49,10 @@ export function EmailPreferences() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Email preferences</CardTitle>
+        <CardTitle>Your email</CardTitle>
         <CardDescription>
-          Billing, security, and data-loss notices are always sent. Control
-          optional product email here.
+          Only affects your inbox, not your teammates&apos;. Billing, security,
+          and data-loss notices are always sent.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
