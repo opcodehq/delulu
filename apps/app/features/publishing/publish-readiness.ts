@@ -6,6 +6,7 @@ import type {
 import {
   PLATFORM_CHARACTER_LIMITS,
   PLATFORM_MEDIA_RULES,
+  shouldUseMultiPostLayout,
 } from "@/features/publishing/platform-rules";
 
 export interface PublishIssue {
@@ -60,6 +61,12 @@ export function getPublishIssues(
         socialType,
         message: `${name}: ${message}`,
       });
+
+    // Mirrors the save-time guard in use-post-actions: only X and Threads
+    // accept ordered threads.
+    if (segments.length > 1 && !shouldUseMultiPostLayout(socialType, [])) {
+      push("thread", "Threads aren't supported. Keep a single post");
+    }
 
     const media = mediaIssue(socialType, segments);
     if (media) {

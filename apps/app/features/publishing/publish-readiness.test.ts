@@ -84,4 +84,25 @@ describe("getPublishIssues", () => {
       )
     ).toEqual([]);
   });
+
+  it("flags threads on platforms that only accept a single post", () => {
+    const thread = post([
+      segment("Part one", [{ mediaType: "IMAGE", bucketKey: "photo.jpg" }]),
+      { ...segment("Part two"), order: 1 },
+    ]);
+    expect(
+      getPublishIssues(
+        [provider("ig", SocialTypes.INSTAGRAM, "Swaraj")],
+        thread
+      )
+    ).toMatchObject([
+      {
+        id: "ig:thread",
+        message: "Swaraj: Threads aren't supported. Keep a single post",
+      },
+    ]);
+    expect(
+      getPublishIssues([provider("x", SocialTypes.TWITTER, "swaraj")], thread)
+    ).toEqual([]);
+  });
 });

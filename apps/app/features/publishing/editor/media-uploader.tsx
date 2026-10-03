@@ -686,6 +686,36 @@ export function MediaUploader({
 
   const openFilePicker = () => fileInputRef.current?.click();
   const openLibrary = () => setIsDialogOpen(true);
+  // Labels collapse to icons on narrow toolbars; tiles always show them.
+  const addActions = (
+    <>
+      <Button
+        aria-label={`Add media. ${instruction}`}
+        className="text-muted-foreground hover:text-foreground [@media(pointer:coarse)]:h-11"
+        onClick={openFilePicker}
+        title={platformHint}
+        type="button"
+        variant="ghost"
+      >
+        <Icon icon={Image01Icon} size={16} />
+        <span className={cn(variant === "toolbar" && "hidden sm:inline")}>
+          Add media
+        </span>
+      </Button>
+      <Button
+        aria-label="Choose existing media from library"
+        className="text-muted-foreground hover:text-foreground [@media(pointer:coarse)]:h-11"
+        onClick={openLibrary}
+        type="button"
+        variant="ghost"
+      >
+        <Icon icon={FolderLibraryIcon} size={16} />
+        <span className={cn(variant === "toolbar" && "hidden sm:inline")}>
+          Library
+        </span>
+      </Button>
+    </>
+  );
   const tileLabel =
     tileLabelOverride ??
     (limits.canAddVideos && !limits.canAddImages
@@ -707,7 +737,20 @@ export function MediaUploader({
 
       {variant === "tile" ? (
         mediaFiles.length > 0 ? (
-          mediaGrid
+          <>
+            {mediaGrid}
+            {canUploadMore && (
+              <div
+                className={cn(
+                  "mx-auto flex min-h-11 w-full max-w-[240px] items-center justify-center gap-1 rounded-md",
+                  isDragOver && "bg-primary/5"
+                )}
+                {...dragHandlers}
+              >
+                {addActions}
+              </div>
+            )}
+          </>
         ) : (
           <div className="mx-auto w-full @xl:max-w-[240px] space-y-2">
             <button
@@ -750,31 +793,7 @@ export function MediaUploader({
             )}
             {...dragHandlers}
           >
-            {canUploadMore && (
-              <>
-                <Button
-                  aria-label={`Add media. ${instruction}`}
-                  className="text-muted-foreground hover:text-foreground [@media(pointer:coarse)]:h-11"
-                  onClick={openFilePicker}
-                  title={platformHint}
-                  type="button"
-                  variant="ghost"
-                >
-                  <Icon icon={Image01Icon} size={16} />
-                  <span className="hidden sm:inline">Add media</span>
-                </Button>
-                <Button
-                  aria-label="Choose existing media from library"
-                  className="text-muted-foreground hover:text-foreground [@media(pointer:coarse)]:h-11"
-                  onClick={openLibrary}
-                  type="button"
-                  variant="ghost"
-                >
-                  <Icon icon={FolderLibraryIcon} size={16} />
-                  <span className="hidden sm:inline">Library</span>
-                </Button>
-              </>
-            )}
+            {canUploadMore && addActions}
             {extraActions && (
               <div className="ml-auto flex items-center gap-0.5">
                 {extraActions}
