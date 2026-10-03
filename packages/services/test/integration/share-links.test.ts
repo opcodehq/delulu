@@ -2,6 +2,7 @@ import {
   Connection,
   ConnectionId,
   MediaId,
+  MemberId,
   makeConnectionRepository,
   makeId,
   makeTokenCipher,
@@ -24,7 +25,11 @@ import { JobTransport } from "../../src/job-transport";
 import { JobService } from "../../src/jobs";
 import { MembershipService } from "../../src/membership";
 import { PostService } from "../../src/posts";
-import { ShareLinkService, type ShareViewer } from "../../src/share-links";
+import {
+  MAX_SHARE_COMMENTS_PER_POST,
+  ShareLinkService,
+  type ShareViewer,
+} from "../../src/share-links";
 
 const Pg = PgClient.layer({
   url: Redacted.make(
@@ -436,6 +441,117 @@ describe("ShareLinkService", () => {
         expect((yield* shares.view(reopened.token, null)).access).toBe(
           "anyone"
         );
+      })
+    );
+  });
+
+  it("keeps links working after their creator leaves the workspace", async () => {
+    await run(
+      Effect.gen(function* () {
+        const shares = yield* ShareLinkService;
+        const identity = yield* IdentityService;
+        const sql = yield* SqlClient.SqlClient;
+        const { workspaceId, post } = yield* seed;
+        const teammate = yield* identity.resolve({
+          sub: `clerk_${crypto.randomUUID()}`,
+        });
+        const memberId = makeId(MemberId);
+        yield* sql`INSERT INTO workspace_members (id, workspace_id, user_id, role)
+          VALUES (${memberId}, ${workspaceId}, ${teammate.user.id}, 'editor')`;
+        const link = yield* shares.create({
+          workspaceId,
+          postId: post.id,
+          memberId,
+          access: "anyone",
+        });
+
+        yield* sql`DELETE FROM workspace_members WHERE id = ${memberId}`;
+        const rows = yield* sql<{
+          createdByMemberId: string | null;
+        }>`SELECT created_by_member_id FROM post_share_links WHERE id = ${link.id}`;
+        expect(rows[0]?.createdByMemberId).toBeNull();
+        expect((yield* shares.view(link.token, null)).postId).toBe(post.id);
+      })
+    );
+  });
+
+  it("never hands back a link with different access than requested", async () => {
+    await run(
+      Effect.gen(function* () {
+        const shares = yield* ShareLinkService;
+        const sql = yield* SqlClient.SqlClient;
+        const { workspaceId, member, post } = yield* seed;
+        const create = (access: "anyone" | "workspace") =>
+          shares.create({
+            workspaceId,
+            postId: post.id,
+            memberId: member.memberId,
+            access,
+          });
+        const first = yield* create("anyone");
+        expect(yield* failureTag(create("workspace"))).toBe("ConflictError");
+        // Asking for exactly what already exists stays idempotent.
+        expect((yield* create("anyone")).token).toBe(first.token);
+
+        yield* sql`UPDATE post_share_links SET expires_at = now() - interval '1 minute'
+          WHERE id = ${first.id}`;
+        expect(yield* failureTag(create("anyone"))).toBe("ConflictError");
+      })
+    );
+  });
+
+  it("never uses an email address as a public author name", async () => {
+    await run(
+      Effect.gen(function* () {
+        const shares = yield* ShareLinkService;
+        const sql = yield* SqlClient.SqlClient;
+        const { workspaceId, member, post, userId } = yield* seed;
+        yield* sql`UPDATE users SET name = NULL, email = 'priya.sharma@example.com'
+          WHERE id = ${userId}`;
+        const link = yield* shares.create({
+          workspaceId,
+          postId: post.id,
+          memberId: member.memberId,
+          access: "anyone",
+        });
+        const comment = yield* shares.comment({
+          token: link.token,
+          viewer: { userId, authorize: () => Effect.void },
+          body: "Ship it",
+        });
+        expect(comment.authorName).toBe("Team member");
+        const publicView = yield* shares.view(link.token, null);
+        expect(JSON.stringify(publicView.comments)).not.toContain("priya");
+      })
+    );
+  });
+
+  it("caps stored feedback per post", async () => {
+    await run(
+      Effect.gen(function* () {
+        const shares = yield* ShareLinkService;
+        const sql = yield* SqlClient.SqlClient;
+        const { workspaceId, member, post } = yield* seed;
+        const link = yield* shares.create({
+          workspaceId,
+          postId: post.id,
+          memberId: member.memberId,
+          access: "anyone",
+        });
+        yield* sql`INSERT INTO post_share_comments
+          (id, workspace_id, post_id, share_link_id, author_name, body)
+          SELECT 'share_comment_' || substr(md5(random()::text || n::text), 1, 12),
+            ${workspaceId},
+            ${post.id}, ${link.id}, 'Guest', 'Note'
+          FROM generate_series(1, ${MAX_SHARE_COMMENTS_PER_POST - 1}) AS n`;
+        const last = shares.comment({
+          token: link.token,
+          viewer: null,
+          authorName: "Guest",
+          body: "Last one",
+        });
+        expect((yield* last).body).toBe("Last one");
+        expect(yield* failureTag(last)).toBe("ConflictError");
       })
     );
   });

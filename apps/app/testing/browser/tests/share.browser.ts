@@ -5,6 +5,7 @@ const SCHEDULED = /^Scheduled for /;
 const SIGN_IN_HREF = /^\/sign-in\?redirect_url=/;
 const SHARE_URL = /\/share\/fixture-share-token$/;
 const EXPIRES = /^Expires in \d+ days?/;
+const TEAMMATE_URL = /\/share\/teammate-share-token$/;
 
 guardFixtureRequests();
 
@@ -168,4 +169,47 @@ test("only owners and admins can change the sharing policy", async ({
   await expect(
     page.getByText("Only workspace owners and admins can change this.")
   ).toBeVisible();
+});
+
+test("creating a link shows a teammate's existing link instead of copying it", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.fixtureConfig = {
+      samplePosts: true,
+      shareConflict: true,
+      team: { role: "editor", publicShareLinks: true },
+    };
+  });
+  await page.goto("/posts");
+  const dialog = await openShareDialog(page);
+  await expect(
+    dialog.getByRole("radio", { name: "Workspace members only" })
+  ).toBeChecked();
+  await dialog.getByRole("button", { name: "Create and copy link" }).click();
+
+  await expect(
+    page.getByText("A teammate already shared this post")
+  ).toBeVisible();
+  await expect(dialog.getByRole("textbox", { name: "Share link" })).toHaveValue(
+    TEAMMATE_URL
+  );
+  // The real settings are shown, not the ones this member picked.
+  await expect(
+    dialog.getByRole("radio", { name: "Anyone with the link" })
+  ).toBeChecked();
+});
+
+test("guests are told when they are sending feedback too quickly", async ({
+  page,
+}) => {
+  await signedOut(page);
+  await page.goto("/share/busy");
+  await page.getByLabel("Your name").fill("Alex");
+  await page.getByLabel("Your feedback").fill("One more thing");
+  await page.getByRole("button", { name: "Send feedback" }).click();
+  await expect(page.getByRole("alert")).toHaveText(
+    "You're sending feedback quickly. Wait a minute and try again."
+  );
+  await expect(page.getByLabel("Your feedback")).toHaveValue("One more thing");
 });

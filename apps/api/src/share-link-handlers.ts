@@ -7,11 +7,24 @@ import {
   WorkspaceAccessService,
 } from "@delulu/services";
 import { Effect, Layer } from "effect";
+import type { HttpServerRequest } from "effect/unstable/http";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { AuthenticationLive } from "./auth-middleware";
 
-/** Session-tier limit (300/min) keyed per link, shared by guests and members. */
-const commentRateKey = (token: string) => `share-comment:${token}`;
+/**
+ * Comment throttling. Each commenter gets 20/min on a link so one person
+ * can't drain the shared 300/min link budget for every other reviewer.
+ * Guests are identified by Cloudflare's `cf-connecting-ip`, which Cloudflare
+ * sets itself; without it (e.g. self-hosted Node) only the link ceiling applies.
+ */
+const PER_COMMENTER = { kind: "api", perMinute: 20 } as const;
+const linkRateKey = (token: string) => `share-comment:${token}`;
+const commenterRateKey = (token: string, commenter: string) =>
+  `share-comment:${token}:${commenter}`;
+const cloudflareClientIp = (request: HttpServerRequest.HttpServerRequest) => {
+  const ip = request.headers["cf-connecting-ip"];
+  return typeof ip === "string" && ip.length > 0 ? ip : null;
+};
 
 export const ShareLinksHandlers = HttpApiBuilder.group(
   Api,
@@ -106,9 +119,11 @@ export const ShareLinksHandlers = HttpApiBuilder.group(
       .handle("comment", ({ params, payload }) =>
         Effect.gen(function* () {
           const auth = yield* CurrentAuth;
-          yield* limiter.limit(commentRateKey(params.token), {
-            kind: "session",
-          });
+          yield* limiter.limit(
+            commenterRateKey(params.token, `user:${auth.userId}`),
+            PER_COMMENTER
+          );
+          yield* limiter.limit(linkRateKey(params.token), { kind: "session" });
           return yield* shares
             .comment({
               token: params.token,
@@ -131,11 +146,16 @@ export const PublicSharesHandlers = HttpApiBuilder.group(
     const limiter = yield* RateLimiterService;
     return handlers
       .handle("view", ({ params }) => shares.view(params.token, null))
-      .handle("comment", ({ params, payload }) =>
+      .handle("comment", ({ params, payload, request }) =>
         Effect.gen(function* () {
-          yield* limiter.limit(commentRateKey(params.token), {
-            kind: "session",
-          });
+          const ip = cloudflareClientIp(request);
+          if (ip) {
+            yield* limiter.limit(
+              commenterRateKey(params.token, `ip:${ip}`),
+              PER_COMMENTER
+            );
+          }
+          yield* limiter.limit(linkRateKey(params.token), { kind: "session" });
           return yield* shares.comment({
             token: params.token,
             viewer: null,

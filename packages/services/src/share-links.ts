@@ -1,4 +1,5 @@
 import {
+  ConflictError,
   ForbiddenError,
   NotFoundError,
   type ShareAccess,
@@ -19,6 +20,9 @@ import { Context, Effect, Layer } from "effect";
 import { SqlClient } from "effect/unstable/sql";
 import { randomTokenBase64Url, sha256Hex } from "./crypto";
 import { PostService } from "./posts";
+
+/** Feedback kept per post; bounds storage from a link that's been shared widely. */
+export const MAX_SHARE_COMMENTS_PER_POST = 500;
 
 /** Share links stay valid for a week from creation or their last renewal. */
 export const SHARE_LINK_TTL_DAYS = 7;
@@ -81,7 +85,10 @@ export class ShareLinkService extends Context.Service<
       readonly postId: string;
       readonly memberId: string;
       readonly access: Access;
-    }) => Effect.Effect<ShareLinkOutput, NotFoundError | ForbiddenError>;
+    }) => Effect.Effect<
+      ShareLinkOutput,
+      NotFoundError | ForbiddenError | ConflictError
+    >;
     readonly update: (input: {
       readonly workspaceId: WorkspaceId;
       readonly postId: string;
@@ -105,7 +112,7 @@ export class ShareLinkService extends Context.Service<
       readonly viewer: ShareViewer;
       readonly authorName?: string;
       readonly body: string;
-    }) => Effect.Effect<ShareCommentOutput, ViewError>;
+    }) => Effect.Effect<ShareCommentOutput, ViewError | ConflictError>;
   }
 >()("@delulu/services/ShareLinkService") {
   static readonly layer = Layer.effect(
@@ -184,10 +191,11 @@ export class ShareLinkService extends Context.Service<
         const encrypted = yield* cipher.encrypt(token).pipe(Effect.orDie);
         const tokenHash = yield* hashToken(token);
         // One active link per post: a concurrent create keeps the first link.
+        const id = makeId(PostShareLinkId);
         yield* sql`INSERT INTO post_share_links
           (id, workspace_id, post_id, token_hash, token_ciphertext, cipher_version,
            access, created_by_member_id, expires_at)
-          VALUES (${makeId(PostShareLinkId)}, ${input.workspaceId}, ${input.postId},
+          VALUES (${id}, ${input.workspaceId}, ${input.postId},
             ${tokenHash}, ${encrypted.ciphertext}, ${encrypted.cipherVersion},
             ${input.access}, ${input.memberId},
             ${new Date(Date.now() + SHARE_LINK_TTL_MS)})
@@ -198,7 +206,18 @@ export class ShareLinkService extends Context.Service<
         if (!row) {
           return yield* Effect.die(new Error("Share link was not persisted"));
         }
-        return yield* linkOutput(row);
+        const link = yield* linkOutput(row);
+        // Someone else's link won the race. Returning it silently could hand
+        // out a public URL to a caller who asked for members-only, or an
+        // expired one, so make the client reload and show the real link.
+        if (link.id !== id && (link.access !== input.access || link.expired)) {
+          return yield* new ConflictError({
+            message:
+              "This post already has a share link. Reload to see its settings.",
+            resource: "share_link",
+          });
+        }
+        return link;
       });
 
       const update = Effect.fn("ShareLinkService.update")(function* (input: {
@@ -403,27 +422,35 @@ export class ShareLinkService extends Context.Service<
         const link = yield* resolve(input.token, input.viewer);
         let authorName = input.authorName?.trim() ?? "";
         if (input.viewer) {
-          // Signed-in visitors comment under their account name.
+          // Signed-in visitors comment under their account name. Never derive
+          // a name from the email: comments can become public later.
           const users = yield* sql<{
             name: string | null;
-            email: string | null;
-          }>`SELECT name, email FROM users WHERE id = ${input.viewer.userId}`.pipe(
+          }>`SELECT name FROM users WHERE id = ${input.viewer.userId}`.pipe(
             Effect.orDie
           );
-          authorName =
-            users[0]?.name?.trim() ||
-            users[0]?.email?.split("@")[0] ||
-            "Team member";
+          authorName = users[0]?.name?.trim() || "Team member";
         }
+        // The cap check and insert are one statement so bursts can't overshoot
+        // it by more than the concurrent writers in flight.
         const rows = yield* sql<
           Record<string, unknown>
         >`INSERT INTO post_share_comments
           (id, workspace_id, post_id, share_link_id, author_name, author_user_id, body)
-          VALUES (${makeId(PostShareCommentId)}, ${link.workspaceId}, ${link.postId},
+          SELECT ${makeId(PostShareCommentId)}, ${link.workspaceId}, ${link.postId},
             ${link.id}, ${authorName.slice(0, 60)}, ${input.viewer?.userId ?? null},
-            ${input.body.trim()})
+            ${input.body.trim()}
+          WHERE (SELECT count(*) FROM post_share_comments
+            WHERE workspace_id = ${link.workspaceId} AND post_id = ${link.postId})
+            < ${MAX_SHARE_COMMENTS_PER_POST}
           RETURNING id, author_name, body, created_at`.pipe(Effect.orDie);
-        return commentOutput(rows[0] ?? {});
+        if (!rows[0]) {
+          return yield* new ConflictError({
+            message: "This post has reached its feedback limit.",
+            resource: "share_comment",
+          });
+        }
+        return commentOutput(rows[0]);
       });
 
       return ShareLinkService.of({

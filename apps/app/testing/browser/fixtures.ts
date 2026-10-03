@@ -140,6 +140,10 @@ export interface FixtureConfig {
   /** One draft in the posts list, for post menu flows. */
   samplePosts?: boolean;
   signedOut?: boolean;
+  /** Clerk's `setActive` never completes, as if the org switch is pending. */
+  holdOrgSwitch?: boolean;
+  /** A teammate already shared the post with anyone; creating conflicts. */
+  shareConflict?: boolean;
   linkedInTargets?: {
     id: string;
     name: string;
@@ -218,6 +222,11 @@ export function installFixtures() {
       } else if (token === "members" && isPublic) {
         status = 401;
         body = errorBody("UnauthorizedError", "Sign in to view");
+      } else if (token === "busy" && comments && method === "POST") {
+        status = 429;
+        body = errorBody("RateLimitedError", "Rate limit exceeded", {
+          retryAfter: 60,
+        });
       } else if (comments && method === "POST") {
         const payload = jsonBody(init?.body);
         body = {
@@ -234,7 +243,25 @@ export function installFixtures() {
         body = { message: `Missing fixture: ${method} ${url.pathname}` };
       }
     } else if (shareManage) {
-      if (method === "POST" || method === "PATCH") {
+      if (method === "POST" && config.shareConflict) {
+        shareLink = {
+          id: "share_link_teammate",
+          postId: shareManage[1],
+          token: "teammate-share-token",
+          access: "anyone",
+          expiresAt: "2026-10-09T12:00:00.000Z",
+          expired: false,
+          createdAt: now,
+        };
+        status = 409;
+        body = errorBody(
+          "ConflictError",
+          "This post already has a share link.",
+          {
+            resource: "share_link",
+          }
+        );
+      } else if (method === "POST" || method === "PATCH") {
         const payload = jsonBody(init?.body);
         shareLink = {
           id: "share_link_fixture",

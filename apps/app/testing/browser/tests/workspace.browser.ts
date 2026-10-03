@@ -32,3 +32,17 @@ test("personal workspaces have no organization settings", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByTestId("clerk-organization-profile")).toHaveCount(0);
 });
+
+test("organization settings wait until Clerk switches to the selected team", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.fixtureConfig = {
+      holdOrgSwitch: true,
+      team: { role: "admin", publicShareLinks: true },
+    };
+  });
+  await page.goto("/organization");
+  await expect(page.getByText("Opening Workspace A…")).toBeVisible();
+  await expect(page.getByTestId("clerk-organization-profile")).toHaveCount(0);
+});
