@@ -18,12 +18,16 @@ import {
 import { useMediaQuery } from "@delulu/design-system/hooks/use-media-query";
 import { CreditCard, Pencil } from "@delulu/design-system/icons";
 import { cn } from "@delulu/design-system/lib/utils";
+import { Icon } from "@delulu/design-system/providers/icon";
+import { Mail01Icon, Settings01Icon } from "@delulu/icons";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useRef } from "react";
+import { EmailPreferences } from "@/features/workspace/email-preferences";
 import { navigationItems } from "@/shell/navigation";
 import { AppLink as Link } from "@/shell/navigation/app-link";
 import { OrganizationSwitcher } from "@/shell/navigation/organization-switcher";
 import { usePendingHref } from "@/shell/navigation/route-transition";
+import { useWorkspaceSelection } from "@/shell/providers/workspace";
 import { useFeatureFlag } from "@/shell/use-feature-flag";
 
 interface GlobalSidebarProperties {
@@ -32,6 +36,10 @@ interface GlobalSidebarProperties {
 
 export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
   const sidebar = useSidebar();
+  const { workspace } = useWorkspaceSelection();
+  const isTeamWorkspace = Boolean(
+    workspace && !workspace.isPersonal && workspace.clerkOrgId
+  );
   const currentPathname = usePathname();
   const pendingHref = usePendingHref();
   const pathname = pendingHref?.split("?")[0] ?? currentPathname;
@@ -215,7 +223,25 @@ export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
                       label="Billing"
                       labelIcon={<CreditCard className="h-4 w-4" />}
                     />
+                    {/* The switcher's settings button hides with the
+                        collapsed sidebar; this stays reachable everywhere. */}
+                    {isTeamWorkspace && (
+                      <UserButton.Link
+                        href="/organization"
+                        label="Organization settings"
+                        labelIcon={<Icon icon={Settings01Icon} size={16} />}
+                      />
+                    )}
                   </UserButton.MenuItems>
+                  {/* Personal email settings live with the rest of the
+                      user's account settings in Clerk's profile. */}
+                  <UserButton.UserProfilePage
+                    label="Email"
+                    labelIcon={<Icon icon={Mail01Icon} size={16} />}
+                    url="email"
+                  >
+                    <EmailPreferences />
+                  </UserButton.UserProfilePage>
                 </UserButton>
               </div>
               <div className="flex shrink-0 items-center gap-px">

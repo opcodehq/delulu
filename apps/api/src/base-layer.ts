@@ -46,6 +46,7 @@ import {
   RateLimiterService,
   ReviewService,
   SetupService,
+  ShareLinkService,
   SignedIngress,
   TranscriptionCheckoutConfig,
   TranscriptionCheckoutService,
@@ -149,6 +150,9 @@ export const makeBaseLayer = (
   );
   const Posts = PostService.layer.pipe(Layer.provide(Jobs));
   const Reviews = ReviewService.layer.pipe(Layer.provide(Jobs));
+  const ShareLinks = ShareLinkService.layer.pipe(
+    Layer.provide([Posts, Cipher])
+  );
   const Media = MediaService.layer.pipe(
     Layer.provide([
       Jobs,
@@ -331,6 +335,7 @@ export const makeBaseLayer = (
     Access,
     Posts,
     Reviews,
+    ShareLinks,
     Media,
     Connections,
     Admin,

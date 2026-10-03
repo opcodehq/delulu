@@ -5,6 +5,7 @@ import { DottedSeparator } from "@delulu/design-system/components/ui/dotted-sepa
 import { BasicSettings } from "@/features/publishing/editor/sidebar/basic-settings";
 import { PreviewPanel } from "@/features/publishing/editor/sidebar/previews/preview-panel";
 import { ReviewActivity } from "@/features/publishing/posts/review-activity";
+import { ShareFeedback } from "@/features/publishing/share/share-feedback";
 
 interface PostSidebarProps {
   postId?: string;
@@ -27,6 +28,7 @@ export function PostSidebar({
   const activity = postId && organizationId && (
     <>
       <DottedSeparator />
+      <ShareFeedback postId={postId} />
       <div className="px-4 pt-4">
         <h3 className="font-medium text-sm">Activity</h3>
       </div>

@@ -7,15 +7,19 @@ const list = (data: unknown[] = []) => ({
   offset: 0,
   limit: 100,
 });
-const memberships = list(
-  ["a", "b"].map((id) => ({
-    workspaceId: `workspace_${id}`,
-    name: `Workspace ${id.toUpperCase()}`,
-    slug: null,
-    isPersonal: true,
-    role: "owner",
-  }))
-);
+/** Workspace A becomes a team workspace when `team` is configured. */
+const memberships = (team?: FixtureConfig["team"]) =>
+  list(
+    ["a", "b"].map((id) => ({
+      workspaceId: `workspace_${id}`,
+      name: `Workspace ${id.toUpperCase()}`,
+      slug: null,
+      isPersonal: !(team && id === "a"),
+      role: team && id === "a" ? team.role : "owner",
+      clerkOrgId: team && id === "a" ? "org_fixture" : null,
+    }))
+  );
+const workspaceDetailPath = /^\/v1\/workspaces\/(workspace_[ab])$/;
 const fixtureConnections = [
   ["connection_x", "TWITTER", "swaraj"],
   ["connection_linkedin", "LINKEDIN", "Swaraj Bachu"],
@@ -31,8 +35,111 @@ const fixtureConnections = [
   profileImage: null,
   expiresAt: null,
 }));
+const samplePost = (workspaceId: string) => ({
+  id: "post_fixture0001",
+  workspaceId,
+  status: "draft",
+  source: "app",
+  externalSubmissionId: null,
+  createdAt: now,
+  updatedAt: now,
+  groups: [
+    {
+      id: "post_group_fixture01",
+      isDefault: true,
+      segments: [{ text: "Launch week starts Monday", media: [] }],
+    },
+  ],
+  targets: [],
+});
+const sharedPost = (access: "anyone" | "workspace") => ({
+  workspaceName: "Northwind Studio",
+  postId: "post_fixture0001",
+  postStatus: "scheduled",
+  updatedAt: now,
+  access,
+  expiresAt: "2026-10-09T12:00:00.000Z",
+  channels: [
+    {
+      targetId: "post_target_x",
+      platform: "TWITTER",
+      displayName: "Northwind",
+      username: "northwind",
+      profileImage: null,
+      scheduledAt: "2026-10-05T15:00:00.000Z",
+      status: "pending",
+      segments: [
+        {
+          text: "Launch week starts Monday. Here's what's coming 🧵",
+          media: [],
+        },
+        { text: "Day one: the new composer.", media: [] },
+      ],
+    },
+    {
+      targetId: "post_target_li",
+      platform: "LINKEDIN",
+      displayName: "Northwind Studio",
+      username: "northwind-studio",
+      profileImage: null,
+      scheduledAt: "2026-10-05T15:00:00.000Z",
+      status: "pending",
+      segments: [
+        {
+          text: "We're kicking off launch week on Monday with a redesigned composer.",
+          media: [],
+        },
+      ],
+    },
+  ],
+  comments: [
+    {
+      id: "share_comment_1",
+      authorName: "Priya",
+      body: "Love the thread opener.",
+      createdAt: now,
+    },
+  ],
+});
+/** Effect's HttpClient sends JSON bodies as bytes; plain fetch sends strings. */
+const jsonBody = (body: BodyInit | null | undefined) =>
+  JSON.parse(
+    typeof body === "string"
+      ? body
+      : body instanceof Uint8Array || body instanceof ArrayBuffer
+        ? new TextDecoder().decode(body)
+        : "{}"
+  );
+const errorBody = (code: string, message: string, details = {}) => ({
+  error: { code, message, details },
+});
+const shareFailures: Record<string, { status: number; body: unknown }> = {
+  expired: {
+    status: 410,
+    body: errorBody("ShareLinkExpiredError", "This share link has expired."),
+  },
+  missing: {
+    status: 404,
+    body: errorBody("NotFoundError", "Not found", { resource: "share_link" }),
+  },
+  outsider: {
+    status: 403,
+    body: errorBody("ForbiddenError", "Members only"),
+  },
+};
+const shareViewPath = /^\/v1\/(public\/)?shares\/([^/]+)(\/comments)?$/;
+const shareLinkPath =
+  /^\/v1\/workspaces\/workspace_[ab]\/posts\/([^/]+)\/share$/;
 export interface FixtureConfig {
   connections?: boolean;
+  /** Make workspace A a team workspace with this role and sharing policy. */
+  team?: {
+    role: "owner" | "admin" | "editor" | "viewer";
+    publicShareLinks: boolean;
+  };
+  /** One draft in the posts list, for post menu flows. */
+  samplePosts?: boolean;
+  signedOut?: boolean;
   linkedInTargets?: {
     id: string;
     name: string;
@@ -52,10 +159,12 @@ declare global {
 export const unhandled: string[] = [];
 export const requests: { url: string; start: number; end?: number }[] = [];
 export let pending = 0;
+let shareLink: Record<string, unknown> | null = null;
 export function installFixtures() {
   window.fixtureConfig ??= {
     dashboardWarnings: new URLSearchParams(location.search).has("warnings"),
     connections: new URLSearchParams(location.search).has("accounts"),
+    signedOut: new URLSearchParams(location.search).has("signed-out"),
   };
   const config = window.fixtureConfig;
   Object.assign(window, { fixtureUnhandled: unhandled });
@@ -98,7 +207,73 @@ export function installFixtures() {
     }
     let body: unknown;
     let status = 200;
-    if (method !== "GET") {
+    const shareView = shareViewPath.exec(url.pathname);
+    const shareManage = shareLinkPath.exec(url.pathname);
+    if (shareView) {
+      const [, isPublic, token, comments] = shareView;
+      const failure = shareFailures[token];
+      if (failure) {
+        status = failure.status;
+        body = failure.body;
+      } else if (token === "members" && isPublic) {
+        status = 401;
+        body = errorBody("UnauthorizedError", "Sign in to view");
+      } else if (comments && method === "POST") {
+        const payload = jsonBody(init?.body);
+        body = {
+          id: `share_comment_${requests.length}`,
+          authorName: payload.authorName ?? "Fixture User",
+          body: payload.body,
+          createdAt: now,
+        };
+      } else if (!comments && method === "GET") {
+        body = sharedPost(token === "members" ? "workspace" : "anyone");
+      } else {
+        unhandled.push(`${method} ${url.pathname}`);
+        status = 501;
+        body = { message: `Missing fixture: ${method} ${url.pathname}` };
+      }
+    } else if (shareManage) {
+      if (method === "POST" || method === "PATCH") {
+        const payload = jsonBody(init?.body);
+        shareLink = {
+          id: "share_link_fixture",
+          postId: shareManage[1],
+          token: "fixture-share-token",
+          access: payload.access ?? shareLink?.access ?? "anyone",
+          expiresAt: "2026-10-09T12:00:00.000Z",
+          expired: false,
+          createdAt: now,
+        };
+        body = shareLink;
+      } else if (method === "DELETE") {
+        shareLink = null;
+        body = { revoked: true };
+      } else {
+        body = shareLink;
+      }
+    } else if (workspaceDetailPath.test(url.pathname)) {
+      const id = workspaceDetailPath.exec(url.pathname)?.[1] ?? "";
+      const team = id === "workspace_a" ? config.team : undefined;
+      if (method === "PATCH" && team) {
+        team.publicShareLinks = jsonBody(init?.body).publicShareLinks;
+      }
+      body = {
+        id,
+        name: `Workspace ${id.slice(-1).toUpperCase()}`,
+        slug: null,
+        isPersonal: !team,
+        billingOwnerUserId: "fixture-user",
+        publicShareLinks: team?.publicShareLinks ?? true,
+      };
+    } else if (
+      config.samplePosts &&
+      method === "GET" &&
+      url.pathname.endsWith("/posts") &&
+      (url.searchParams.get("status") ?? "draft").split(",").includes("draft")
+    ) {
+      body = list([samplePost(workspaceId)]);
+    } else if (method !== "GET") {
       unhandled.push(`${method} ${url.pathname}`);
       status = 501;
       body = { message: `Missing fixture: ${method} ${url.pathname}` };
@@ -114,7 +289,9 @@ export function installFixtures() {
         ],
       };
     } else if (url.pathname === "/v1/me/workspaces") {
-      body = memberships;
+      body = memberships(config.team);
+    } else if (url.pathname === "/v1/me/email-preferences") {
+      body = { productLifecycleEnabled: true, marketingEnabled: false };
     } else if (url.pathname.endsWith("/analytics/operational")) {
       body = {
         workspaceId: url.pathname.split("/")[3],

@@ -1,5 +1,6 @@
 "use client";
 
+import { useAuth, useClerk } from "@delulu/auth";
 import {
   createContext,
   type ReactNode,
@@ -21,6 +22,8 @@ interface WorkspaceContextValue {
     readonly slug: string | null;
     readonly isPersonal: boolean;
     readonly role: "owner" | "admin" | "editor" | "viewer";
+    /** Clerk organization for team workspaces; null for personal ones. */
+    readonly clerkOrgId?: string | null;
   }[];
   readonly isLoading: boolean;
   readonly isError: boolean;
@@ -105,11 +108,49 @@ export function WorkspaceProvider({
     ]
   );
 
+  const selectedWorkspace = workspaces.find(
+    (workspace) => workspace.workspaceId === workspaceId
+  );
+
   return (
     <WorkspaceContext.Provider value={value}>
+      <ClerkOrganizationSync
+        clerkOrgId={
+          selectedWorkspace?.isPersonal ? null : selectedWorkspace?.clerkOrgId
+        }
+      />
       {children}
     </WorkspaceContext.Provider>
   );
+}
+
+/**
+ * Keeps Clerk's active organization on the selected workspace, so Clerk's
+ * organization screens and org-role checks describe the same workspace the
+ * app is showing. `undefined` means "unknown" (e.g. an older API response or a
+ * legacy team without a Clerk org) and leaves Clerk untouched.
+ */
+function ClerkOrganizationSync({
+  clerkOrgId,
+}: {
+  readonly clerkOrgId: string | null | undefined;
+}) {
+  const { isLoaded, orgId } = useAuth();
+  const { setActive } = useClerk();
+
+  useEffect(() => {
+    if (!isLoaded || clerkOrgId === undefined) {
+      return;
+    }
+    if ((orgId ?? null) === clerkOrgId) {
+      return;
+    }
+    setActive({ organization: clerkOrgId }).catch((error: unknown) => {
+      console.error("Couldn't switch the active Clerk organization", error);
+    });
+  }, [clerkOrgId, isLoaded, orgId, setActive]);
+
+  return null;
 }
 
 export const useWorkspace = (): WorkspaceContextValue => {

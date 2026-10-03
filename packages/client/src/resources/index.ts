@@ -10,6 +10,7 @@ export * from "./media.js";
 export * from "./posts.js";
 export * from "./reviews.js";
 export * from "./shared.js";
+export * from "./shares.js";
 
 import { createAdminEffects } from "./admin.js";
 import { createAgentEffects } from "./agent.js";
@@ -23,12 +24,14 @@ import { createMediaEffects } from "./media.js";
 import { createPostEffects } from "./posts.js";
 import { createReviewEffects } from "./reviews.js";
 import { defineResourceEffects } from "./shared.js";
+import { createShareEffects } from "./shares.js";
 
 export const createResourceEffects = defineResourceEffects((runtime) => ({
   health: createHealthEffects(runtime),
   me: createMeEffects(runtime),
   posts: createPostEffects(runtime),
   reviews: createReviewEffects(runtime),
+  shares: createShareEffects(runtime),
   media: createMediaEffects(runtime),
   connections: createConnectionEffects(runtime),
   admin: createAdminEffects(runtime),

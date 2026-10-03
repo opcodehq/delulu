@@ -9,8 +9,11 @@ import {
   Loading03Icon,
   Sent02Icon,
   Settings01Icon,
+  Share08Icon,
 } from "@delulu/icons";
 import { format } from "date-fns";
+import { useState } from "react";
+import { ShareDialog } from "@/features/publishing/share/share-dialog";
 import {
   useIsMediaUploading,
   useSelectedSocialProviders,
@@ -42,6 +45,7 @@ export function ComposerToolbar({
   const cannotPublish =
     disabled || selected.length === 0 || actions.isAtPostLimit;
   const hasSchedule = Boolean(actions.date);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const handlePrimaryAction = () => {
     if (hasSchedule) {
@@ -77,6 +81,25 @@ export function ComposerToolbar({
       </div>
 
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+        <Button
+          aria-label="Share preview"
+          className="size-11 rounded-lg px-0 text-foreground sm:h-9 sm:w-auto sm:px-3"
+          disabled={!postId || actionsDisabled}
+          onClick={() => setShareOpen(true)}
+          title={postId ? "Share preview" : "Save the post to share a preview"}
+          variant="ghost"
+        >
+          <Icon icon={Share08Icon} size={17} />
+          <span className="hidden sm:inline">Share</span>
+        </Button>
+        {postId && (
+          <ShareDialog
+            onOpenChange={setShareOpen}
+            open={shareOpen}
+            postId={postId}
+          />
+        )}
+
         <Button
           aria-label="Save draft"
           className="size-11 rounded-lg px-0 text-foreground sm:h-9 sm:w-auto sm:px-3"

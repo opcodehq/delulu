@@ -11,6 +11,7 @@ import { BillingGroup } from "./billing";
 import { HealthGroup } from "./health";
 import { InstanceGroup } from "./instance";
 import { MeGroup } from "./me";
+import { PublicSharesGroup, ShareLinksGroup } from "./sharing";
 import { TranscriptionsGroup } from "./transcriptions";
 import {
   AdminGroup,
@@ -31,6 +32,7 @@ export * from "./health";
 export * from "./instance";
 export * from "./me";
 export * from "./middleware";
+export * from "./sharing";
 export * from "./transcriptions";
 export * from "./webhooks";
 export * from "./workspace";
@@ -50,6 +52,8 @@ export const Api = HttpApi.make("deluluApi")
   .add(MeGroup)
   .add(PostsGroup)
   .add(ReviewsGroup)
+  .add(ShareLinksGroup)
+  .add(PublicSharesGroup)
   .add(MediaGroups)
   .add(ConnectionsGroup)
   .add(AdminGroup)
