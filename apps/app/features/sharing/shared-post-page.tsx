@@ -325,8 +325,18 @@ function FeedbackPanel({
         localStorage.setItem(NAME_STORAGE_KEY, trimmedName);
       }
       setBody("");
-    } catch {
-      setError("Your feedback wasn't sent. Please try again.");
+    } catch (cause) {
+      const tag =
+        typeof cause === "object" && cause !== null && "_tag" in cause
+          ? (cause as { _tag: unknown })._tag
+          : null;
+      setError(
+        tag === "RateLimitedError"
+          ? "You're sending feedback quickly. Wait a minute and try again."
+          : tag === "ConflictError"
+            ? "This post can't take more feedback. Share your notes with the sender directly."
+            : "Your feedback wasn't sent. Please try again."
+      );
     } finally {
       setSending(false);
     }

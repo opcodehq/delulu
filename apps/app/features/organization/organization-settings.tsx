@@ -1,6 +1,6 @@
 "use client";
 
-import { OrganizationProfile } from "@delulu/auth";
+import { OrganizationProfile, useAuth } from "@delulu/auth";
 import { Icon } from "@delulu/design-system/providers/icon";
 import { Share08Icon } from "@delulu/icons";
 import { SharingPolicy } from "@/features/workspace/sharing-policy";
@@ -15,6 +15,7 @@ import { useWorkspaceSelection } from "@/shell/providers/workspace";
  */
 export function OrganizationSettings() {
   const { workspace, isLoading } = useWorkspaceSelection();
+  const { orgId } = useAuth();
 
   if (isLoading) {
     return null;
@@ -36,6 +37,16 @@ export function OrganizationSettings() {
           </Link>
         </p>
       </PageShell>
+    );
+  }
+
+  // The workspace provider switches Clerk's active organization after render;
+  // until it lands, Clerk would show the previously active organization.
+  if (orgId !== workspace.clerkOrgId) {
+    return (
+      <output className="flex flex-1 items-center justify-center p-8 text-muted-foreground text-sm">
+        Opening {workspace.name}…
+      </output>
     );
   }
 

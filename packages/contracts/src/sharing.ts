@@ -161,7 +161,7 @@ export const ShareLinksGroup = HttpApiGroup.make("shareLinks")
       params: TokenPath,
       payload: ShareCommentInput,
       success: ShareCommentView,
-      error: [...viewErrors, RateLimitedErrorResponse],
+      error: [...viewErrors, RateLimitedErrorResponse, ConflictErrorResponse],
     })
   )
   .middleware(Authentication)
@@ -183,6 +183,7 @@ export const PublicSharesGroup = HttpApiGroup.make("publicShares")
         ...viewErrors,
         UnauthorizedErrorResponse,
         RateLimitedErrorResponse,
+        ConflictErrorResponse,
       ],
     })
   )

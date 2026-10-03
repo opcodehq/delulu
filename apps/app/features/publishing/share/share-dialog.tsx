@@ -129,8 +129,25 @@ export function ShareDialog({ postId, open, onOpenChange }: ShareDialogProps) {
 
   const createLink = () =>
     run(async () => {
-      const created = await create.mutateAsync({ access });
-      await copy(created.token);
+      try {
+        const created = await create.mutateAsync({ access });
+        await copy(created.token);
+      } catch (error) {
+        // A teammate shared this post first with different settings; show
+        // their link instead of copying a URL with the wrong access.
+        if (
+          error instanceof Error &&
+          "_tag" in error &&
+          error._tag === "ConflictError"
+        ) {
+          await link.refetch();
+          toast.info("A teammate already shared this post", {
+            description: "Here's the existing link and its settings.",
+          });
+          return;
+        }
+        throw error;
+      }
     }, "Couldn't create the link");
 
   return (

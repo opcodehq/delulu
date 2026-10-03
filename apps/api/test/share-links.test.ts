@@ -143,6 +143,25 @@ describe("share link HTTP routes", () => {
     ).toBe(400);
   });
 
+  it("limits each guest separately so one person can't block reviewers", async () => {
+    const comment = (ip: string) =>
+      call(`/v1/public/shares/${token}/comments`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "cf-connecting-ip": ip,
+        },
+        body: JSON.stringify({ authorName: "Guest", body: "Note" }),
+      });
+    for (let index = 0; index < 20; index++) {
+      expect((await comment("203.0.113.7")).status).toBe(200);
+    }
+    const blocked = await comment("203.0.113.7");
+    expect(blocked.status).toBe(429);
+    expect((await blocked.json()).error.code).toBe("RateLimitedError");
+    expect((await comment("198.51.100.4")).status).toBe(200);
+  });
+
   it("maps unknown, expired, and members-only links to clear statuses", async () => {
     expect((await call("/v1/public/shares/unknown-token")).status).toBe(404);
 
