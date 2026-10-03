@@ -6,11 +6,11 @@ import { Icon } from "@delulu/design-system/providers/icon";
 import {
   Bookmark01Icon,
   Calendar03Icon,
-  EyeIcon,
   Loading03Icon,
   Sent02Icon,
   Settings01Icon,
 } from "@delulu/icons";
+import { format } from "date-fns";
 import {
   useIsMediaUploading,
   useSelectedSocialProviders,
@@ -22,14 +22,12 @@ interface ComposerToolbarProps {
   postId?: string;
   actionsDisabled?: boolean;
   onOpenControls?: () => void;
-  onOpenPreview?: () => void;
 }
 
 export function ComposerToolbar({
   postId,
   actionsDisabled = false,
   onOpenControls,
-  onOpenPreview,
 }: ComposerToolbarProps) {
   const actions = usePostActions();
   const selected = useSelectedSocialProviders();
@@ -65,23 +63,20 @@ export function ComposerToolbar({
             {postId ? "Edit post" : "New post"}
           </h1>
           <p className="hidden truncate text-muted-foreground text-xs sm:block">
-            {isUploading ? "Uploading media…" : "Draft across every channel"}
+            {isUploading
+              ? "Uploading media…"
+              : selected.length === 0
+                ? "No channels selected"
+                : `${selected.length} channel${selected.length === 1 ? "" : "s"} · ${
+                    hasSchedule && actions.date
+                      ? `scheduled ${format(actions.date, "MMM d, h:mm a")}`
+                      : "posting now"
+                  }`}
           </p>
         </div>
       </div>
 
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-        {onOpenPreview && (
-          <Button
-            className="hidden rounded-lg px-3 text-foreground lg:inline-flex"
-            onClick={onOpenPreview}
-            variant="ghost"
-          >
-            <Icon icon={EyeIcon} size={17} />
-            Preview
-          </Button>
-        )}
-
         <Button
           aria-label="Save draft"
           className="size-11 rounded-lg px-0 text-foreground sm:h-9 sm:w-auto sm:px-3"

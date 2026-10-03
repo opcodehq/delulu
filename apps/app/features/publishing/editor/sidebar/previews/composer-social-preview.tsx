@@ -57,7 +57,7 @@ export function ComposerSocialPreview({
 
   return (
     <PhoneFrame darkMode={platform === "TIKTOK" ? true : undefined}>
-      <div className="h-full overflow-y-auto bg-neutral-100 p-2 dark:bg-neutral-950">
+      <div className="h-full overflow-y-auto bg-neutral-100 px-2 pt-10 pb-2 dark:bg-neutral-950">
         <SocialPostPreview
           avatarUrl={provider?.profileImage ?? undefined}
           className="rounded-xl shadow-none"

@@ -13,7 +13,6 @@ import {
 import { cn } from "@delulu/design-system/lib/utils";
 import { Icon } from "@delulu/design-system/providers/icon";
 import {
-  Add01Icon,
   Cancel01Icon,
   File02Icon,
   FolderLibraryIcon,
@@ -86,8 +85,14 @@ interface MediaUploaderProps {
   socialType: SocialType;
   socialId: string;
   orderId?: number;
-  compact?: boolean;
-  leadingActions?: React.ReactNode;
+  /**
+   * `toolbar`: action row under a text editor, media grid above it.
+   * `tile`: a single tall drop zone for video-first layouts.
+   */
+  variant?: "toolbar" | "tile";
+  /** Overrides the tile's call to action, e.g. when a shared platform needs video. */
+  tileLabel?: string;
+  extraActions?: React.ReactNode;
 }
 
 interface MediaPreviewProps {
@@ -189,62 +194,13 @@ export function MediaPreview({
   );
 }
 
-interface MediaStatsProps {
-  mediaFiles: MediaFile[];
-  onClearAll: () => void;
-  platformHint: string;
-}
-
-function MediaStats({ mediaFiles, onClearAll, platformHint }: MediaStatsProps) {
-  return (
-    <motion.div
-      animate={{ opacity: 1, y: 0 }}
-      className="flex items-center justify-between rounded-lg bg-muted p-2 text-muted-foreground text-xs"
-      exit={{ opacity: 0, y: -10 }}
-      initial={{ opacity: 0, y: 10 }}
-    >
-      <div className="flex items-center space-x-3" title={platformHint}>
-        <span className="flex items-center space-x-1">
-          <Icon icon={Image01Icon} size={12} />
-          <span>
-            {mediaFiles.filter((f) => f.mediaType === "IMAGE").length} image(s)
-          </span>
-        </span>
-        <span className="flex items-center space-x-1">
-          <Icon icon={VideoIcon} size={12} />
-          <span>
-            {mediaFiles.filter((f) => f.mediaType === "VIDEO").length} video(s)
-          </span>
-        </span>
-        {mediaFiles.some((f) => f.mediaType === "DOCUMENT") && (
-          <span className="flex items-center space-x-1">
-            <Icon icon={File02Icon} size={12} />
-            <span>
-              {mediaFiles.filter((f) => f.mediaType === "DOCUMENT").length}{" "}
-              doc(s)
-            </span>
-          </span>
-        )}
-      </div>
-      <Button
-        className="h-11 px-3 text-xs"
-        onClick={onClearAll}
-        size="sm"
-        type="button"
-        variant="ghost"
-      >
-        Clear all
-      </Button>
-    </motion.div>
-  );
-}
-
 export function MediaUploader({
   socialType,
   socialId,
   orderId,
-  compact = false,
-  leadingActions,
+  variant = "toolbar",
+  tileLabel: tileLabelOverride,
+  extraActions,
 }: MediaUploaderProps) {
   const { post, setPost, setIsMediaUploading } = useStore((state) => ({
     post: state.post,
@@ -665,12 +621,6 @@ export function MediaUploader({
     });
   }, []);
 
-  const clearAllFiles = useCallback(() => {
-    mediaFiles.forEach((f) => URL.revokeObjectURL(f.previewUrl));
-    isUserAction.current = true;
-    setMediaFiles([]);
-  }, [mediaFiles]);
-
   const handleSelectExistingMedia = useCallback(
     (selectedMedia: ExistingMediaSelection[]) => {
       const newMediaFiles = existingMediaFiles(selectedMedia);
@@ -680,17 +630,6 @@ export function MediaUploader({
     },
     []
   );
-
-  const getAddButtonAspectRatio = () => {
-    if (socialType === "TIKTOK" || socialType === "YOUTUBE") {
-      return "aspect-[9/16]";
-    }
-    if (socialType === "INSTAGRAM") {
-      const hasVideo = mediaFiles.some((f) => f.mediaType === "VIDEO");
-      return hasVideo ? "aspect-[9/16]" : "aspect-[4/5]";
-    }
-    return "aspect-square";
-  };
 
   const getPreviewAspectRatio = (mediaType: "IMAGE" | "VIDEO" | "DOCUMENT") => {
     if (socialType === "TIKTOK" || socialType === "YOUTUBE") {
@@ -721,55 +660,42 @@ export function MediaUploader({
   };
 
   const mediaGrid = mediaFiles.length > 0 && (
-    <AnimatePresence>
-      <motion.div
-        animate={{ opacity: 1, height: "auto" }}
-        className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4"
-        exit={{ opacity: 0, height: 0 }}
-        initial={{ opacity: 0, height: 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        <AnimatePresence>
-          {mediaFiles.map((media) => (
-            <MediaPreview
-              getPreviewAspectRatio={getPreviewAspectRatio}
-              key={media.id}
-              media={media}
-              onRemove={removeFile}
-            />
-          ))}
-        </AnimatePresence>
-
-        {canUploadMore && !compact && (
-          <motion.button
-            animate={{ opacity: 1, scale: 1 }}
-            aria-label="Upload more media"
-            className={cn(
-              "flex items-center justify-center rounded-lg border-2 border-border border-dashed transition-colors hover:border-input hover:bg-muted/50",
-              isDragOver && "border-primary bg-primary/10",
-              getAddButtonAspectRatio()
-            )}
-            initial={{ opacity: 0, scale: 0.8 }}
-            onClick={() => fileInputRef.current?.click()}
-            title={platformHint}
-            type="button"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            {...dragHandlers}
-          >
-            <Icon
-              className="text-muted-foreground"
-              icon={Add01Icon}
-              size={24}
-            />
-          </motion.button>
-        )}
-      </motion.div>
-    </AnimatePresence>
+    <motion.div
+      animate={{ opacity: 1, height: "auto" }}
+      className={cn(
+        "grid gap-3",
+        variant === "tile"
+          ? "mx-auto w-full max-w-[240px] grid-cols-1"
+          : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4"
+      )}
+      initial={{ opacity: 0, height: 0 }}
+      transition={{ duration: 0.2 }}
+    >
+      <AnimatePresence>
+        {mediaFiles.map((media) => (
+          <MediaPreview
+            getPreviewAspectRatio={getPreviewAspectRatio}
+            key={media.id}
+            media={media}
+            onRemove={removeFile}
+          />
+        ))}
+      </AnimatePresence>
+    </motion.div>
   );
 
+  const openFilePicker = () => fileInputRef.current?.click();
+  const openLibrary = () => setIsDialogOpen(true);
+  const tileLabel =
+    tileLabelOverride ??
+    (limits.canAddVideos && !limits.canAddImages
+      ? "Add a video"
+      : limits.canAddImages && !limits.canAddVideos
+        ? "Add images"
+        : "Add video or images");
+
   return (
-    <div className={compact ? "space-y-1.5" : "space-y-3"}>
+    <div className="space-y-3">
       <input
         accept={acceptedMimeTypes.join(",")}
         className="hidden"
@@ -779,116 +705,82 @@ export function MediaUploader({
         type="file"
       />
 
-      {compact ? (
+      {variant === "tile" ? (
+        mediaFiles.length > 0 ? (
+          mediaGrid
+        ) : (
+          <div className="mx-auto w-full @xl:max-w-[240px] space-y-2">
+            <button
+              aria-label={`${tileLabel}. ${instruction}`}
+              className={cn(
+                "flex @xl:aspect-[9/16] @xl:h-auto h-44 w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-border border-dashed bg-muted/30 px-4 text-center outline-none transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:ring-2 focus-visible:ring-ring/50",
+                isDragOver && "border-primary bg-primary/10"
+              )}
+              onClick={openFilePicker}
+              title={platformHint}
+              type="button"
+              {...dragHandlers}
+            >
+              <span className="flex size-12 items-center justify-center rounded-full bg-background text-foreground shadow-xs ring-1 ring-border">
+                <Icon icon={Upload01Icon} size={20} />
+              </span>
+              <span className="font-medium text-sm">{tileLabel}</span>
+              <span className="text-muted-foreground text-xs leading-5">
+                Drag and drop, or click to browse
+              </span>
+            </button>
+            <Button
+              className="w-full [@media(pointer:coarse)]:h-11"
+              onClick={openLibrary}
+              type="button"
+              variant="outline"
+            >
+              <Icon icon={FolderLibraryIcon} size={16} />
+              Choose from library
+            </Button>
+          </div>
+        )
+      ) : (
         <>
           {mediaGrid}
           <div
             className={cn(
-              "flex min-h-10 items-center border-border/60 border-t px-0.5 pt-1",
+              "flex min-h-11 items-center gap-1 border-border/60 border-t pt-2",
               isDragOver && "bg-primary/5"
             )}
             {...dragHandlers}
           >
-            <div className="flex items-center gap-0.5">{leadingActions}</div>
             {canUploadMore && (
+              <>
+                <Button
+                  aria-label={`Add media. ${instruction}`}
+                  className="text-muted-foreground hover:text-foreground [@media(pointer:coarse)]:h-11"
+                  onClick={openFilePicker}
+                  title={platformHint}
+                  type="button"
+                  variant="ghost"
+                >
+                  <Icon icon={Image01Icon} size={16} />
+                  <span className="hidden sm:inline">Add media</span>
+                </Button>
+                <Button
+                  aria-label="Choose existing media from library"
+                  className="text-muted-foreground hover:text-foreground [@media(pointer:coarse)]:h-11"
+                  onClick={openLibrary}
+                  type="button"
+                  variant="ghost"
+                >
+                  <Icon icon={FolderLibraryIcon} size={16} />
+                  <span className="hidden sm:inline">Library</span>
+                </Button>
+              </>
+            )}
+            {extraActions && (
               <div className="ml-auto flex items-center gap-0.5">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      aria-label={`Upload from device. ${instruction}`}
-                      className="size-9 rounded-md text-muted-foreground hover:text-foreground [@media(pointer:coarse)]:size-11"
-                      onClick={() => fileInputRef.current?.click()}
-                      size="icon"
-                      type="button"
-                      variant="ghost"
-                    >
-                      <Icon icon={Upload01Icon} size={15} />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" sideOffset={6}>
-                    Upload from device
-                  </TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      aria-label="Choose existing media from library"
-                      className="size-9 rounded-md text-muted-foreground hover:text-foreground [@media(pointer:coarse)]:size-11"
-                      onClick={() => setIsDialogOpen(true)}
-                      size="icon"
-                      type="button"
-                      variant="ghost"
-                    >
-                      <Icon icon={FolderLibraryIcon} size={15} />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" sideOffset={6}>
-                    Choose from library
-                  </TooltipContent>
-                </Tooltip>
+                {extraActions}
               </div>
             )}
           </div>
-        </>
-      ) : mediaFiles.length === 0 ? (
-        <div
-          className={cn(
-            "flex min-h-24 flex-wrap items-center gap-1 rounded-lg border border-border border-dashed bg-muted/20 px-3 py-3",
-            "transition-colors",
-            isDragOver && "border-primary bg-primary/5"
-          )}
-          {...dragHandlers}
-        >
-          <button
-            aria-label={`Add media. ${instruction}`}
-            className={cn(
-              "flex h-11 items-center gap-2 rounded-lg px-3 font-medium text-foreground text-sm outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 active:scale-[0.97]",
-              isDragOver && "bg-primary/10 text-primary"
-            )}
-            onClick={() => fileInputRef.current?.click()}
-            title={platformHint}
-            type="button"
-          >
-            <Icon icon={Add01Icon} size={18} />
-            Add media
-          </button>
-          <Button
-            className="h-11 rounded-lg text-foreground active:scale-[0.97]"
-            onClick={() => setIsDialogOpen(true)}
-            type="button"
-            variant="ghost"
-          >
-            <Icon icon={FolderLibraryIcon} size={16} />
-            Media library
-          </Button>
-          <span className="ml-auto hidden pr-2 text-muted-foreground text-xs lg:inline">
-            {instruction}
-          </span>
-        </div>
-      ) : (
-        /* Has media — grid of thumbnails + plus icon to add more */
-        <>
-          {mediaGrid}
-
-          {canUploadMore && (
-            <Button
-              className="h-11 w-full text-muted-foreground"
-              onClick={() => setIsDialogOpen(true)}
-              type="button"
-              variant="ghost"
-            >
-              <Icon className="mr-2" icon={FolderLibraryIcon} size={14} />
-              Choose from library
-            </Button>
-          )}
-
-          <AnimatePresence>
-            <MediaStats
-              mediaFiles={mediaFiles}
-              onClearAll={clearAllFiles}
-              platformHint={platformHint}
-            />
-          </AnimatePresence>
         </>
       )}
 

@@ -2,6 +2,7 @@
 
 import { resourceEffect } from "@delulu/client";
 import { SocialTypes } from "@delulu/core/publishing/post";
+import { Frame, FrameHeader } from "@delulu/design-system/components/ui/frame";
 import {
   Sheet,
   SheetContent,
@@ -15,7 +16,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@delulu/design-system/components/ui/tabs";
-import { cn } from "@delulu/design-system/lib/utils";
 import { format } from "date-fns";
 import { Effect } from "effect";
 import { useSearchParams } from "next/navigation";
@@ -256,7 +256,6 @@ export function PostCreator({ postId }: PostCreatorProps = {}) {
     <div className="flex h-full min-h-0 flex-col bg-background">
       <ComposerToolbar
         onOpenControls={() => setIsControlsOpen(true)}
-        onOpenPreview={() => setIsPreviewOpen(true)}
         postId={postId}
       />
 
@@ -266,52 +265,12 @@ export function PostCreator({ postId }: PostCreatorProps = {}) {
           onValueChange={handleTabChange}
           value={activeModuleId}
         >
-          {socialProviders.length >= 2 && (
-            <div className="shrink-0 border-border/80 border-b bg-background">
-              <div className="mx-auto w-full max-w-[920px] overflow-x-auto px-3 py-2 sm:px-6">
-                <TabsList className="h-11 w-max justify-start gap-1 bg-transparent p-0 sm:h-8 [@media(pointer:coarse)]:h-11">
-                  <TabsTrigger
-                    className={cn(
-                      "h-11 min-w-fit rounded-md px-2 text-xs sm:h-8 [@media(pointer:coarse)]:h-11",
-                      singleProviderInDefault && "gap-2"
-                    )}
-                    value="global"
-                  >
-                    {singleProviderInDefault ? (
-                      <>
-                        <SocialIcon
-                          className="size-4"
-                          type={singleProviderInDefault.socialType}
-                        />
-                        {singleProviderInDefault.name}
-                      </>
-                    ) : (
-                      "Global"
-                    )}
-                  </TabsTrigger>
-                  {alternativeContent.map((content) => (
-                    <TabsTrigger
-                      className="h-11 min-w-fit gap-1.5 rounded-md px-2 text-xs sm:h-8 [@media(pointer:coarse)]:h-11"
-                      key={content.socialProvider.socialId}
-                      value={content.socialProvider.socialId}
-                    >
-                      <SocialIcon
-                        className="size-4"
-                        type={content.socialProvider.socialType}
-                      />
-                      {content.socialProvider.name}
-                    </TabsTrigger>
-                  ))}
-                  <AlternativeContentSelector />
-                </TabsList>
-              </div>
-            </div>
-          )}
-
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-muted/25">
-            <main className="mx-auto min-h-full w-full max-w-[920px] bg-background px-4 py-7 sm:border-border/70 sm:border-x sm:px-10 sm:py-10 lg:px-14">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            {/* Same framed column as PageShell: dotted rails; the framed cards'
+                guides bleed 1rem, so a 2rem gap makes them meet. */}
+            <main className="mx-auto min-h-full w-full max-w-[860px] space-y-8 border-zinc-950/10 border-x-[1.5px] border-dotted px-4 pt-6 pb-20 md:pb-8 dark:border-white/10">
               {postData.data?.status === "published" && (
-                <div className="mb-6 rounded-lg bg-amber-50 px-4 py-3 text-amber-900 ring-1 ring-amber-200/80 dark:bg-amber-950/30 dark:text-amber-100 dark:ring-amber-800">
+                <div className="rounded-lg bg-amber-50 px-4 py-3 text-amber-900 ring-1 ring-amber-200/80 dark:bg-amber-950/30 dark:text-amber-100 dark:ring-amber-800">
                   <h3 className="font-medium text-sm">Already published</h3>
                   <p className="mt-0.5 text-xs opacity-80">
                     Changes are saved as a new draft and won’t alter the live
@@ -321,52 +280,92 @@ export function PostCreator({ postId }: PostCreatorProps = {}) {
               )}
 
               {postData.data?.workspaceId && (
-                <div className="mb-6">
-                  <ReviewBanner
-                    organizationId={postData.data.workspaceId}
-                    postId={postData.data.id}
-                    reviewStatus=""
-                  />
-                </div>
+                <ReviewBanner
+                  organizationId={postData.data.workspaceId}
+                  postId={postData.data.id}
+                  reviewStatus=""
+                />
               )}
 
-              <div className="mx-auto mb-4 w-full max-w-[780px]">
-                <SocialSelector surface="composer" />
-              </div>
+              <SocialSelector />
 
-              <TabsContent className="mt-0" value="global">
-                <ContentModule
-                  socialId="global"
-                  socialType={SocialTypes.DEFAULT}
-                />
-              </TabsContent>
+              <Frame aria-label="Post content" role="region">
+                {socialProviders.length >= 2 && (
+                  <FrameHeader className="px-2 sm:px-3">
+                    <div className="min-w-0 flex-1 overflow-x-auto">
+                      <TabsList className="h-auto w-max justify-start gap-1 bg-transparent p-0">
+                        <TabsTrigger
+                          className="h-9 min-w-fit gap-1.5 rounded-md px-3 text-sm data-[state=active]:bg-muted data-[state=active]:shadow-none [@media(pointer:coarse)]:h-11"
+                          value="global"
+                        >
+                          {singleProviderInDefault ? (
+                            <>
+                              <SocialIcon
+                                className="size-4"
+                                type={singleProviderInDefault.socialType}
+                              />
+                              {singleProviderInDefault.name}
+                            </>
+                          ) : (
+                            "All channels"
+                          )}
+                        </TabsTrigger>
+                        {alternativeContent.map((content) => (
+                          <TabsTrigger
+                            className="h-9 min-w-fit gap-1.5 rounded-md px-3 text-sm data-[state=active]:bg-muted data-[state=active]:shadow-none [@media(pointer:coarse)]:h-11"
+                            key={content.socialProvider.socialId}
+                            value={content.socialProvider.socialId}
+                          >
+                            <SocialIcon
+                              className="size-4"
+                              type={content.socialProvider.socialType}
+                            />
+                            {content.socialProvider.name}
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                    </div>
+                    <AlternativeContentSelector />
+                  </FrameHeader>
+                )}
 
-              {alternativeContent.map((content) => (
-                <TabsContent
-                  className="mt-0"
-                  key={content.socialProvider.socialId}
-                  value={content.socialProvider.socialId}
-                >
-                  <ContentModule
-                    socialId={content.socialProvider.socialId}
-                    socialType={content.socialProvider.socialType}
-                  />
-                </TabsContent>
-              ))}
+                <div className="px-4 py-4 sm:px-6 sm:py-5">
+                  <TabsContent className="mt-0" value="global">
+                    <ContentModule
+                      socialId="global"
+                      socialType={SocialTypes.DEFAULT}
+                    />
+                  </TabsContent>
+
+                  {alternativeContent.map((content) => (
+                    <TabsContent
+                      className="mt-0 space-y-4"
+                      key={content.socialProvider.socialId}
+                      value={content.socialProvider.socialId}
+                    >
+                      <p className="text-muted-foreground text-xs">
+                        Custom version for {content.socialProvider.name}. Edits
+                        here don’t change the other channels.
+                      </p>
+                      <ContentModule
+                        socialId={content.socialProvider.socialId}
+                        socialType={content.socialProvider.socialType}
+                      />
+                    </TabsContent>
+                  ))}
+                </div>
+              </Frame>
             </main>
           </div>
         </Tabs>
 
-        <aside className="hidden w-[360px] shrink-0 flex-col border-border/80 border-l bg-background lg:flex xl:w-[380px]">
-          <div className="border-border/80 border-b px-4 py-4">
-            <h2 className="font-semibold text-sm">Post settings</h2>
-            <p className="mt-0.5 text-muted-foreground text-xs">
-              Pick a date and time to schedule this post.
-            </p>
-          </div>
+        <aside
+          aria-label="Post settings"
+          className="hidden w-[340px] shrink-0 flex-col border-border/80 border-l bg-background lg:flex xl:w-[360px]"
+        >
           <div className="min-h-0 flex-1">
             <PostSidebar
-              onOpenPreview={() => setIsPreviewOpen(true)}
+              inlinePreview
               organizationId={postData.data?.workspaceId}
               postId={postId}
               view="controls"
@@ -380,7 +379,7 @@ export function PostCreator({ postId }: PostCreatorProps = {}) {
           <SheetHeader className="border-border/80 border-b pr-12">
             <SheetTitle>Post settings</SheetTitle>
             <SheetDescription>
-              Pick a date and time to schedule this post.
+              Timing, readiness and channel options.
             </SheetDescription>
           </SheetHeader>
           <div className="min-h-0 flex-1">

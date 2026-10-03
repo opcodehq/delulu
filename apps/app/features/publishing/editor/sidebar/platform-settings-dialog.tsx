@@ -9,6 +9,7 @@ import {
 } from "@delulu/design-system/components/ui/dialog";
 import { InstagramSettingsDisplay } from "@/features/publishing/editor/sidebar/instagram-settings";
 import { TikTokSettingsDisplay } from "@/features/publishing/editor/sidebar/tiktok-settings";
+import { YouTubeSettingsDisplay } from "@/features/publishing/editor/sidebar/youtube-settings";
 import { usePost } from "@/features/publishing/store";
 
 interface PlatformSettingsDialogProps {
@@ -41,6 +42,8 @@ export function PlatformSettingsDialog({
         return (
           <InstagramSettingsDisplay hasVideo={hasVideo} providerId={socialId} />
         );
+      case "YOUTUBE":
+        return <YouTubeSettingsDisplay providerId={socialId} />;
       default:
         return (
           <div className="py-8 text-center text-muted-foreground text-sm">

@@ -1,16 +1,8 @@
 import { expect, type Page, test } from "@playwright/test";
+import { guardFixtureRequests, records } from "./fixture-guards";
 
 const LONG_CHOICE = /^A longer choice/;
 
-interface RequestRecord {
-  url: string;
-  start: number;
-  end?: number;
-}
-const records = (page: Page) =>
-  page.evaluate(
-    () => Reflect.get(window, "fixtureRequests") as RequestRecord[]
-  );
 async function ready(page: Page, title: string) {
   await expect(
     page.getByRole("heading", { name: title, exact: true })
@@ -23,45 +15,7 @@ async function go(page: Page, path: string) {
   await page.locator(`a[href="${path}"]:visible`).first().click();
 }
 
-test.beforeEach(async ({ page }, info) => {
-  await page.addInitScript(
-    (theme) => localStorage.setItem("theme", theme),
-    info.project.name === "mobile-dark" ? "dark" : "light"
-  );
-  // No real provider or API requests, even if a fixture alias accidentally regresses.
-  await page.route("**/*", (route) => {
-    const url = new URL(route.request().url());
-    return url.origin === "http://127.0.0.1:4180"
-      ? route.continue()
-      : route.abort();
-  });
-});
-test.afterEach(async ({ page }, info) => {
-  if (info.status === "skipped") {
-    return;
-  }
-  expect(
-    await page.evaluate(() => Reflect.get(window, "fixtureUnhandled") ?? [])
-  ).toEqual([]);
-  const reads = await records(page);
-  await info.attach("fixture-requests", {
-    body: JSON.stringify(reads, null, 2),
-    contentType: "application/json",
-  });
-  for (let i = 0; i < reads.length; i++) {
-    const current = reads[i];
-    expect(
-      reads
-        .slice(i + 1)
-        .filter(
-          (other) =>
-            other.url === current.url &&
-            other.start < (current.end ?? Number.POSITIVE_INFINITY)
-        ),
-      `Overlapping reads: ${current.url}`
-    ).toEqual([]);
-  }
-});
+guardFixtureRequests();
 
 test("navigation retains fresh cached data on return", async ({ page }) => {
   await page.goto("/");
@@ -353,9 +307,7 @@ test("LinkedIn destinations use the authorization frame and compact choices", as
   page,
 }) => {
   await page.goto("/linkedin-account-select?selection=fixture&state=fixture");
-  await expect(page.locator('[data-slot="authorization-guide"]')).toHaveCount(
-    4
-  );
+  await expect(page.locator('[data-slot="frame-guide"]')).toHaveCount(4);
   const radios = page.getByRole("radio");
   await expect(radios).toHaveCount(2);
   await expect(radios.first()).toBeChecked();
@@ -393,16 +345,12 @@ test("authorization frame stays present for invalid LinkedIn links and extension
   await expect(page.getByRole("alert")).toHaveText(
     "This LinkedIn connection attempt is invalid. Start again."
   );
-  await expect(page.locator('[data-slot="authorization-guide"]')).toHaveCount(
-    4
-  );
+  await expect(page.locator('[data-slot="frame-guide"]')).toHaveCount(4);
   await expect(
     page.getByRole("button", { name: "Connect destination" })
   ).toBeDisabled();
   await page.goto("/extension-auth-success");
-  await expect(page.locator('[data-slot="authorization-guide"]')).toHaveCount(
-    4
-  );
+  await expect(page.locator('[data-slot="frame-guide"]')).toHaveCount(4);
   await expect(
     page.getByRole("link", { name: "Go to Delulu Social" })
   ).toHaveAttribute("href", "/");
@@ -423,9 +371,7 @@ test("LinkedIn loading and unavailable Pages keep the same frame", async ({
   await expect(page.getByRole("status")).toHaveText(
     "Loading LinkedIn destinations…"
   );
-  await expect(page.locator('[data-slot="authorization-guide"]')).toHaveCount(
-    4
-  );
+  await expect(page.locator('[data-slot="frame-guide"]')).toHaveCount(4);
   await expect(page.getByRole("radio")).toBeChecked();
   await expect(
     page.getByText("We couldn't load your LinkedIn Pages.", { exact: false })
@@ -433,9 +379,7 @@ test("LinkedIn loading and unavailable Pages keep the same frame", async ({
   await expect(
     page.getByRole("button", { name: "Connect destination" })
   ).toBeEnabled();
-  await expect(page.locator('[data-slot="authorization-guide"]')).toHaveCount(
-    4
-  );
+  await expect(page.locator('[data-slot="frame-guide"]')).toHaveCount(4);
 });
 
 test("DM sidebar contains long pasted links and wraps the preview", async ({

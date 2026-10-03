@@ -47,8 +47,6 @@ interface ContentModuleProps {
   socialType: SocialType;
 }
 
-// This function is no longer used, replaced by dynamic placeholder from default-platform-rules
-
 export function ContentModule({ socialId, socialType }: ContentModuleProps) {
   const { post, setPost } = useStore((state) => ({
     post: state.post,
@@ -397,6 +395,7 @@ export function ContentModule({ socialId, socialType }: ContentModuleProps) {
 
     return (
       <VideoContentLayout
+        characterLimit={characterLimit}
         onRemoveVideo={() => handleRemoveVideo(0)}
         onTextChange={(text) => handleTextChange(text, 0)}
         onThumbnailUpdate={(thumbnail) => handleThumbnailUpdate(0, thumbnail)}
@@ -481,7 +480,7 @@ export function ContentModule({ socialId, socialType }: ContentModuleProps) {
                 </label>
                 <Textarea
                   className={cn(
-                    "resize-none overflow-hidden rounded-none border-0 bg-transparent px-0 pt-0 pb-6 text-[17px] leading-7 shadow-none placeholder:text-muted-foreground/70 focus-visible:border-transparent focus-visible:ring-0 md:text-[17px]",
+                    "resize-none overflow-hidden rounded-none border-0 bg-transparent px-0 pt-0 pb-6 text-[17px] leading-7 shadow-none placeholder:text-muted-foreground/70 focus-visible:border-transparent focus-visible:ring-0 md:text-[17px] dark:bg-transparent",
                     content.length === 1
                       ? "min-h-[clamp(190px,30vh,300px)]"
                       : "min-h-28"
@@ -509,33 +508,26 @@ export function ContentModule({ socialId, socialType }: ContentModuleProps) {
                         : "text-muted-foreground"
                     )}
                   >
-                    {characterLimit - item.text.length}
+                    {item.text.length.toLocaleString()} /{" "}
+                    {characterLimit.toLocaleString()}
                   </div>
                 )}
               </div>
             </div>
             <MediaUploader
-              compact
-              leadingActions={
+              extraActions={
                 usesMultiPostLayout || content.length > 1 ? (
                   <>
                     {usesMultiPostLayout && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            aria-label="Add another post to thread"
-                            className="size-9 rounded-md text-muted-foreground hover:text-foreground [@media(pointer:coarse)]:size-11"
-                            onClick={() => addThreadPost(item.order)}
-                            size="icon"
-                            variant="ghost"
-                          >
-                            <Icon icon={Add01Icon} size={15} />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" sideOffset={6}>
-                          Add to thread
-                        </TooltipContent>
-                      </Tooltip>
+                      <Button
+                        aria-label="Add another post to thread"
+                        className="text-muted-foreground hover:text-foreground [@media(pointer:coarse)]:h-11"
+                        onClick={() => addThreadPost(item.order)}
+                        variant="ghost"
+                      >
+                        <Icon icon={Add01Icon} size={15} />
+                        <span className="hidden sm:inline">Add to thread</span>
+                      </Button>
                     )}
                     {content.length > 1 && (
                       <Tooltip>

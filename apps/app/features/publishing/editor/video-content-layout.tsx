@@ -9,10 +9,12 @@ import { Label } from "@delulu/design-system/components/ui/label";
 import { Textarea } from "@delulu/design-system/components/ui/textarea";
 import { cn } from "@delulu/design-system/lib/utils";
 import { Icon } from "@delulu/design-system/providers/icon";
-import { Delete01Icon, Image01Icon, PencilEdit01Icon } from "@delulu/icons";
+import { Delete01Icon, Image01Icon } from "@delulu/icons";
 import { useCallback, useState } from "react";
 import { MediaUploader } from "@/features/publishing/editor/media-uploader";
+import { SocialIcon } from "@/features/publishing/editor/sidebar/social-icon";
 import { VideoThumbnailSelector } from "@/features/publishing/editor/video-thumbnail-selector";
+import { PLATFORM_MEDIA_RULES } from "@/features/publishing/platform-rules";
 import { useMediaUrl } from "@/features/publishing/use-media-url";
 
 interface VideoMedia {
@@ -46,6 +48,8 @@ interface VideoContentLayoutProps {
   orderId?: number;
   showYouTubeTitle?: boolean; // Show YouTube title field (for default with YT)
   platformsInDefault?: SocialType[]; // For default tab context
+  /** Most restrictive caption limit across the platforms sharing this text. */
+  characterLimit?: number;
 }
 
 function getPlatformConfig(socialType: SocialType) {
@@ -56,8 +60,7 @@ function getPlatformConfig(socialType: SocialType) {
         captionPlaceholder: "Write a catchy caption for your TikTok...",
         maxLength: 2200,
         showTitle: false,
-        showCharCount: true,
-        requirements: "Max 2,200 characters, vertical 9:16 video",
+        requirements: "Vertical 9:16 video or a photo carousel",
         isVertical: true,
       };
     case SocialTypes.YOUTUBE:
@@ -66,10 +69,8 @@ function getPlatformConfig(socialType: SocialType) {
         captionPlaceholder: "Describe your video...",
         maxLength: 5000,
         showTitle: true,
-        titlePlaceholder: "YouTube Shorts title (max 100 characters)",
         titleMaxLength: 100,
-        showCharCount: true,
-        requirements: "YouTube Shorts: 9:16 vertical video, max 60 seconds",
+        requirements: "Shorts: vertical 9:16 video, max 60 seconds",
         isVertical: true,
       };
     case SocialTypes.THREADS:
@@ -78,8 +79,7 @@ function getPlatformConfig(socialType: SocialType) {
         captionPlaceholder: "What's on your mind?",
         maxLength: 500,
         showTitle: false,
-        showCharCount: true,
-        requirements: "Max 500 characters",
+        requirements: "",
         isVertical: false,
       };
     case SocialTypes.INSTAGRAM:
@@ -88,8 +88,7 @@ function getPlatformConfig(socialType: SocialType) {
         captionPlaceholder: "Write a caption for your Reel...",
         maxLength: 2200,
         showTitle: false,
-        showCharCount: true,
-        requirements: "Instagram Reels: 9:16 vertical video, max 90 seconds",
+        requirements: "Reels: vertical 9:16 video, max 90 seconds",
         isVertical: true,
       };
     default:
@@ -98,7 +97,6 @@ function getPlatformConfig(socialType: SocialType) {
         captionPlaceholder: "Write a caption...",
         maxLength: undefined,
         showTitle: false,
-        showCharCount: false,
         requirements: "",
         isVertical: false,
       };
@@ -118,19 +116,21 @@ export function VideoContentLayout({
   orderId = 0,
   showYouTubeTitle = false,
   platformsInDefault = [],
+  characterLimit,
 }: VideoContentLayoutProps) {
   const config = getPlatformConfig(socialType);
+  const maxLength = characterLimit ?? config.maxLength;
   const [isThumbnailDialogOpen, setIsThumbnailDialogOpen] = useState(false);
 
   const handleTextChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const newText = e.target.value;
-      if (config.maxLength && newText.length > config.maxLength) {
+      if (maxLength && newText.length > maxLength) {
         return;
       }
       onTextChange(newText);
     },
-    [config.maxLength, onTextChange]
+    [maxLength, onTextChange]
   );
 
   const handleTitleChange = useCallback(
@@ -144,7 +144,6 @@ export function VideoContentLayout({
     [config.titleMaxLength, onTitleChange]
   );
 
-  const charsRemaining = config.maxLength ? config.maxLength - text.length : 0;
   const titleCharsRemaining = config.titleMaxLength
     ? config.titleMaxLength - title.length
     : 0;
@@ -159,210 +158,180 @@ export function VideoContentLayout({
   );
 
   const videoAspectClass = config.isVertical ? "aspect-[9/16]" : "aspect-video";
+  const platforms =
+    platformsInDefault.length > 0 ? platformsInDefault : [socialType];
+  const requirements = platforms.flatMap((platform) => {
+    const text = getPlatformConfig(platform).requirements;
+    return text ? [{ platform, text }] : [];
+  });
+  const showTitle = config.showTitle || showYouTubeTitle;
+  const captionPlaceholder =
+    platforms.length > 1 ? "Write a caption…" : config.captionPlaceholder;
 
   return (
-    <div className="mx-auto w-full max-w-[780px]">
-      <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_260px] lg:gap-8">
-        {/* Left Column - Video Upload or Thumbnail Preview */}
-        <div className="order-2 space-y-3">
+    <div className="@container mx-auto w-full max-w-[780px]">
+      <div className="grid @xl:grid-cols-[220px_minmax(0,1fr)] @xl:gap-8 gap-6">
+        <div className="space-y-3">
           {videoUrl ? (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm">Thumbnail preview</Label>
-                {hasCustomThumbnailImage && (
-                  <Badge className="gap-1" variant="secondary">
-                    <Icon icon={Image01Icon} size={12} />
-                    Set
-                  </Badge>
-                )}
-              </div>
+            <div className="mx-auto w-full max-w-[240px] space-y-2">
               <button
+                aria-label={
+                  hasCustomThumbnailImage
+                    ? "Change thumbnail"
+                    : "Select thumbnail"
+                }
                 className={cn(
-                  "group relative mx-auto block w-full max-w-sm overflow-hidden rounded-lg border border-border transition-colors hover:border-foreground/35",
-                  videoAspectClass,
-                  "border-border bg-black"
+                  "group relative block w-full overflow-hidden rounded-xl bg-black outline-none ring-1 ring-border transition-shadow hover:ring-foreground/30 focus-visible:ring-2 focus-visible:ring-ring",
+                  videoAspectClass
                 )}
                 onClick={() => setIsThumbnailDialogOpen(true)}
                 type="button"
               >
                 {hasCustomThumbnailImage ? (
-                  <>
-                    {/* Show custom thumbnail image */}
-                    <img
-                      alt="Video thumbnail"
-                      className="h-full w-full object-cover"
-                      src={thumbnailUrl!}
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
-                      <div className="rounded-lg bg-background px-4 py-2 text-foreground shadow-lg">
-                        <div className="flex items-center gap-2">
-                          <Icon icon={PencilEdit01Icon} size={16} />
-                          <span className="font-medium text-sm">
-                            Change thumbnail
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </>
+                  <img
+                    alt="Video thumbnail"
+                    className="h-full w-full object-cover"
+                    src={thumbnailUrl!}
+                  />
                 ) : (
-                  <>
-                    {/* Show video when no thumbnail is set */}
-                    <video
-                      className="h-full w-full object-cover"
-                      muted
-                      playsInline
-                      src={videoUrl}
-                    >
-                      <track kind="captions" />
-                    </video>
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 transition-opacity group-hover:opacity-100">
-                      <div className="rounded-lg bg-background px-4 py-2 text-foreground shadow-lg">
-                        <div className="flex items-center gap-2">
-                          <Icon icon={Image01Icon} size={16} />
-                          <span className="font-medium text-sm">
-                            Select thumbnail
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </>
+                  <video
+                    className="h-full w-full object-cover"
+                    muted
+                    playsInline
+                    src={videoUrl}
+                  >
+                    <track kind="captions" />
+                  </video>
                 )}
+                <span className="absolute inset-x-2 bottom-2 flex items-center justify-center gap-1.5 rounded-md bg-black/60 px-2 py-1.5 font-medium text-white text-xs backdrop-blur-sm transition-opacity group-hover:opacity-100 sm:opacity-0">
+                  <Icon icon={Image01Icon} size={14} />
+                  {hasCustomThumbnailImage
+                    ? "Change thumbnail"
+                    : "Pick thumbnail"}
+                </span>
               </button>
-
-              {/* Thumbnail button below preview */}
-              <Button
-                className="w-full"
-                onClick={() => setIsThumbnailDialogOpen(true)}
-                type="button"
-                variant="outline"
-              >
-                <Icon className="mr-2" icon={Image01Icon} size={16} />
-                {hasCustomThumbnailImage
-                  ? "Change thumbnail"
-                  : "Select thumbnail"}
-              </Button>
-
-              {/* Remove Video button */}
-              <Button
-                className="w-full"
-                onClick={onRemoveVideo}
-                size="sm"
-                type="button"
-                variant="destructive"
-              >
-                <Icon className="mr-2" icon={Delete01Icon} size={14} />
-                Remove video
-              </Button>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  className="[@media(pointer:coarse)]:h-11"
+                  onClick={() => setIsThumbnailDialogOpen(true)}
+                  type="button"
+                  variant="outline"
+                >
+                  <Icon icon={Image01Icon} size={16} />
+                  Thumbnail
+                </Button>
+                <Button
+                  className="text-destructive hover:bg-destructive/10 hover:text-destructive [@media(pointer:coarse)]:h-11"
+                  onClick={onRemoveVideo}
+                  type="button"
+                  variant="ghost"
+                >
+                  <Icon icon={Delete01Icon} size={16} />
+                  Remove
+                </Button>
+              </div>
             </div>
           ) : (
-            <>
-              {/* Show MediaUploader when no video */}
-              <Label className="text-sm">Video</Label>
-              <MediaUploader
-                compact
-                orderId={orderId}
-                socialId={socialId}
-                socialType={socialType}
-              />
-            </>
+            <MediaUploader
+              orderId={orderId}
+              socialId={socialId}
+              socialType={socialType}
+              tileLabel={
+                platforms.some(
+                  (platform) => PLATFORM_MEDIA_RULES[platform].requiresVideo
+                )
+                  ? "Add a video"
+                  : undefined
+              }
+              variant="tile"
+            />
+          )}
+
+          {requirements.length > 0 && (
+            <ul className="mx-auto @xl:max-w-[240px] space-y-1.5">
+              {requirements.map(({ platform, text }) => (
+                <li
+                  className="flex items-start gap-2 text-muted-foreground text-xs leading-5"
+                  key={platform}
+                >
+                  <SocialIcon
+                    className="mt-0.5 size-3.5 shrink-0"
+                    type={platform}
+                  />
+                  {text}
+                </li>
+              ))}
+            </ul>
           )}
         </div>
 
-        {/* Right Column - Text Content */}
-        <div className="order-1 space-y-5">
-          {/* Platform Requirements */}
-          {config.requirements && (
-            <div className="rounded-lg bg-muted/60 px-3 py-2.5 ring-1 ring-border/70">
-              <p className="text-muted-foreground text-xs">
-                {config.requirements}
-              </p>
-            </div>
-          )}
-
-          {/* Title Input (YouTube) */}
-          {(config.showTitle || showYouTubeTitle) && (
+        <div className="min-w-0 space-y-5">
+          {showTitle && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Label className="text-sm" htmlFor="video-title">
-                  Title {config.titleMaxLength && "*"}
+                <Label className="text-sm" htmlFor={`video-title-${socialId}`}>
+                  Title
                 </Label>
                 {showYouTubeTitle && platformsInDefault.length > 1 && (
-                  <Badge className="gap-1 text-xs" variant="outline">
-                    <svg
-                      className="h-3 w-3 text-red-600"
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-                    </svg>
+                  <Badge className="gap-1 font-normal" variant="outline">
+                    <SocialIcon className="size-3" type={SocialTypes.YOUTUBE} />
                     YouTube only
                   </Badge>
                 )}
               </div>
               <div className="relative">
                 <Input
-                  className="h-11 rounded-lg bg-background pr-16 text-base shadow-none"
-                  id="video-title"
+                  className="h-11 pr-14 text-base"
+                  id={`video-title-${socialId}`}
                   onChange={handleTitleChange}
-                  placeholder={config.titlePlaceholder}
-                  required={config.titleMaxLength !== undefined}
+                  placeholder="Defaults to the start of your caption"
                   value={title}
                 />
                 {config.titleMaxLength && (
-                  <div
+                  <span
                     className={cn(
-                      "absolute top-1/2 right-3 -translate-y-1/2 text-xs",
+                      "pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs tabular-nums",
                       titleCharsRemaining < 0
                         ? "text-destructive"
                         : "text-muted-foreground"
                     )}
                   >
                     {titleCharsRemaining}
-                  </div>
+                  </span>
                 )}
               </div>
             </div>
           )}
 
-          {/* Caption/Description Textarea */}
           <div className="space-y-2">
-            <Label className="text-sm" htmlFor="video-caption">
-              {config.captionLabel}
-            </Label>
-            <div className="relative">
-              <Textarea
-                className="min-h-[clamp(240px,38vh,420px)] resize-none overflow-hidden rounded-lg border-border/80 bg-card px-4 py-3 pr-16 text-[17px] leading-7 shadow-none placeholder:text-muted-foreground/70 focus-visible:border-foreground/25 focus-visible:ring-0 md:text-[17px]"
-                id="video-caption"
-                onChange={handleTextChange}
-                placeholder={config.captionPlaceholder}
-                value={text}
-              />
-              {config.showCharCount && config.maxLength && (
-                <div
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-sm" htmlFor={`video-caption-${socialId}`}>
+                {platforms.length > 1 ? "Caption" : config.captionLabel}
+              </Label>
+              {maxLength && (
+                <span
                   className={cn(
-                    "absolute top-2 right-2 text-xs",
-                    charsRemaining < 0
+                    "text-xs tabular-nums",
+                    text.length > maxLength
                       ? "text-destructive"
                       : "text-muted-foreground"
                   )}
                 >
-                  {charsRemaining}
-                </div>
+                  {text.length.toLocaleString()} / {maxLength.toLocaleString()}
+                </span>
               )}
             </div>
+            <Textarea
+              className="min-h-[clamp(220px,36vh,400px)] resize-none px-3.5 py-3 text-base leading-7 md:text-base"
+              id={`video-caption-${socialId}`}
+              onChange={handleTextChange}
+              placeholder={captionPlaceholder}
+              value={text}
+            />
           </div>
-
-          {/* Character count info */}
-          {config.showCharCount && config.maxLength && (
-            <p className="text-muted-foreground text-xs">
-              {text.length} / {config.maxLength} characters
-            </p>
-          )}
         </div>
       </div>
 
-      {/* Thumbnail Selector Dialog */}
       {videoUrl && (
         <VideoThumbnailSelector
           currentThumbnail={{

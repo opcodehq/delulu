@@ -6,6 +6,8 @@ const subscribe = (notify: () => void) => {
 };
 export const usePathname = () =>
   useSyncExternalStore(subscribe, () => location.pathname);
+export const useParams = <T extends Record<string, string | undefined>>() =>
+  ({}) as T;
 export const useSearchParams = () => new URLSearchParams(location.search);
 export const navigate = (url: string) => {
   history.pushState(null, "", url);
