@@ -3,6 +3,7 @@
 import {
   DEFAULT_INSTAGRAM_SETTINGS,
   DEFAULT_TIKTOK_SETTINGS,
+  DEFAULT_YOUTUBE_SETTINGS,
 } from "@delulu/core/publishing/constants/settings";
 import type { SocialType } from "@delulu/core/publishing/post";
 import {
@@ -16,19 +17,21 @@ import {
   AlertDialogTitle,
 } from "@delulu/design-system/components/ui/alert-dialog";
 import { Button } from "@delulu/design-system/components/ui/button";
-import { SocialIcon } from "@delulu/design-system/components/ui/social-icon";
-import { socialBackgroundColors } from "@delulu/design-system/lib/social-config";
+import {
+  Frame,
+  FrameHeader,
+  FrameTitle,
+} from "@delulu/design-system/components/ui/frame";
 import { cn } from "@delulu/design-system/lib/utils";
-import { Icon } from "@delulu/design-system/providers/icon";
-import { Settings01Icon, UserGroupIcon } from "@delulu/icons";
-import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { PlatformSettingsDialog } from "@/features/publishing/editor/sidebar/platform-settings-dialog";
-import { normalizePlatform } from "@/features/publishing/social-platform";
+import { ChannelMark } from "@/features/publishing/editor/sidebar/social-icon";
+import {
+  normalizePlatform,
+  platformLabel,
+} from "@/features/publishing/social-platform";
 import {
   postActions,
-  useAutomationConfig,
   useSelectedSocialProviders,
   useStore,
 } from "@/features/publishing/store";
@@ -64,6 +67,13 @@ function addProvider(account: AccountLike) {
       settings: DEFAULT_TIKTOK_SETTINGS,
     });
   }
+  if (socialType === "YOUTUBE" && !state.getProviderSettings(account.id)) {
+    state.setProviderSettings(account.id, {
+      socialProviderId: account.id,
+      type: "YOUTUBE",
+      settings: DEFAULT_YOUTUBE_SETTINGS,
+    });
+  }
   if (socialType === "INSTAGRAM" && !state.getProviderSettings(account.id)) {
     state.setProviderSettings(account.id, {
       socialProviderId: account.id,
@@ -73,15 +83,7 @@ function addProvider(account: AccountLike) {
   }
 }
 
-interface SocialSelectorProps {
-  surface?: "plain" | "composer";
-  showPlatformSettings?: boolean;
-}
-
-export default function SocialSelector({
-  surface = "plain",
-  showPlatformSettings = true,
-}: SocialSelectorProps = {}) {
+export default function SocialSelector() {
   const { workspaceId } = useWorkspace();
   const { resources } = useApiClient();
   const socialProviders = useResourceAtom({
@@ -136,83 +138,63 @@ export default function SocialSelector({
   };
 
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-2",
-        surface === "composer" && "border-border/60 border-b px-1 pb-3"
-      )}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <h3 className="font-medium text-sm">Publish to</h3>
-          {surface === "composer" && (
-            <p className="mt-0.5 text-muted-foreground text-xs">
-              Choose one or more accounts
-            </p>
+    <Frame aria-labelledby="composer-channels" role="region">
+      <FrameHeader className="justify-between">
+        <FrameTitle id="composer-channels">
+          Channels
+          {accounts.length > 0 && (
+            <span className="ml-2 font-normal text-muted-foreground tabular-nums">
+              {selectedIds.size} of {accounts.length}
+            </span>
           )}
-        </div>
+        </FrameTitle>
         {accounts.length > 1 && !allSelected && (
-          <button
-            className="flex min-h-11 items-center gap-1 rounded-md px-2 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground sm:min-h-8 [@media(pointer:coarse)]:min-h-11"
+          <Button
+            className="-mr-2 text-muted-foreground [@media(pointer:coarse)]:h-11"
             onClick={handleSelectAll}
-            type="button"
+            variant="ghost"
           >
-            <Icon icon={UserGroupIcon} size={13} />
             Select all
-          </button>
+          </Button>
+        )}
+      </FrameHeader>
+
+      <div className="p-2 sm:p-3">
+        {accounts.length === 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 px-2 py-1">
+            <p className="text-muted-foreground text-sm">
+              Connect a social account to start posting.
+            </p>
+            <Button asChild variant="outline">
+              <Link href="/socials">Connect account</Link>
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-1">
+            {accounts.map((account) => (
+              <SocialSelectorChip
+                account={account}
+                key={account.id}
+                selected={selectedIds.has(account.id)}
+              />
+            ))}
+          </div>
         )}
       </div>
-
-      {accounts.length === 0 ? (
-        <div className="flex flex-col items-start gap-1 rounded-md border border-dashed p-2">
-          <p className="text-muted-foreground text-xs">No accounts connected</p>
-          <Button
-            asChild
-            className="h-11 rounded-md px-2 text-xs sm:h-8 [@media(pointer:coarse)]:h-11"
-            size="sm"
-            variant="link"
-          >
-            <Link href="/socials">Connect an account →</Link>
-          </Button>
-        </div>
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          {accounts.map((account) => (
-            <SocialSelectorChip
-              account={account}
-              key={account.id}
-              selected={selectedIds.has(account.id)}
-              showPlatformSettings={showPlatformSettings}
-            />
-          ))}
-        </div>
-      )}
-    </div>
+    </Frame>
   );
-}
-
-function hasSettings(platform: SocialType): boolean {
-  return platform === "TIKTOK" || platform === "INSTAGRAM";
 }
 
 function SocialSelectorChip({
   account,
   selected,
-  showPlatformSettings,
 }: {
   account: AccountLike;
   selected: boolean;
-  showPlatformSettings: boolean;
 }) {
   const post = useStore((state) => state.post);
-  const automationConfig = useAutomationConfig(account.id);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
-
-  const socialType = account.platform as SocialType;
-  const displayPlatform = normalizePlatform(account.platform);
   const name = accountName(account);
-  const showGear = showPlatformSettings && selected && hasSettings(socialType);
 
   const hasAlternativeContent = post.alternativeContent.some(
     (content) => content.socialProvider.socialId === account.id
@@ -230,20 +212,15 @@ function SocialSelectorChip({
     }
   };
 
-  const handleSettingsClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-    setShowSettingsDialog(true);
-  };
-
   return (
     <>
       <AlertDialog onOpenChange={setShowDeleteDialog} open={showDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove social network</AlertDialogTitle>
+            <AlertDialogTitle>Remove {name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This account has custom content. Removing it will delete all its
-              custom content. Continue?
+              This account has its own customized content. Removing it deletes
+              that version.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -260,58 +237,31 @@ function SocialSelectorChip({
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="relative inline-flex">
-        <button
-          aria-pressed={selected}
-          className={cn(
-            "flex min-h-11 items-center gap-1.5 rounded-md border py-1 pl-1 font-medium text-xs transition-[background-color,border-color,color,box-shadow] active:scale-[0.98] sm:min-h-8 [@media(pointer:coarse)]:min-h-11",
-            showGear ? "pr-11 sm:pr-8" : "pr-2",
-            selected
-              ? "border-primary/30 bg-primary/10 text-primary shadow-[inset_0_0_0_1px_rgb(255_255_255/0.35)] dark:shadow-[inset_0_0_0_1px_rgb(255_255_255/0.04)]"
-              : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
-          )}
-          onClick={handleSelect}
-          type="button"
-        >
-          <span
-            className={cn(
-              "flex size-5 shrink-0 items-center justify-center rounded",
-              displayPlatform
-                ? socialBackgroundColors[displayPlatform]
-                : "bg-muted"
-            )}
-          >
-            {displayPlatform && (
-              <SocialIcon
-                className="size-3 text-white"
-                type={displayPlatform}
-              />
-            )}
-          </span>
-          <span className="max-w-[10rem] truncate">{name}</span>
-        </button>
-        {showGear && (
-          <button
-            aria-label="Platform settings"
-            className="absolute top-1/2 right-0.5 grid size-10 -translate-y-1/2 place-items-center rounded-md text-primary/70 transition-colors after:absolute after:-inset-0.5 hover:bg-primary/15 hover:text-primary sm:size-7 sm:after:inset-0 [@media(pointer:coarse)]:size-11"
-            onClick={handleSettingsClick}
-            type="button"
-          >
-            <Icon icon={Settings01Icon} size={13} />
-            {socialType === "INSTAGRAM" && automationConfig && (
-              <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-green-500 ring-1 ring-card" />
-            )}
-          </button>
+      <button
+        aria-pressed={selected}
+        className={cn(
+          "group flex min-h-10 items-center gap-2 rounded-lg py-1.5 pr-3 pl-1.5 text-sm outline-none transition-colors hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring/50 [@media(pointer:coarse)]:min-h-11",
+          selected
+            ? "font-medium text-foreground"
+            : "text-muted-foreground hover:text-foreground"
         )}
-      </div>
-
-      <PlatformSettingsDialog
-        isOpen={showSettingsDialog}
-        onClose={() => setShowSettingsDialog(false)}
-        platform={socialType}
-        platformName={name}
-        socialId={account.id}
-      />
+        onClick={handleSelect}
+        title={platformLabel(
+          normalizePlatform(account.platform),
+          account.username
+        )}
+        type="button"
+      >
+        <ChannelMark
+          className={cn(
+            "size-7 transition-[filter,opacity]",
+            !selected &&
+              "opacity-40 grayscale group-hover:opacity-70 group-hover:grayscale-0"
+          )}
+          platform={account.platform}
+        />
+        <span className="max-w-[11rem] truncate">{name}</span>
+      </button>
     </>
   );
 }

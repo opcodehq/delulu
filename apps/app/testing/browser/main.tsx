@@ -11,7 +11,9 @@ import { AnalyticsClient } from "@/features/analytics/analytics-client";
 import ConnectedAccounts from "@/features/connections/connected-accounts";
 import { DashboardClient } from "@/features/dashboard/dashboard-client";
 import { CalendarClient } from "@/features/publishing/calendar/calendar-client";
+import { PostCreator } from "@/features/publishing/editor/post-creator";
 import PostsClient from "@/features/publishing/posts/posts-client";
+import { StoreProvider } from "@/features/publishing/store-provider";
 import { AppShell } from "@/shell/app-shell";
 import { PageLoading } from "@/shell/loading";
 import { ControlPreview } from "@/testing/browser/control-preview";
@@ -70,6 +72,10 @@ function App() {
               <ChartPreview />
             ) : route === "/socials" ? (
               <ConnectedAccounts />
+            ) : route === "/post" ? (
+              <StoreProvider>
+                <PostCreator />
+              </StoreProvider>
             ) : route === "/posts" ? (
               <PostsClient />
             ) : route === "/calendar" ? (

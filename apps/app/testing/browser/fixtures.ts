@@ -16,7 +16,23 @@ const memberships = list(
     role: "owner",
   }))
 );
+const fixtureConnections = [
+  ["connection_x", "TWITTER", "swaraj"],
+  ["connection_linkedin", "LINKEDIN", "Swaraj Bachu"],
+  ["connection_instagram", "INSTAGRAM", "Swaraj"],
+  ["connection_youtube", "YOUTUBE", "Swaraj Human"],
+  ["connection_tiktok", "TIKTOK", "swaraj"],
+].map(([id, platform, displayName]) => ({
+  id,
+  platform,
+  profileId: `${id}_profile`,
+  username: displayName.toLowerCase().replaceAll(" ", ""),
+  displayName,
+  profileImage: null,
+  expiresAt: null,
+}));
 export interface FixtureConfig {
+  connections?: boolean;
   linkedInTargets?: {
     id: string;
     name: string;
@@ -39,6 +55,7 @@ export let pending = 0;
 export function installFixtures() {
   window.fixtureConfig ??= {
     dashboardWarnings: new URLSearchParams(location.search).has("warnings"),
+    connections: new URLSearchParams(location.search).has("accounts"),
   };
   const config = window.fixtureConfig;
   Object.assign(window, { fixtureUnhandled: unhandled });
@@ -178,6 +195,8 @@ export function installFixtures() {
           ],
         },
       ]);
+    } else if (config.connections && url.pathname.endsWith("/connections")) {
+      body = list(fixtureConnections);
     } else if (listEndpoint.test(url.pathname)) {
       body = list();
     } else {

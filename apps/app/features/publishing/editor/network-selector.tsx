@@ -6,6 +6,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@delulu/design-system/components/ui/dropdown-menu";
 import {
@@ -15,7 +16,7 @@ import {
   TooltipTrigger,
 } from "@delulu/design-system/components/ui/tooltip";
 import { Icon } from "@delulu/design-system/providers/icon";
-import { ArrowDown01Icon } from "@delulu/icons";
+import { ArrowDown01Icon, PencilEdit02Icon } from "@delulu/icons";
 import { SocialIcon } from "@/features/publishing/editor/sidebar/social-icon";
 import { getPlatformsInDefault } from "@/features/publishing/platform-rules";
 import {
@@ -112,15 +113,19 @@ export function AlternativeContentSelector() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          aria-label="Choose platform-specific content"
-          className="size-11 rounded-md sm:size-8 [@media(pointer:coarse)]:size-11"
-          size="icon"
+          className="shrink-0 text-muted-foreground [@media(pointer:coarse)]:h-11"
           variant="ghost"
         >
+          <Icon icon={PencilEdit02Icon} size={15} />
+          <span className="hidden sm:inline">Customize per channel</span>
+          <span className="sm:hidden">Customize</span>
           <Icon icon={ArrowDown01Icon} size={12} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-56">
+      <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuLabel className="font-normal text-muted-foreground text-xs">
+          Give a channel its own text and media
+        </DropdownMenuLabel>
         {socialProviders.map((provider) => {
           const isSelected = post.alternativeContent.some(
             (content) => content.socialProvider.socialId === provider.socialId
@@ -148,8 +153,7 @@ export function AlternativeContentSelector() {
                 <Tooltip>
                   <TooltipTrigger asChild>{menuItem}</TooltipTrigger>
                   <TooltipContent>
-                    Cannot create alternative content - this is the only
-                    platform in default
+                    At least one channel has to keep the shared content
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

@@ -1,6 +1,11 @@
 import type { SocialType } from "@delulu/core/publishing/post";
 import { SocialIcon as BaseSocialIcon } from "@delulu/design-system/components/ui/social-icon";
-import type { SupportedSocialPlatform } from "@delulu/design-system/lib/social-config";
+import {
+  type SupportedSocialPlatform,
+  socialBackgroundColors,
+} from "@delulu/design-system/lib/social-config";
+import { cn } from "@delulu/design-system/lib/utils";
+import { normalizePlatform } from "@/features/publishing/social-platform";
 
 interface SocialIconProps {
   type: SocialType;
@@ -20,5 +25,29 @@ export function SocialIcon({ type, className, size = "xs" }: SocialIconProps) {
       size={size}
       type={type as SupportedSocialPlatform}
     />
+  );
+}
+
+/** Brand-colored square mark for a connected account's platform. */
+export function ChannelMark({
+  platform,
+  className,
+}: {
+  platform: string;
+  className?: string;
+}) {
+  const normalized = normalizePlatform(platform);
+  return (
+    <span
+      className={cn(
+        "flex size-6 shrink-0 items-center justify-center rounded-md",
+        normalized ? socialBackgroundColors[normalized] : "bg-muted",
+        className
+      )}
+    >
+      {normalized && (
+        <BaseSocialIcon className="size-3.5 text-white" type={normalized} />
+      )}
+    </span>
   );
 }
