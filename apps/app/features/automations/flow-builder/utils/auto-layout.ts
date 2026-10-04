@@ -234,6 +234,11 @@ function buildLayoutTree(
         node.children.push(btnChild);
       }
     }
+    // An open default path keeps its column (leftmost, like its handle) so
+    // its "+" slot sits clear of the quick-reply branches
+    if (node.children.length > 0 && !step.nextStepId) {
+      node.children.unshift(emptyBranch());
+    }
   }
 
   return node;

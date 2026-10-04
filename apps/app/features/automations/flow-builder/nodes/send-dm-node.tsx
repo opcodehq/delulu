@@ -18,6 +18,13 @@ export function SendDmNode({ data, selected }: NodeProps) {
     btn.type === "quick_reply" && btn.nextStepId ? [index] : []
   );
 
+  // The default path takes the leftmost handle and quick replies spread to
+  // its right, matching the layout's child order, so the "+" slot under the
+  // default handle never overlaps a branch handle
+  const sourceLeft = (position: number) =>
+    ((position + 1) / (branchingIndexes.length + 2)) * 100;
+  const defaultLeft = branchingIndexes.length > 0 ? sourceLeft(0) : 50;
+
   return (
     <FlowNodeCard
       badge={hasReply ? "Replies publicly" : undefined}
@@ -26,18 +33,17 @@ export function SendDmNode({ data, selected }: NodeProps) {
       issue={sendDmIssue(step)?.label}
       kind="send_dm"
       selected={selected}
-      // Branch handles share the bottom edge, so the "+" slot would overlap
-      // them; branch from the button settings instead.
-      slots={
-        branchingIndexes.length > 0
-          ? []
-          : openBranches(step).map((branch) => ({ branch, left: 50 }))
-      }
+      slots={openBranches(step).map((branch) => ({
+        branch,
+        left: defaultLeft,
+        // Tell the default path apart from the quick-reply paths beside it
+        label: branchingIndexes.length > 0 ? "Next" : undefined,
+      }))}
       sources={[
-        { id: "default", left: 50 },
+        { id: "default", left: defaultLeft },
         ...branchingIndexes.map((buttonIndex, i) => ({
           id: `button_${buttonIndex}`,
-          left: ((i + 1) / (branchingIndexes.length + 1)) * 100,
+          left: sourceLeft(i + 1),
           className: "!bg-blue-500",
         })),
       ]}

@@ -221,7 +221,10 @@ export function insertStepAfter(
 
   const parentTrigger = triggers.find((t) => t.id === parentId);
   if (parentTrigger) {
-    oldChildId = parentTrigger.nextStepId;
+    // An unconnected trigger joins the chain the other triggers already share
+    oldChildId =
+      parentTrigger.nextStepId ??
+      triggers.find((t) => t.nextStepId)?.nextStepId;
   }
   const newTriggers = parentTrigger
     ? triggers.map((t) =>

@@ -122,6 +122,10 @@ test("builds a connected branching DM flow from scratch", async ({ page }) => {
 
 test("palette steps attach below the selected step", async ({ page }) => {
   await page.goto("/automations/automation_fixture");
+  // A DM whose quick reply branches still offers its own next step
+  await expect(
+    page.getByRole("button", { name: "Add step to the Next path of Send DM" })
+  ).toBeVisible();
   await page.getByText("Here is the guide you asked for!").click();
   await expect(inspector(page, "Send DM")).toBeVisible();
   await expect(

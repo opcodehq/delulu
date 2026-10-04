@@ -173,8 +173,18 @@ const sampleAutomation = (workspaceId: string) => ({
       type: "send_dm",
       messageTemplate: "Follow us first, then tap below to get the guide.",
       buttons: [
-        { type: "quick_reply", title: "I followed", payload: "followed" },
+        {
+          type: "quick_reply",
+          title: "I followed",
+          payload: "followed",
+          nextStepId: "step_thanks",
+        },
       ],
+    },
+    {
+      id: "step_thanks",
+      type: "send_dm",
+      messageTemplate: "Thanks for the follow! Here is the guide.",
     },
   ],
   notes: [],
