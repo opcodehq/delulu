@@ -5,12 +5,14 @@ import type {
   TriggerStep,
 } from "@/features/automations/flow-builder/utils/flow-types";
 
-const NODE_WIDTH = 280;
-const NODE_HEIGHT = 80;
-const HORIZONTAL_GAP = 60;
-const VERTICAL_GAP = 100;
+/** Every step card renders at this width so parent and child handles line up. */
+export const NODE_WIDTH = 232;
+const NODE_HEIGHT = 92;
+const HORIZONTAL_GAP = 40;
+// Leaves room under open branches for their "+" slot
+const VERTICAL_GAP = 80;
 const TRIGGER_SECTION_Y = 0;
-const STEPS_START_Y = 160;
+const STEPS_START_Y = NODE_HEIGHT + VERTICAL_GAP;
 
 interface LayoutNode {
   id: string;
@@ -90,11 +92,9 @@ export function stepsToFlow(
     // Recursively layout the step tree
     const { layoutNodes, layoutEdges } = layoutStepTree(rootStepId, stepMap);
 
-    // Center the step tree below triggers
-    const treeWidth = getSubtreeWidth(buildLayoutTree(rootStepId, stepMap));
-    const treeOffsetX = -treeWidth / 2 + NODE_WIDTH / 2;
-
-    positionLayoutNodes(layoutNodes, treeOffsetX, STEPS_START_Y);
+    // Children are spread around their parent, so the root sits directly
+    // under the (centered) trigger row
+    positionLayoutNodes(layoutNodes, stepMap, rootStepId, 0, STEPS_START_Y);
 
     for (const n of layoutNodes) {
       positionedIds.add(n.id);
@@ -175,6 +175,11 @@ export function stepsToFlow(
   return { nodes, edges };
 }
 
+/** Placeholder subtree with no node of its own. */
+function emptyBranch(): LayoutNode {
+  return { id: "", width: NODE_WIDTH, height: 0, children: [] };
+}
+
 function buildLayoutTree(
   stepId: string,
   stepMap: Map<string, AutomationStep>,
@@ -198,19 +203,19 @@ function buildLayoutTree(
   };
 
   if (step.type === "condition") {
-    if (step.yesStepId) {
-      const yesChild = buildLayoutTree(step.yesStepId, stepMap, visited);
-      if (yesChild) {
-        yesChild.branch = "yes";
-        node.children.push(yesChild);
-      }
-    }
-    if (step.noStepId) {
-      const noChild = buildLayoutTree(step.noStepId, stepMap, visited);
-      if (noChild) {
-        noChild.branch = "no";
-        node.children.push(noChild);
-      }
+    const yesChild = step.yesStepId
+      ? buildLayoutTree(step.yesStepId, stepMap, visited)
+      : null;
+    const noChild = step.noStepId
+      ? buildLayoutTree(step.noStepId, stepMap, visited)
+      : null;
+    // Keep each branch on its own side: an empty branch still reserves a
+    // column for its "+" slot instead of the other branch sliding under it
+    if (yesChild || noChild) {
+      node.children.push(
+        { ...(yesChild ?? emptyBranch()), branch: "yes" },
+        { ...(noChild ?? emptyBranch()), branch: "no" }
+      );
     }
   } else if (step.type === "send_dm") {
     // Linear chain via nextStepId
@@ -334,87 +339,38 @@ function layoutStepTree(
 }
 
 /**
- * Position nodes using the layout tree structure.
- * Each node is centered over its subtree.
+ * Position nodes using the layout tree structure. Each node is centered over
+ * its subtree, and sibling subtrees get as much width as they need so nested
+ * branches never overlap.
  */
-function positionLayoutNodes(nodes: Node[], startX: number, startY: number) {
+function positionLayoutNodes(
+  nodes: Node[],
+  stepMap: Map<string, AutomationStep>,
+  rootId: string,
+  rootX: number,
+  startY: number
+) {
+  const tree = buildLayoutTree(rootId, stepMap);
+  if (!tree) {
+    return;
+  }
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
-  const positioned = new Set<string>();
 
-  function positionNode(nodeId: string, x: number, currentY: number): number {
-    if (positioned.has(nodeId)) {
-      return currentY;
+  function place(node: LayoutNode, centerX: number, y: number) {
+    const target = nodeMap.get(node.id);
+    if (target) {
+      target.position = { x: centerX - NODE_WIDTH / 2, y };
     }
-    positioned.add(nodeId);
-
-    const node = nodeMap.get(nodeId);
-    if (!node) {
-      return currentY;
-    }
-
-    node.position = { x, y: currentY };
-    const step = node.data.step as AutomationStep;
-
-    if (step.type === "condition") {
-      const nextY = currentY + NODE_HEIGHT + VERTICAL_GAP;
-      const hasYes = step.yesStepId && nodeMap.has(step.yesStepId);
-      const hasNo = step.noStepId && nodeMap.has(step.noStepId);
-
-      if (hasYes && hasNo) {
-        const offset = (NODE_WIDTH + HORIZONTAL_GAP) / 2;
-        const afterYes = positionNode(step.yesStepId!, x - offset, nextY);
-        const afterNo = positionNode(step.noStepId!, x + offset, nextY);
-        return Math.max(afterYes, afterNo);
-      }
-      if (hasYes) {
-        return positionNode(step.yesStepId!, x, nextY);
-      }
-      if (hasNo) {
-        return positionNode(step.noStepId!, x, nextY);
-      }
-      return nextY;
-    }
-
-    if (step.type === "send_dm") {
-      const nextY = currentY + NODE_HEIGHT + VERTICAL_GAP;
-      const buttonBranches = getButtonBranches(step);
-      const allChildren: string[] = [];
-
-      if (step.nextStepId && nodeMap.has(step.nextStepId)) {
-        allChildren.push(step.nextStepId);
-      }
-      for (const branch of buttonBranches) {
-        if (nodeMap.has(branch.nextStepId)) {
-          allChildren.push(branch.nextStepId);
-        }
-      }
-
-      if (allChildren.length === 0) {
-        return nextY;
-      }
-
-      if (allChildren.length === 1) {
-        return positionNode(allChildren[0], x, nextY);
-      }
-
-      // Multiple children: spread horizontally
-      const totalWidth =
-        allChildren.length * NODE_WIDTH +
-        (allChildren.length - 1) * HORIZONTAL_GAP;
-      const childStartX = x - totalWidth / 2 + NODE_WIDTH / 2;
-      let maxY = nextY;
-      for (let i = 0; i < allChildren.length; i++) {
-        const childX = childStartX + i * (NODE_WIDTH + HORIZONTAL_GAP);
-        const afterChild = positionNode(allChildren[i], childX, nextY);
-        maxY = Math.max(maxY, afterChild);
-      }
-      return maxY;
-    }
-
-    return currentY + NODE_HEIGHT + VERTICAL_GAP;
+    const widths = node.children.map(getSubtreeWidth);
+    const total =
+      widths.reduce((sum, width) => sum + width, 0) +
+      Math.max(0, node.children.length - 1) * HORIZONTAL_GAP;
+    let cursor = centerX - total / 2;
+    node.children.forEach((child, i) => {
+      place(child, cursor + widths[i] / 2, y + NODE_HEIGHT + VERTICAL_GAP);
+      cursor += widths[i] + HORIZONTAL_GAP;
+    });
   }
 
-  if (nodes.length > 0) {
-    positionNode(nodes[0].id, startX, startY);
-  }
+  place(tree, rootX + NODE_WIDTH / 2, startY);
 }

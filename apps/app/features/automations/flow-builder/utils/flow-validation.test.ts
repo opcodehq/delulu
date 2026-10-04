@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { TriggerStep } from "@/features/automations/flow-builder/utils/flow-types";
-import { validateFlow } from "@/features/automations/flow-builder/utils/flow-validation";
+import {
+  sendDmIssue,
+  triggerIssue,
+  validateFlow,
+} from "@/features/automations/flow-builder/utils/flow-validation";
 
 const trigger = (overrides: Partial<TriggerStep> = {}): TriggerStep => ({
   id: "trigger-1",
@@ -50,5 +54,45 @@ describe("automation flow validation", () => {
         steps
       ).errors
     ).toEqual([]);
+  });
+});
+
+describe("node issues", () => {
+  it("labels what a trigger is missing", () => {
+    expect(triggerIssue(trigger({ targetPostIds: [] }))?.label).toBe(
+      "Choose posts"
+    );
+    expect(
+      triggerIssue(
+        trigger({ keywordFilter: { operator: "contains", value: " " } })
+      )?.label
+    ).toBe("Add a keyword");
+    expect(triggerIssue(trigger())).toBeUndefined();
+  });
+
+  it("labels what a DM is missing, matching the flow-level message", () => {
+    const empty = { ...steps[0], messageTemplate: " " };
+    expect(sendDmIssue(empty)?.label).toBe("Write a message");
+    expect(validateFlow([trigger()], [empty]).errors).toContain(
+      sendDmIssue(empty)?.message
+    );
+    expect(
+      sendDmIssue({
+        ...steps[0],
+        buttons: [{ type: "url", title: "Open", url: "not a url" }],
+      })?.label
+    ).toBe("Fix the link");
+    expect(sendDmIssue(steps[0])).toBeUndefined();
+  });
+
+  it("reports each kind of DM problem once", () => {
+    const empty = (id: string) => ({ ...steps[0], id, messageTemplate: "" });
+    const errors = validateFlow(
+      [trigger({ nextStepId: "a" })],
+      [{ ...empty("a"), nextStepId: "b" }, empty("b")]
+    ).errors;
+    expect(
+      errors.filter((e) => e === "All Send DM steps must have a message")
+    ).toHaveLength(1);
   });
 });

@@ -10,12 +10,7 @@ import type { AutomationScope } from "@delulu/client";
 import { Button } from "@delulu/design-system/components/ui/button";
 import { useIsMobile } from "@delulu/design-system/hooks/use-mobile";
 import { Icon } from "@delulu/design-system/providers/icon";
-import {
-  Comment01Icon,
-  Edit01Icon,
-  Loading03Icon,
-  MailSend01Icon,
-} from "@delulu/icons";
+import { Loading03Icon } from "@delulu/icons";
 import {
   type Connection,
   type Edge,
@@ -32,12 +27,21 @@ import {
   triggersToResource,
   useAutomationWorkspace,
 } from "@/features/automations/automation-resource";
-import { FlowCanvas } from "@/features/automations/flow-builder/flow-canvas";
+import { FlowActionsProvider } from "@/features/automations/flow-builder/flow-actions";
+import {
+  FlowCanvas,
+  type FocusRequest,
+} from "@/features/automations/flow-builder/flow-canvas";
 import { FlowSidebarPanel } from "@/features/automations/flow-builder/flow-sidebar-panel";
 import { FlowToolbar } from "@/features/automations/flow-builder/flow-toolbar";
 import type { NodePositions } from "@/features/automations/flow-builder/hooks/use-automation-state";
 import { useAutomationState } from "@/features/automations/flow-builder/hooks/use-automation-state";
 import { MobileFlowEditor } from "@/features/automations/flow-builder/mobile-flow-editor";
+import {
+  type AddableStepType,
+  FLOW_NODE_KINDS,
+} from "@/features/automations/flow-builder/step-kinds";
+import { StepPalette } from "@/features/automations/flow-builder/step-palette";
 import { getTemplateBySlug } from "@/features/automations/flow-builder/templates/automation-templates";
 import { TriggerWizard } from "@/features/automations/flow-builder/trigger-wizard/trigger-wizard";
 import { stepsToFlow } from "@/features/automations/flow-builder/utils/auto-layout";
@@ -51,6 +55,8 @@ import {
   createConditionStep,
   createId,
   createSendDmStep,
+  defaultInsertSlot,
+  type StepSlot,
 } from "@/features/automations/flow-builder/utils/step-helpers";
 import { useSubscription } from "@/features/billing/use-subscription";
 import { AppLink as Link } from "@/shell/navigation/app-link";
@@ -86,6 +92,7 @@ function FlowBuilderInner({
   const [isSaving, setIsSaving] = useState(false);
   const [staleEditor, setStaleEditor] = useState(false);
   const [showTriggerWizard, setShowTriggerWizard] = useState(false);
+  const [focusRequest, setFocusRequest] = useState<FocusRequest | null>(null);
   const initializedRef = useRef(false);
   const templateInitRef = useRef(false);
   const loadedAutomationRef = useRef<AutomationResourceView | null>(null);
@@ -178,6 +185,8 @@ function FlowBuilderInner({
     markDirty,
     addTrigger,
     updateTrigger,
+    removeTrigger,
+    insertStepAt,
     updateStepById,
     removeStepById,
     addNote,
@@ -335,23 +344,79 @@ function FlowBuilderInner({
         // Link to existing first step
         addTrigger({ ...trigger, nextStepId: steps[0].id });
       } else {
-        // Auto-create a Send DM step and link it
+        // Auto-create a Send DM step, link it and open it so the user can
+        // write the message straight away
         const dmStep = createSendDmStep();
         addTrigger({ ...trigger, nextStepId: dmStep.id });
         setSteps((prev) => [...prev, dmStep]);
         markDirty();
+        setSelectedStepId(dmStep.id);
+        setFocusRequest({ nodeId: dmStep.id, nonce: Date.now() });
       }
       setShowTriggerWizard(false);
     },
-    [triggers.length, steps, addTrigger, setAutomationMeta, setSteps, markDirty]
+    [
+      triggers.length,
+      steps,
+      addTrigger,
+      setAutomationMeta,
+      setSteps,
+      markDirty,
+      setSelectedStepId,
+    ]
   );
 
-  const handleAddSendDm = useCallback(() => {
-    const newStep = createSendDmStep();
-    setSteps((prev) => [...prev, newStep]);
-    markDirty();
-    setSelectedStepId(newStep.id);
-  }, [setSteps, markDirty, setSelectedStepId]);
+  /** Add a step into the flow (or loose on the canvas without a slot). */
+  const addStepAt = useCallback(
+    (slot: StepSlot | undefined, type: AddableStepType) => {
+      const newStep =
+        type === "send_dm" ? createSendDmStep() : createConditionStep();
+      if (slot) {
+        insertStepAt(slot, newStep);
+      } else {
+        setSteps((prev) => [...prev, newStep]);
+        markDirty();
+      }
+      setSelectedStepId(newStep.id);
+      setFocusRequest({ nodeId: newStep.id, nonce: Date.now() });
+    },
+    [insertStepAt, setSteps, markDirty, setSelectedStepId]
+  );
+
+  const paletteSlot = useMemo(
+    () => defaultInsertSlot(triggers, steps, selectedStepId),
+    [triggers, steps, selectedStepId]
+  );
+
+  const paletteTargetLabel = useMemo(() => {
+    if (!paletteSlot) {
+      return undefined;
+    }
+    const parent =
+      triggers.find((t) => t.id === paletteSlot.parentId) ??
+      steps.find((s) => s.id === paletteSlot.parentId);
+    if (!parent) {
+      return undefined;
+    }
+    const label = FLOW_NODE_KINDS[parent.type].label;
+    if (paletteSlot.branch === "next") {
+      return label;
+    }
+    return `${label} (${paletteSlot.branch === "yes" ? "Yes" : "No"} path)`;
+  }, [paletteSlot, triggers, steps]);
+
+  const flowActions = useMemo(() => ({ addStep: addStepAt }), [addStepAt]);
+
+  const handleAddNextStep = useCallback(
+    (parentId: string, type: AddableStepType) =>
+      addStepAt(defaultInsertSlot(triggers, steps, parentId), type),
+    [addStepAt, triggers, steps]
+  );
+
+  const flowIssues = useMemo(
+    () => validateFlow(triggers, steps).errors,
+    [triggers, steps]
+  );
 
   const handleAddNote = useCallback(() => {
     const note: Note = {
@@ -361,6 +426,7 @@ function FlowBuilderInner({
     };
     addNote(note);
     setSelectedStepId(note.id);
+    setFocusRequest({ nodeId: note.id, nonce: Date.now() });
   }, [addNote, setSelectedStepId]);
 
   const handleNodeDragStop = useCallback(
@@ -512,6 +578,14 @@ function FlowBuilderInner({
       return;
     }
 
+    // A live automation with gaps would fail on real comments
+    if (automationMeta.isActive && flowIssues.length > 0) {
+      toast.error(flowIssues[0], {
+        description: "Fix this before going live, or turn off Live to save it.",
+      });
+      return;
+    }
+
     // Auto-generate name if empty
     let name = automationMeta.name.trim();
     if (!name) {
@@ -577,10 +651,8 @@ function FlowBuilderInner({
           template_slug: templateSlug,
         });
 
+        // The mutation already refreshes every cached automation read
         toast.success("Automation created");
-        await registry.invalidateResources({
-          queryKey: resources.automations.list(scope).queryKey,
-        });
         router.push(`/automations/${created.id}`);
       } else {
         const latest = await registry.fetchResource({
@@ -622,14 +694,6 @@ function FlowBuilderInner({
 
         toast.success("Automation saved");
         resetDirty(triggers, steps, notes, nodePositions);
-        await Promise.all([
-          registry.invalidateResources({
-            queryKey: detailResource.queryKey!,
-          }),
-          registry.invalidateResources({
-            queryKey: resources.automations.list(scope).queryKey,
-          }),
-        ]);
       }
     } catch (error) {
       console.error("Failed to save automation:", error);
@@ -652,6 +716,7 @@ function FlowBuilderInner({
     canManageSocials,
     connectionsQuery.data,
     socialProviders,
+    flowIssues,
     isSaving,
     isNew,
     automationId,
@@ -664,8 +729,6 @@ function FlowBuilderInner({
     router,
     resetDirty,
     registry,
-    resources,
-    scope,
     detailResource,
   ]);
 
@@ -862,66 +925,48 @@ function FlowBuilderInner({
         automationMeta={automationMeta}
         canSave={canManageSocials}
         isDirty={isDirty}
+        isNew={isNew}
         isSaving={isSaving}
+        issues={flowIssues}
         onMetaChange={handleMetaChange}
         onSave={handleSave}
         onToggleActive={handleToggleActive}
       />
-      <div className="relative flex-1">
-        <FlowCanvas
-          edges={edges}
-          nodes={nodes}
-          onConnect={handleConnect}
-          onEdgeDelete={handleEdgeDelete}
-          onNodeClick={handleNodeClick}
-          onNodeDragStop={handleNodeDragStop}
-        />
+      <div className="relative min-h-0 flex-1">
+        <FlowActionsProvider value={canManageSocials ? flowActions : null}>
+          <FlowCanvas
+            edges={edges}
+            focusRequest={focusRequest}
+            nodes={nodes}
+            onConnect={handleConnect}
+            onEdgeDelete={handleEdgeDelete}
+            onNodeClick={handleNodeClick}
+            onNodeDragStop={handleNodeDragStop}
+            onPaneClick={() => setSelectedStepId(null)}
+          />
+        </FlowActionsProvider>
 
-        {/* Action cards at bottom */}
-        <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2">
-          <Button
-            className="gap-1.5 shadow-md"
-            onClick={() => setShowTriggerWizard(true)}
-            size="sm"
-            variant="outline"
-          >
-            <div className="flex h-5 w-5 items-center justify-center rounded bg-gradient-to-br from-purple-500 to-pink-500">
-              <Icon className="text-white" icon={Comment01Icon} size={12} />
-            </div>
-            Add Trigger
-          </Button>
-          <Button
-            className="gap-1.5 shadow-md"
-            onClick={handleAddSendDm}
-            size="sm"
-            variant="outline"
-          >
-            <div className="flex h-5 w-5 items-center justify-center rounded bg-gradient-to-br from-blue-500 to-cyan-500">
-              <Icon className="text-white" icon={MailSend01Icon} size={12} />
-            </div>
-            Add Send DM
-          </Button>
-          <Button
-            className="gap-1.5 shadow-md"
-            onClick={handleAddNote}
-            size="sm"
-            variant="outline"
-          >
-            <div className="flex h-5 w-5 items-center justify-center rounded bg-gradient-to-br from-amber-400 to-orange-400">
-              <Icon className="text-white" icon={Edit01Icon} size={12} />
-            </div>
-            Add Note
-          </Button>
-        </div>
+        {canManageSocials ? (
+          <div className="pointer-events-none absolute top-3 bottom-36 left-3 flex items-start">
+            <StepPalette
+              insertTargetLabel={paletteTargetLabel}
+              onAddNote={handleAddNote}
+              onAddStep={(type) => addStepAt(paletteSlot, type)}
+              onAddTrigger={() => setShowTriggerWizard(true)}
+            />
+          </div>
+        ) : null}
 
         <FlowSidebarPanel
           instagramProviders={instagramProviders}
           isFreePlan={isFreePlan}
           notes={notes}
+          onAddNextStep={canManageSocials ? handleAddNextStep : undefined}
           onClose={() => setSelectedStepId(null)}
           onCreateStepForButton={handleCreateStepForButton}
           onDeleteNote={removeNote}
           onDeleteStep={handleDeleteStep}
+          onDeleteTrigger={removeTrigger}
           onRemoveStepForButton={handleRemoveStepForButton}
           onSocialProviderChange={(id) => {
             setAutomationMeta((prev) => ({ ...prev, socialProviderId: id }));
@@ -938,7 +983,13 @@ function FlowBuilderInner({
       </div>
 
       <TriggerWizard
-        currentSocialProviderId={automationMeta.socialProviderId || undefined}
+        currentSocialProviderId={
+          automationMeta.socialProviderId ||
+          // Nothing to choose between, so skip the account step
+          (instagramProviders.length === 1
+            ? instagramProviders[0]._id
+            : undefined)
+        }
         defaultTriggerType={templateTriggerType}
         instagramProviders={instagramProviders}
         onClose={() => setShowTriggerWizard(false)}

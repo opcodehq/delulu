@@ -8,6 +8,7 @@ import { DesignSystemProvider } from "@delulu/design-system";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { createRoot } from "react-dom/client";
 import { AnalyticsClient } from "@/features/analytics/analytics-client";
+import { FlowBuilder } from "@/features/automations/flow-builder/flow-builder";
 import ConnectedAccounts from "@/features/connections/connected-accounts";
 import { DashboardClient } from "@/features/dashboard/dashboard-client";
 import { OrganizationSettings } from "@/features/organization/organization-settings";
@@ -86,6 +87,10 @@ function App() {
               <PostsClient />
             ) : route === "/calendar" ? (
               <CalendarClient />
+            ) : route === "/automations/new" ? (
+              <FlowBuilder />
+            ) : route.startsWith("/automations/") ? (
+              <FlowBuilder automationId={route.slice("/automations/".length)} />
             ) : route === "/analytics" ? (
               <AnalyticsClient />
             ) : (

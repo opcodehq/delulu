@@ -1,5 +1,6 @@
 import type {
   AutomationStep,
+  SendDmStep,
   TriggerStep,
 } from "@/features/automations/flow-builder/utils/flow-types";
 
@@ -17,6 +18,62 @@ export function isValidUrl(url: string): boolean {
   }
 }
 
+/** What is missing from a single node, with a short label for the canvas. */
+export interface NodeIssue {
+  /** Short label shown on the node. */
+  label: string;
+  /** Full sentence shown in the flow-level issue list. */
+  message: string;
+}
+
+export function triggerIssue(trigger: TriggerStep): NodeIssue | undefined {
+  if (
+    trigger.targetMode === "specific" &&
+    trigger.targetPostIds.length === 0 &&
+    (trigger.pendingPostIds?.length ?? 0) === 0
+  ) {
+    return {
+      label: "Choose posts",
+      message: "Select at least one target post",
+    };
+  }
+  if (
+    trigger.keywordFilter &&
+    trigger.keywordFilter.operator !== "always" &&
+    !trigger.keywordFilter.value?.trim()
+  ) {
+    return {
+      label: "Add a keyword",
+      message: "Keyword filter must have a value when enabled",
+    };
+  }
+  return undefined;
+}
+
+export function sendDmIssue(step: SendDmStep): NodeIssue | undefined {
+  if (!step.messageTemplate.trim()) {
+    return {
+      label: "Write a message",
+      message: "All Send DM steps must have a message",
+    };
+  }
+  for (const btn of step.buttons ?? []) {
+    if (!btn.title.trim()) {
+      return {
+        label: "Name the button",
+        message: "All DM buttons must have a title",
+      };
+    }
+    if (btn.type === "url" && !isValidUrl(btn.url ?? "")) {
+      return {
+        label: "Fix the link",
+        message: "URL buttons must have a valid URL (e.g. https://example.com)",
+      };
+    }
+  }
+  return undefined;
+}
+
 /**
  * Validate step-based flow for completeness before activation.
  */
@@ -31,78 +88,44 @@ export function validateFlow(
     errors.push("At least one trigger is required");
   }
 
-  // 2. Specific targeting must have at least 1 target post
-  for (const trigger of triggers) {
-    if (
-      trigger.targetMode === "specific" &&
-      trigger.targetPostIds.length === 0 &&
-      (trigger.pendingPostIds?.length ?? 0) === 0
-    ) {
-      errors.push("Select at least one target post");
-      break;
-    }
-  }
+  // 2. Each trigger needs targets and a usable keyword filter.
+  // Each kind of problem is reported once, however many nodes have it.
+  const triggerIssues = triggers.flatMap((trigger) => {
+    const issue = triggerIssue(trigger);
+    return issue ? [issue.message] : [];
+  });
+  errors.push(...new Set(triggerIssues));
 
-  // 3. Keyword filter validation: if operator is not "always", value must be set
-  for (const trigger of triggers) {
-    if (
-      trigger.keywordFilter &&
-      trigger.keywordFilter.operator !== "always" &&
-      !trigger.keywordFilter.value?.trim()
-    ) {
-      errors.push("Keyword filter must have a value when enabled");
-      break;
-    }
-  }
-
-  // 4. At least 1 Send DM step
+  // 3. At least 1 Send DM step
   const sendDmSteps = steps.filter((s) => s.type === "send_dm");
   if (sendDmSteps.length === 0) {
     errors.push("Flow must have at least one Send DM step");
   }
 
-  // 5. All Send DM steps must have a message
-  for (const step of sendDmSteps) {
-    if (step.type === "send_dm" && !step.messageTemplate.trim()) {
-      errors.push("All Send DM steps must have a message");
-      break;
-    }
-  }
+  // 4. Every Send DM needs a message and complete buttons
+  const sendDmIssues = sendDmSteps.flatMap((step) => {
+    const issue = step.type === "send_dm" ? sendDmIssue(step) : undefined;
+    return issue ? [issue.message] : [];
+  });
+  errors.push(...new Set(sendDmIssues));
 
-  // 6. URL buttons must have valid URLs and titles
-  // Quick reply buttons with nextStepId must point to valid step IDs
+  // 5. Quick reply buttons with nextStepId must point to valid step IDs
   const stepMap = new Map(steps.map((s) => [s.id, s]));
-  for (const step of sendDmSteps) {
-    if (step.type !== "send_dm" || !step.buttons) {
-      continue;
-    }
-    for (const btn of step.buttons) {
-      if (!btn.title.trim()) {
-        errors.push("All DM buttons must have a title");
-        break;
-      }
-      if (btn.type === "url" && "url" in btn && !isValidUrl(btn.url ?? "")) {
-        errors.push(
-          "URL buttons must have a valid URL (e.g. https://example.com)"
-        );
-        break;
-      }
-      if (
-        btn.type === "quick_reply" &&
-        "nextStepId" in btn &&
-        btn.nextStepId &&
-        !stepMap.has(btn.nextStepId)
-      ) {
-        errors.push("Quick reply button references a non-existent step");
-        break;
-      }
-    }
-    if (errors.length > 0) {
-      break;
-    }
+  const danglingButton = sendDmSteps.some(
+    (step) =>
+      step.type === "send_dm" &&
+      step.buttons?.some(
+        (btn) =>
+          btn.type === "quick_reply" &&
+          btn.nextStepId &&
+          !stepMap.has(btn.nextStepId)
+      )
+  );
+  if (danglingButton) {
+    errors.push("Quick reply button references a non-existent step");
   }
 
-  // 7. Every trigger must lead to at least one Send DM (reachability)
+  // 6. Every trigger must lead to at least one Send DM (reachability)
   for (const trigger of triggers) {
     if (!trigger.nextStepId) {
       errors.push("Every trigger must be connected to at least one step");

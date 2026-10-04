@@ -49,14 +49,18 @@ export function CommentReplyEditor({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <Label>Reply to Comment</Label>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <Label htmlFor="comment-reply-toggle">Reply publicly</Label>
           <p className="text-muted-foreground text-xs">
-            Publicly reply to the comment after sending a DM
+            Also reply under their comment after the DM
           </p>
         </div>
-        <Switch checked={enabled} onCheckedChange={handleToggle} />
+        <Switch
+          checked={enabled}
+          id="comment-reply-toggle"
+          onCheckedChange={handleToggle}
+        />
       </div>
 
       {enabled && (

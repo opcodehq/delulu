@@ -2,7 +2,9 @@
 
 import { Badge } from "@delulu/design-system/components/ui/badge";
 import { Button } from "@delulu/design-system/components/ui/button";
+import { Label } from "@delulu/design-system/components/ui/label";
 import { Skeleton } from "@delulu/design-system/components/ui/skeleton";
+import { Switch } from "@delulu/design-system/components/ui/switch";
 import { cn } from "@delulu/design-system/lib/utils";
 import { Icon } from "@delulu/design-system/providers/icon";
 import {
@@ -12,7 +14,7 @@ import {
   Image02Icon,
   Video02Icon,
 } from "@delulu/icons";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useApiClient } from "@/shell/providers/api-client";
 import { useWorkspace } from "@/shell/providers/workspace";
 import { useMutationAtom } from "@/shell/state/resources";
@@ -64,6 +66,7 @@ export function PostSelector({
   triggerType,
 }: PostSelectorProps) {
   const isStoryMode = triggerType === "STORY_REPLY";
+  const allModeId = useId();
   const { resources } = useApiClient();
   const { workspaceId } = useWorkspace();
   const [items, setItems] = useState<MediaItem[]>([]);
@@ -236,46 +239,29 @@ export function PostSelector({
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <button
-          aria-pressed={targetMode === "specific"}
-          className={cn(
-            "min-h-16 rounded-xl border p-3 text-left transition-colors",
-            targetMode === "specific"
-              ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-              : "hover:border-muted-foreground/50"
-          )}
-          onClick={() => onTargetModeChange("specific")}
-          type="button"
-        >
-          <span className="block font-medium text-sm">
-            Specific {itemLabel}
-          </span>
-          <span className="mt-1 block text-muted-foreground text-xs">
-            Choose one or more items below
-          </span>
-        </button>
-        <button
-          aria-pressed={targetMode === "all"}
-          className={cn(
-            "min-h-16 rounded-xl border p-3 text-left transition-colors",
-            targetMode === "all"
-              ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-              : "hover:border-muted-foreground/50"
-          )}
-          onClick={() => {
-            onTargetModeChange("all");
-            onSelectionChange([]);
-          }}
-          type="button"
-        >
-          <span className="block font-medium text-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <Label htmlFor={allModeId}>
             Any current or future {isStoryMode ? "story" : "post"}
-          </span>
-          <span className="mt-1 block text-muted-foreground text-xs">
-            Trigger automatically without choosing items
-          </span>
-        </button>
+          </Label>
+          <p className="text-muted-foreground text-xs">
+            {targetMode === "all"
+              ? "No need to pick anything."
+              : `Or pick one or more ${itemLabel} below.`}
+          </p>
+        </div>
+        <Switch
+          checked={targetMode === "all"}
+          id={allModeId}
+          onCheckedChange={(checked) => {
+            if (checked) {
+              onTargetModeChange("all");
+              onSelectionChange([]);
+            } else {
+              onTargetModeChange("specific");
+            }
+          }}
+        />
       </div>
 
       {loadError && (

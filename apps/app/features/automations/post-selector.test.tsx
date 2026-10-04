@@ -10,7 +10,6 @@ import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PostSelector } from "@/features/automations/post-selector";
 
-const SPECIFIC_MODE_NAME = /Specific posts and Reels/i;
 const ALL_MODE_NAME = /Any current or future post/i;
 const SCHEDULED_UNAVAILABLE = /scheduled posts are temporarily unavailable/i;
 
@@ -118,10 +117,8 @@ describe("DM automation post selector", () => {
   it("defaults to an empty specific selection and uses one tile indicator", async () => {
     render(<Harness />);
 
-    const specific = await screen.findByRole("button", {
-      name: SPECIFIC_MODE_NAME,
-    });
-    expect(specific.getAttribute("aria-pressed")).toBe("true");
+    const all = await screen.findByRole("switch", { name: ALL_MODE_NAME });
+    expect(all.getAttribute("aria-checked")).toBe("false");
     expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
 
     const tile = screen.getByRole("button", {
@@ -149,12 +146,10 @@ describe("DM automation post selector", () => {
 
   it("switches explicitly to all current and future posts", async () => {
     render(<Harness />);
-    const all = await screen.findByRole("button", {
-      name: ALL_MODE_NAME,
-    });
+    const all = await screen.findByRole("switch", { name: ALL_MODE_NAME });
     fireEvent.click(all);
 
-    expect(all.getAttribute("aria-pressed")).toBe("true");
+    expect(all.getAttribute("aria-checked")).toBe("true");
     expect(
       screen.queryByRole("button", { name: "Select Latest launch" })
     ).toBeNull();
