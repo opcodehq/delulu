@@ -1,58 +1,49 @@
 "use client";
 
-import { Icon } from "@delulu/design-system/providers/icon";
-import { Comment01Icon } from "@delulu/icons";
-import { Handle, type NodeProps, Position } from "@xyflow/react";
+import type { NodeProps } from "@xyflow/react";
+import { FlowNodeCard } from "@/features/automations/flow-builder/nodes/flow-node-card";
+import { TRIGGER_TYPE_LABELS } from "@/features/automations/flow-builder/step-kinds";
 import type { TriggerStep } from "@/features/automations/flow-builder/utils/flow-types";
+import { triggerIssue } from "@/features/automations/flow-builder/utils/flow-validation";
+import { openBranches } from "@/features/automations/flow-builder/utils/step-helpers";
 
-const TRIGGER_LABELS: Record<string, string> = {
-  COMMENT: "Post or Reel Comments",
-  MENTION: "Mentions",
-  STORY_REPLY: "Story Replies",
-};
+function describeTargets(trigger: TriggerStep) {
+  if (trigger.targetMode === "all") {
+    return trigger.triggerType === "STORY_REPLY" ? "Any story" : "Any post";
+  }
+  const count =
+    trigger.targetPostIds.length + (trigger.pendingPostIds?.length ?? 0);
+  const noun = trigger.triggerType === "STORY_REPLY" ? "story" : "post";
+  if (count === 0) {
+    return `No ${noun} selected`;
+  }
+  const plural = noun === "story" ? "stories" : "posts";
+  return `${count} ${count === 1 ? noun : plural}`;
+}
+
+function describeKeyword(trigger: TriggerStep) {
+  const filter = trigger.keywordFilter;
+  if (!filter || filter.operator === "always") {
+    return trigger.triggerType === "STORY_REPLY" ? "any reply" : "any comment";
+  }
+  return filter.value?.trim() ? `keyword “${filter.value.trim()}”` : "keyword";
+}
 
 export function TriggerNode({ data, selected }: NodeProps) {
   const trigger = data.step as TriggerStep;
-  const postCount = trigger.targetPostIds.length;
-
-  const hasKeywordFilter =
-    trigger.keywordFilter && trigger.keywordFilter.operator !== "always";
-  const keywordLabel = hasKeywordFilter
-    ? `keyword: ${trigger.keywordFilter!.value || "..."}`
-    : "any comment";
 
   return (
-    <div
-      className={`rounded-xl border px-4 py-3 shadow-sm transition-all ${
-        selected
-          ? "border-purple-500 bg-purple-500/10 ring-1 ring-purple-500/30"
-          : "border-border bg-card hover:border-purple-400/50"
-      }`}
-      style={{ minWidth: 240 }}
-    >
-      <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-500/15">
-          <Icon className="text-purple-500" icon={Comment01Icon} size={18} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="font-medium text-sm">
-            {TRIGGER_LABELS[trigger.triggerType] || trigger.triggerType}
-          </p>
-          <p className="truncate text-muted-foreground text-xs">
-            {trigger.targetMode === "all"
-              ? `Any current or future post | ${keywordLabel}`
-              : postCount === 0
-                ? "No posts selected"
-                : `${postCount} post${postCount === 1 ? "" : "s"} | ${keywordLabel}`}
-          </p>
-        </div>
-      </div>
-      <Handle
-        className="!bg-purple-500"
-        id="default"
-        position={Position.Bottom}
-        type="source"
-      />
-    </div>
+    <FlowNodeCard
+      badge="Start"
+      description={`${describeTargets(trigger)} · ${describeKeyword(trigger)}`}
+      hasTarget={false}
+      id={trigger.id}
+      issue={triggerIssue(trigger)?.label}
+      kind="trigger"
+      selected={selected}
+      slots={openBranches(trigger).map((branch) => ({ branch, left: 50 }))}
+      sources={[{ id: "default", left: 50 }]}
+      title={TRIGGER_TYPE_LABELS[trigger.triggerType] ?? trigger.triggerType}
+    />
   );
 }

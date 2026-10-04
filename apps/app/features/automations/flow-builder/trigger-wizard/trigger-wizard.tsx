@@ -186,7 +186,7 @@ export function TriggerWizard({
           )}
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter>
           {((wizardStep === "trigger_type" && !skipAccount) ||
             wizardStep === "posts" ||
             wizardStep === "keyword_filter") && (

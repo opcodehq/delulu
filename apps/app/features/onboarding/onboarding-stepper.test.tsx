@@ -335,7 +335,8 @@ describe("OnboardingStepper", () => {
         optionalSteps: { ready: "completed" },
       })
     );
-    expect(screen.getByText("Choose your plan")).toBeTruthy();
+    // The plan step renders once the setup update resolves, not when it starts
+    expect(await screen.findByText("Choose your plan")).toBeTruthy();
     expect(
       (screen.getByRole("button", { name: CHOOSE_PLAN }) as HTMLButtonElement)
         .disabled

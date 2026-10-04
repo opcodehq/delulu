@@ -8,15 +8,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@delulu/design-system/components/ui/select";
+import { CONDITION_LABELS } from "@/features/automations/flow-builder/step-kinds";
 import type {
   AutomationConditionOperator,
   ConditionStep,
 } from "@/features/automations/flow-builder/utils/flow-types";
 
-const OPERATORS = [
-  { value: "is_follower", label: "User follows you" },
-  { value: "has_email", label: "User is a contact" },
-];
+const OPERATORS = Object.entries(CONDITION_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
 
 function getConditionDescription(operator: string): string {
   switch (operator) {

@@ -11,6 +11,7 @@ import {
   insertStepAfter,
   removeStep,
   removeStepFromTriggers,
+  type StepSlot,
   updateStep,
 } from "@/features/automations/flow-builder/utils/step-helpers";
 
@@ -82,17 +83,13 @@ export function useAutomationState() {
   );
 
   // Step operations
-  const addStepAfterSync = useCallback(
-    (
-      parentId: string,
-      branch: "next" | "yes" | "no",
-      newStep: AutomationStep
-    ) => {
+  const insertStepAt = useCallback(
+    (slot: StepSlot, newStep: AutomationStep) => {
       const result = insertStepAfter(
         triggers,
         steps,
-        parentId,
-        branch,
+        slot.parentId,
+        slot.branch,
         newStep
       );
       setTriggers(result.triggers);
@@ -181,7 +178,7 @@ export function useAutomationState() {
     addTrigger,
     updateTrigger,
     removeTrigger,
-    addStepAfterSync,
+    insertStepAt,
     updateStepById,
     removeStepById,
     addNote,

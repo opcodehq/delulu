@@ -461,7 +461,7 @@ export function ApiKeysClient() {
                 </div>
               </div>
 
-              <DialogFooter className="gap-2 sm:gap-0">
+              <DialogFooter>
                 <Button onClick={handleCloseCreate} variant="ghost">
                   Cancel
                 </Button>
@@ -487,7 +487,7 @@ export function ApiKeysClient() {
               using it will lose access.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter>
             <Button onClick={() => setShowRevoke(null)} variant="ghost">
               Cancel
             </Button>

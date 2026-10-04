@@ -23,7 +23,7 @@ const workspaceDetailPath = /^\/v1\/workspaces\/(workspace_[ab])$/;
 const fixtureConnections = [
   ["connection_x", "TWITTER", "swaraj"],
   ["connection_linkedin", "LINKEDIN", "Swaraj Bachu"],
-  ["connection_instagram", "INSTAGRAM", "Swaraj"],
+  ["connection_insta0000001", "INSTAGRAM", "Swaraj"],
   ["connection_youtube", "YOUTUBE", "Swaraj Human"],
   ["connection_tiktok", "TIKTOK", "swaraj"],
 ].map(([id, platform, displayName]) => ({
@@ -127,6 +127,74 @@ const shareFailures: Record<string, { status: number; body: unknown }> = {
     body: errorBody("ForbiddenError", "Members only"),
   },
 };
+const automationPath =
+  /^\/v1\/workspaces\/workspace_[ab]\/automations\/instagram\/dm(?:\/([^/]+))?$/;
+const connectionMediaPath =
+  /^\/v1\/workspaces\/workspace_[ab]\/connections\/([^/]+)\/media$/;
+/** A saved comment-to-DM flow with a follower check and a quick reply. */
+const sampleAutomation = (workspaceId: string) => ({
+  id: "automation_fixture",
+  workspaceId,
+  connectionId: "connection_insta0000001",
+  platform: "instagram",
+  category: "dm",
+  name: "Guide giveaway",
+  description: null,
+  enabled: false,
+  triggers: [
+    {
+      id: "trigger_fixture",
+      type: "trigger",
+      triggerType: "comment",
+      targetMode: "all",
+      targetPostIds: [],
+      keywordFilter: { operator: "contains", value: "GUIDE" },
+      nextStepId: "step_follow",
+    },
+  ],
+  steps: [
+    {
+      id: "step_follow",
+      type: "condition",
+      operator: "is_follower",
+      yesStepId: "step_link",
+      noStepId: "step_ask",
+    },
+    {
+      id: "step_link",
+      type: "send_dm",
+      messageTemplate: "Here is the guide you asked for!",
+      buttons: [
+        { type: "url", title: "Open guide", url: "https://example.com/guide" },
+      ],
+    },
+    {
+      id: "step_ask",
+      type: "send_dm",
+      messageTemplate: "Follow us first, then tap below to get the guide.",
+      buttons: [
+        {
+          type: "quick_reply",
+          title: "I followed",
+          payload: "followed",
+          nextStepId: "step_thanks",
+        },
+      ],
+    },
+    {
+      id: "step_thanks",
+      type: "send_dm",
+      messageTemplate: "Thanks for the follow! Here is the guide.",
+    },
+  ],
+  notes: [],
+  nodePositions: {},
+  totalTriggered: 0,
+  totalDmsSent: 0,
+  totalFailed: 0,
+  createdAt: now,
+  updatedAt: now,
+});
 const shareViewPath = /^\/v1\/(public\/)?shares\/([^/]+)(\/comments)?$/;
 const shareLinkPath =
   /^\/v1\/workspaces\/workspace_[ab]\/posts\/([^/]+)\/share$/;
@@ -154,6 +222,8 @@ export interface FixtureConfig {
   failures?: Record<string, number>;
   workspaceLatency?: Record<string, number>;
   totalPosts?: Record<string, number>;
+  /** Writes made through the automation editor, newest last. */
+  automationWrites?: { method: string; body: unknown }[];
 }
 declare global {
   interface Window {
@@ -212,6 +282,7 @@ export function installFixtures() {
     let body: unknown;
     let status = 200;
     const shareView = shareViewPath.exec(url.pathname);
+    const automation = automationPath.exec(url.pathname);
     const shareManage = shareLinkPath.exec(url.pathname);
     if (shareView) {
       const [, isPublic, token, comments] = shareView;
@@ -279,6 +350,20 @@ export function installFixtures() {
       } else {
         body = shareLink;
       }
+    } else if (
+      automation &&
+      (method === "POST" || (method === "PATCH" && automation[1])) &&
+      automation[1] !== "runs" &&
+      automation[1] !== "inbox"
+    ) {
+      const payload = jsonBody(init?.body);
+      config.automationWrites = [
+        ...(config.automationWrites ?? []),
+        { method, body: payload },
+      ];
+      body = { ...sampleAutomation(workspaceId), ...payload };
+    } else if (automation?.[1] === "automation_fixture" && method === "GET") {
+      body = sampleAutomation(workspaceId);
     } else if (workspaceDetailPath.test(url.pathname)) {
       const id = workspaceDetailPath.exec(url.pathname)?.[1] ?? "";
       const team = id === "workspace_a" ? config.team : undefined;
@@ -382,7 +467,7 @@ export function installFixtures() {
           targets: [
             {
               id: "target_failed",
-              connectionId: "connection_instagram",
+              connectionId: "connection_insta0000001",
               groupId: "group_default",
               settings: {
                 platform: "THREADS",
@@ -399,6 +484,24 @@ export function installFixtures() {
           ],
         },
       ]);
+    } else if (connectionMediaPath.test(url.pathname)) {
+      body = {
+        data:
+          url.searchParams.get("kind") === "stories"
+            ? []
+            : [
+                {
+                  id: "media_reel",
+                  caption: "Three hooks that doubled our saves",
+                  mediaType: "VIDEO",
+                  timestamp: now,
+                  permalink: null,
+                  thumbnailUrl: null,
+                  mediaUrl: null,
+                },
+              ],
+        nextCursor: null,
+      };
     } else if (config.connections && url.pathname.endsWith("/connections")) {
       body = list(fixtureConnections);
     } else if (listEndpoint.test(url.pathname)) {

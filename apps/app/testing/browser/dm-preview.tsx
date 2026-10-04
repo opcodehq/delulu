@@ -10,27 +10,32 @@ export function DmPreview() {
     buttons: [{ type: "url", title: "Get content", url: "" }],
   });
   return (
-    <FlowSidebarPanel
-      instagramProviders={[]}
-      notes={[]}
-      onClose={() => undefined}
-      onDeleteStep={() => undefined}
-      onSocialProviderChange={() => undefined}
-      onUpdateStep={(_, patch) => setStep({ ...step, ...patch } as SendDmStep)}
-      onUpdateTrigger={() => undefined}
-      selectedId="dm"
-      socialProviderId="connection_instagram"
-      steps={[step]}
-      triggers={[
-        {
-          id: "trigger",
-          type: "trigger",
-          triggerType: "COMMENT",
-          targetMode: "all",
-          targetPostIds: [],
-          nextStepId: "dm",
-        },
-      ]}
-    />
+    // The inspector docks inside the editor canvas, which is positioned
+    <div className="relative h-[calc(100dvh-4rem)]">
+      <FlowSidebarPanel
+        instagramProviders={[]}
+        notes={[]}
+        onClose={() => undefined}
+        onDeleteStep={() => undefined}
+        onSocialProviderChange={() => undefined}
+        onUpdateStep={(_, patch) =>
+          setStep({ ...step, ...patch } as SendDmStep)
+        }
+        onUpdateTrigger={() => undefined}
+        selectedId="dm"
+        socialProviderId="connection_insta0000001"
+        steps={[step]}
+        triggers={[
+          {
+            id: "trigger",
+            type: "trigger",
+            triggerType: "COMMENT",
+            targetMode: "all",
+            targetPostIds: [],
+            nextStepId: "dm",
+          },
+        ]}
+      />
+    </div>
   );
 }

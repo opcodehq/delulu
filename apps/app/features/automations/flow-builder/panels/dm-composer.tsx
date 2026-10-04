@@ -1,5 +1,12 @@
 "use client";
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@delulu/design-system/components/ui/select";
 import { cn } from "@delulu/design-system/lib/utils";
 import { Icon } from "@delulu/design-system/providers/icon";
 import { Add01Icon, Cancel01Icon, Link01Icon } from "@delulu/icons";
@@ -130,52 +137,41 @@ export function DmComposer({
                 </div>
 
                 {/* Action selector */}
-                <div className="flex flex-wrap items-center gap-2 px-1">
-                  <span className="text-[10px] text-muted-foreground">
-                    When tapped:
+                <div className="flex items-center gap-2 px-1">
+                  <span className="shrink-0 text-muted-foreground text-xs">
+                    When tapped
                   </span>
-                  <div className="flex rounded-full bg-background/60 p-0.5 dark:bg-neutral-700/60">
-                    <button
-                      className={cn(
-                        "rounded-full px-2.5 py-0.5 font-medium text-[10px] transition-colors",
-                        btn.type === "quick_reply"
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : "text-muted-foreground"
-                      )}
-                      onClick={() => {
-                        const newButtons = [...(step.buttons ?? [])];
-                        newButtons[i] = {
-                          type: "quick_reply",
-                          title: btn.title,
-                          payload: nanoid(10),
-                        };
-                        onChange({ ...step, buttons: newButtons });
-                      }}
-                      type="button"
+                  <Select
+                    onValueChange={(value) => {
+                      const newButtons = [...(step.buttons ?? [])];
+                      newButtons[i] =
+                        value === "url"
+                          ? {
+                              type: "url",
+                              title: btn.title,
+                              url: btn.type === "url" ? btn.url : "",
+                            }
+                          : {
+                              type: "quick_reply",
+                              title: btn.title,
+                              payload: nanoid(10),
+                            };
+                      onChange({ ...step, buttons: newButtons });
+                    }}
+                    value={btn.type}
+                  >
+                    <SelectTrigger
+                      aria-label={`When ${btn.title || "button"} is tapped`}
+                      className="flex-1"
+                      size="sm"
                     >
-                      Send reply
-                    </button>
-                    <button
-                      className={cn(
-                        "rounded-full px-2.5 py-0.5 font-medium text-[10px] transition-colors",
-                        btn.type === "url"
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : "text-muted-foreground"
-                      )}
-                      onClick={() => {
-                        const newButtons = [...(step.buttons ?? [])];
-                        newButtons[i] = {
-                          type: "url",
-                          title: btn.title,
-                          url: btn.type === "url" ? btn.url : "",
-                        };
-                        onChange({ ...step, buttons: newButtons });
-                      }}
-                      type="button"
-                    >
-                      Open link
-                    </button>
-                  </div>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="quick_reply">Send a reply</SelectItem>
+                      <SelectItem value="url">Open a link</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* URL input */}
