@@ -96,10 +96,17 @@ export const automationFromResource = (
 };
 
 export const triggersToResource = (triggers: readonly TriggerStep[]) =>
-  triggers.map((trigger) => ({
-    ...trigger,
-    triggerType: triggerToResource(trigger.triggerType),
-  }));
+  triggers.map((trigger) => {
+    const selected = trigger.targetMode === "all" ? [] : trigger.targetPostIds;
+    return {
+      ...trigger,
+      triggerType: triggerToResource(trigger.triggerType),
+      targetPostIds: selected.filter((id) => !id.startsWith("pending:")),
+      pendingPostIds: selected
+        .filter((id) => id.startsWith("pending:"))
+        .map((id) => id.slice("pending:".length)),
+    };
+  });
 
 const canonicalNodePositions = (
   positions: AutomationResourceView["nodePositions"]

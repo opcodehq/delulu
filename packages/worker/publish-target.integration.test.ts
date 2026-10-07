@@ -1,5 +1,6 @@
 import type { runPublish } from "@delulu/connections/worker";
 import {
+  AutomationId,
   ConnectionId,
   JobId,
   MediaId,
@@ -94,6 +95,7 @@ const seed = (text: string, withThumbnail = false) =>
       VALUES (${targetId}, ${postId}, ${connectionId}, ${groupId}, ${JSON.stringify({ platform: "TWITTER", values: {} })}::jsonb, 'pending')`;
       return {
         sql,
+        connectionId,
         workspaceId,
         jobId,
         targetId,
@@ -105,6 +107,106 @@ const seed = (text: string, withThumbnail = false) =>
   );
 
 describe("Durable publish outcomes", () => {
+  it.each([
+    false,
+    true,
+  ])("resolves pending automation targets without publishing twice (saved outcome: %s)", async (savedOutcome) => {
+    const seeded = await seed("pending automation target", true);
+    const automationId = makeId(AutomationId);
+    const otherPostId = makeId(PostId);
+    const triggers = [
+      {
+        id: "trigger_pending",
+        type: "trigger",
+        triggerType: "comment",
+        targetMode: "specific",
+        targetPostIds: ["remote-existing"],
+        pendingPostIds: [seeded.postId, otherPostId],
+      },
+      {
+        id: "trigger_other",
+        type: "trigger",
+        triggerType: "comment",
+        targetMode: "specific",
+        targetPostIds: ["remote-other"],
+        pendingPostIds: [otherPostId],
+      },
+    ];
+    const result = {
+      platformPostId: "remote-automation",
+      platformPostUrl: "https://example.test/remote-automation",
+      platformId: "INSTAGRAM",
+      postId: seeded.postId,
+      postedAt: new Date(),
+    };
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient;
+        yield* sql`UPDATE connections SET platform = 'INSTAGRAM' WHERE id = ${seeded.connectionId}`;
+        yield* sql`INSERT INTO automations
+            (id, workspace_id, connection_id, platform, category, triggers)
+            VALUES (${automationId}, ${seeded.workspaceId}, ${seeded.connectionId}, 'instagram', 'dm', ${JSON.stringify(triggers)}::jsonb)`;
+        if (savedOutcome) {
+          yield* sql`UPDATE post_targets SET status = 'publishing',
+              provider_state = ${JSON.stringify({ executionOutcome: { status: "PUBLISHED", result } })}::jsonb
+              WHERE id = ${seeded.targetId}`;
+        }
+      }).pipe(Effect.provide(Pg))
+    );
+    const followupsBefore = followups.length;
+    let calls = 0;
+    const publisher: typeof runPublish = async () => {
+      calls++;
+      return { status: "PUBLISHED", result };
+    };
+    await execute(seeded, publisher);
+    await execute(seeded, publisher);
+    expect(calls).toBe(savedOutcome ? 0 : 1);
+
+    const state = await Effect.runPromise(
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient;
+        const targets = yield* sql<{
+          status: string;
+          postStatus: string;
+          platformPostId: string;
+        }>`
+            SELECT t.status, p.status AS post_status, t.platform_post_id
+            FROM post_targets t JOIN posts p ON p.id = t.post_id WHERE t.id = ${seeded.targetId}`;
+        const automations = yield* sql<{ triggers: typeof triggers }>`
+            SELECT triggers FROM automations WHERE id = ${automationId}`;
+        const index = yield* sql<{ mediaId: string; enabled: boolean }>`
+            SELECT media_id, enabled FROM automation_trigger_index WHERE automation_id = ${automationId}`;
+        return { target: targets[0], automation: automations[0], index };
+      }).pipe(Effect.provide(Pg))
+    );
+    expect(state.target).toMatchObject({
+      status: "published",
+      postStatus: "published",
+      platformPostId: result.platformPostId,
+    });
+    expect(state.automation.triggers).toEqual([
+      {
+        ...triggers[0],
+        targetPostIds: ["remote-existing", result.platformPostId],
+        pendingPostIds: [otherPostId],
+      },
+      triggers[1],
+    ]);
+    expect(state.index).toEqual([
+      { mediaId: result.platformPostId, enabled: true },
+    ]);
+    expect(followups.slice(followupsBefore)).toContainEqual(
+      expect.objectContaining({
+        workspaceId: seeded.workspaceId,
+        payload: expect.objectContaining({
+          _tag: "RepairAutomation",
+          mediaId: result.platformPostId,
+        }),
+      })
+    );
+  });
+
   it("passes a post-specific thumbnail image to the publisher", async () => {
     const seeded = await seed("publish with cover", true);
     let receivedThumbnail: string | undefined;

@@ -13,7 +13,12 @@ interface AutomationWrite {
   method: string;
   body: {
     enabled?: boolean;
-    triggers: { nextStepId?: string }[];
+    triggers: {
+      nextStepId?: string;
+      targetMode: "specific" | "all";
+      targetPostIds: string[];
+      pendingPostIds?: string[];
+    }[];
     steps: WrittenStep[];
   };
 }
@@ -139,7 +144,7 @@ test("palette steps attach below the selected step", async ({ page }) => {
   await expect(inspector(page, "Condition")).toBeVisible();
 
   // The inspector does not block the canvas or the toolbar
-  await page.getByRole("button", { name: "Save" }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect.poll(async () => (await writes(page)).length).toBe(1);
   const [{ method, body }] = await writes(page);
   expect(method).toBe("PATCH");
@@ -147,5 +152,74 @@ test("palette steps attach below the selected step", async ({ page }) => {
   const added = body.steps.find((step) => step.id === link?.nextStepId);
   expect(added).toMatchObject({ type: "condition" });
   await expect(page.getByText("Automation saved")).toBeVisible();
+  await settled(page);
+});
+
+test("replaces a pending post with a live reel when saving", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.fixtureConfig = { connections: true, automationPendingPost: true };
+  });
+  await page.goto("/automations/automation_fixture");
+  await page.getByText("Post or Reel comments", { exact: true }).click();
+  const trigger = inspector(page, "Trigger");
+  await trigger
+    .getByRole("button", { name: "Unselect scheduled post" })
+    .click();
+  await trigger
+    .getByRole("button", { name: "Select Three hooks that doubled our saves" })
+    .click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect.poll(async () => (await writes(page)).length).toBe(1);
+  expect((await writes(page))[0].body.triggers[0]).toMatchObject({
+    targetMode: "specific",
+    targetPostIds: ["media_reel"],
+    pendingPostIds: [],
+  });
+  await expect(page.getByText("Automation saved")).toBeVisible();
+  await settled(page);
+});
+
+test("switches a pending automation to all posts without restoring the old target", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.fixtureConfig = { connections: true, automationPendingPost: true };
+  });
+  await page.goto("/automations/automation_fixture");
+  await page.getByText("Post or Reel comments", { exact: true }).click();
+  const trigger = inspector(page, "Trigger");
+  await trigger.getByRole("switch", { name: ANY_POST }).click();
+  await expect(trigger.getByRole("switch", { name: ANY_POST })).toBeChecked();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect.poll(async () => (await writes(page)).length).toBe(1);
+  expect((await writes(page))[0].body.triggers[0]).toMatchObject({
+    targetMode: "all",
+    targetPostIds: [],
+    pendingPostIds: [],
+  });
+  await expect(page.getByText("Automation saved")).toBeVisible();
+  await settled(page);
+});
+
+test("requires a new selection after removing the only pending target", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.fixtureConfig = { connections: true, automationPendingPost: true };
+  });
+  await page.goto("/automations/automation_fixture");
+  await page.getByRole("switch", { name: "Live", exact: true }).click();
+  await page.getByText("Post or Reel comments", { exact: true }).click();
+  await inspector(page, "Trigger")
+    .getByRole("button", { name: "Unselect scheduled post" })
+    .click();
+  await expect(page.getByRole("button", { name: "1 to fix" })).toBeVisible();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(
+    page.getByText("Select at least one target post", { exact: true })
+  ).toBeVisible();
+  expect(await writes(page)).toEqual([]);
   await settled(page);
 });
