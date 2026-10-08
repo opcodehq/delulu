@@ -263,6 +263,7 @@ function FlowBuilderInner({
         ...trigger.targetPostIds,
         ...(trigger.pendingPostIds ?? []).map((id: string) => `pending:${id}`),
       ],
+      pendingPostIds: undefined,
     }));
     setTriggers(loadedTriggers);
     setSteps(automation.steps);
@@ -604,26 +605,7 @@ function FlowBuilderInner({
       name = `${typeLabel}${keywordPart} → DM`;
     }
 
-    // Split pending: prefixed IDs from real targetPostIds
-    const processedTriggers = triggers.map((trigger) => {
-      const pendingIds: string[] = [];
-      const realIds: string[] = [];
-      for (const id of trigger.targetPostIds) {
-        if (id.startsWith("pending:")) {
-          pendingIds.push(id.slice("pending:".length));
-        } else {
-          realIds.push(id);
-        }
-      }
-      return {
-        ...trigger,
-        targetPostIds: realIds,
-        pendingPostIds:
-          pendingIds.length > 0
-            ? pendingIds
-            : (trigger.pendingPostIds ?? undefined),
-      };
-    });
+    const processedTriggers = triggersToResource(triggers);
 
     submitRef.current = true;
     setIsSaving(true);
@@ -634,7 +616,7 @@ function FlowBuilderInner({
           name,
           description: automationMeta.description.trim() || null,
           enabled: automationMeta.isActive,
-          triggers: triggersToResource(processedTriggers),
+          triggers: processedTriggers,
           steps,
           notes,
           nodePositions,
@@ -644,7 +626,7 @@ function FlowBuilderInner({
           automation_id: created.id,
           trigger_count: processedTriggers.length,
           step_count: steps.length,
-          trigger_types: processedTriggers.map((t) => t.triggerType),
+          trigger_types: triggers.map((t) => t.triggerType),
           step_types: steps.map((s) => s.type),
           is_active: automationMeta.isActive,
           from_template: !!templateSlug,
@@ -676,7 +658,7 @@ function FlowBuilderInner({
           name,
           description: automationMeta.description.trim() || null,
           enabled: automationMeta.isActive,
-          triggers: triggersToResource(processedTriggers),
+          triggers: processedTriggers,
           steps,
           notes,
           nodePositions,
@@ -687,7 +669,7 @@ function FlowBuilderInner({
           automation_id: automationId,
           trigger_count: processedTriggers.length,
           step_count: steps.length,
-          trigger_types: processedTriggers.map((t) => t.triggerType),
+          trigger_types: triggers.map((t) => t.triggerType),
           step_types: steps.map((s) => s.type),
           is_active: automationMeta.isActive,
         });

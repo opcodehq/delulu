@@ -255,8 +255,8 @@ export function PostSelector({
           id={allModeId}
           onCheckedChange={(checked) => {
             if (checked) {
-              onTargetModeChange("all");
               onSelectionChange([]);
+              onTargetModeChange("all");
             } else {
               onTargetModeChange("specific");
             }

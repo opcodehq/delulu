@@ -132,7 +132,7 @@ const automationPath =
 const connectionMediaPath =
   /^\/v1\/workspaces\/workspace_[ab]\/connections\/([^/]+)\/media$/;
 /** A saved comment-to-DM flow with a follower check and a quick reply. */
-const sampleAutomation = (workspaceId: string) => ({
+const sampleAutomation = (workspaceId: string, pendingTarget = false) => ({
   id: "automation_fixture",
   workspaceId,
   connectionId: "connection_insta0000001",
@@ -146,8 +146,9 @@ const sampleAutomation = (workspaceId: string) => ({
       id: "trigger_fixture",
       type: "trigger",
       triggerType: "comment",
-      targetMode: "all",
+      targetMode: pendingTarget ? "specific" : "all",
       targetPostIds: [],
+      pendingPostIds: pendingTarget ? ["post_pending00001"] : [],
       keywordFilter: { operator: "contains", value: "GUIDE" },
       nextStepId: "step_follow",
     },
@@ -224,6 +225,8 @@ export interface FixtureConfig {
   totalPosts?: Record<string, number>;
   /** Writes made through the automation editor, newest last. */
   automationWrites?: { method: string; body: unknown }[];
+  /** An existing automation waiting for its scheduled Instagram post. */
+  automationPendingPost?: boolean;
 }
 declare global {
   interface Window {
@@ -241,6 +244,7 @@ export function installFixtures() {
     signedOut: new URLSearchParams(location.search).has("signed-out"),
   };
   const config = window.fixtureConfig;
+  const savedAutomations = new Map<string, Record<string, unknown>>();
   Object.assign(window, { fixtureUnhandled: unhandled });
   const realFetch = window.fetch.bind(window);
   window.fetch = async (input, init) => {
@@ -361,9 +365,16 @@ export function installFixtures() {
         ...(config.automationWrites ?? []),
         { method, body: payload },
       ];
-      body = { ...sampleAutomation(workspaceId), ...payload };
+      body = {
+        ...sampleAutomation(workspaceId, config.automationPendingPost),
+        ...savedAutomations.get(workspaceId),
+        ...payload,
+      };
+      savedAutomations.set(workspaceId, body as Record<string, unknown>);
     } else if (automation?.[1] === "automation_fixture" && method === "GET") {
-      body = sampleAutomation(workspaceId);
+      body =
+        savedAutomations.get(workspaceId) ??
+        sampleAutomation(workspaceId, config.automationPendingPost);
     } else if (workspaceDetailPath.test(url.pathname)) {
       const id = workspaceDetailPath.exec(url.pathname)?.[1] ?? "";
       const team = id === "workspace_a" ? config.team : undefined;
@@ -378,6 +389,42 @@ export function installFixtures() {
         billingOwnerUserId: "fixture-user",
         publicShareLinks: team?.publicShareLinks ?? true,
       };
+    } else if (
+      config.automationPendingPost &&
+      method === "GET" &&
+      url.pathname.endsWith("/posts") &&
+      url.searchParams.get("status") === "scheduled"
+    ) {
+      body = list([
+        {
+          ...samplePost(workspaceId),
+          id: "post_pending00001",
+          status: "scheduled",
+          targets: [
+            {
+              id: "post_target_pending00001",
+              connectionId: "connection_insta0000001",
+              groupId: "post_group_fixture01",
+              settings: {
+                platform: "INSTAGRAM",
+                values: {
+                  shareToFeed: true,
+                  shareToStory: false,
+                  trialReels: true,
+                  graduationStrategy: "MANUAL",
+                },
+              },
+              scheduledAt: "2026-10-09T12:00:00.000Z",
+              status: "pending",
+              platformPostId: null,
+              platformPostUrl: null,
+              postedAt: null,
+              error: null,
+              attempts: 0,
+            },
+          ],
+        },
+      ]);
     } else if (
       config.samplePosts &&
       method === "GET" &&

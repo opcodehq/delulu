@@ -100,7 +100,7 @@ const finalizeOutcome = (
                         'targetMode', 'specific',
                         'targetPostIds',
                           COALESCE(trigger->'targetPostIds', '[]'::jsonb)
-                          || jsonb_build_array(${outcome.result.platformPostId}),
+                          || jsonb_build_array(${outcome.result.platformPostId}::text),
                         'pendingPostIds',
                           COALESCE(trigger->'pendingPostIds', '[]'::jsonb)
                           - ${row.postId}

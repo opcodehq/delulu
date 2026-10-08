@@ -35,6 +35,62 @@ const resource = {
 };
 
 describe("automation resource adapters", () => {
+  it("replaces a pending target with the editor's live selection", () => {
+    expect(
+      triggersToResource([
+        {
+          id: "trigger_1",
+          type: "trigger",
+          triggerType: "COMMENT",
+          targetMode: "specific",
+          targetPostIds: ["media_live"],
+          pendingPostIds: ["post_pending00001"],
+        },
+      ])[0]
+    ).toMatchObject({
+      triggerType: "comment",
+      targetPostIds: ["media_live"],
+      pendingPostIds: [],
+    });
+  });
+
+  it("saves only the selected live and scheduled targets", () => {
+    expect(
+      triggersToResource([
+        {
+          id: "trigger_1",
+          type: "trigger",
+          triggerType: "COMMENT",
+          targetMode: "specific",
+          targetPostIds: ["media_live", "pending:post_selected0001"],
+          pendingPostIds: ["post_removed0001"],
+        },
+      ])[0]
+    ).toMatchObject({
+      targetPostIds: ["media_live"],
+      pendingPostIds: ["post_selected0001"],
+    });
+  });
+
+  it("clears pending targets when targeting all posts", () => {
+    expect(
+      triggersToResource([
+        {
+          id: "trigger_1",
+          type: "trigger",
+          triggerType: "COMMENT",
+          targetMode: "all",
+          targetPostIds: [],
+          pendingPostIds: ["post_pending00001"],
+        },
+      ])[0]
+    ).toMatchObject({
+      targetMode: "all",
+      targetPostIds: [],
+      pendingPostIds: [],
+    });
+  });
+
   it("converts trigger casing at the API boundary", () => {
     expect(resource.triggers[0]?.triggerType).toBe("story_reply");
     expect(automationFromResource(resource).triggers[0]?.triggerType).toBe(
