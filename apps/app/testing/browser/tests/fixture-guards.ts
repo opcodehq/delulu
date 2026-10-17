@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { FIXTURE_NOW } from "../fixture-time";
 
 interface RequestRecord {
   url: string;
@@ -16,6 +17,8 @@ export const records = (page: Page) =>
  */
 export function guardFixtureRequests() {
   test.beforeEach(async ({ page }, info) => {
+    // Keep static fixture dates stable without stopping timers or performance.now().
+    await page.clock.setFixedTime(new Date(FIXTURE_NOW));
     await page.addInitScript(
       (theme) => localStorage.setItem("theme", theme),
       info.project.name === "mobile-dark" ? "dark" : "light"

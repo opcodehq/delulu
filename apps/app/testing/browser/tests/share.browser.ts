@@ -4,7 +4,7 @@ import { guardFixtureRequests } from "./fixture-guards";
 const SCHEDULED = /^Scheduled for /;
 const SIGN_IN_HREF = /^\/sign-in\?redirect_url=/;
 const SHARE_URL = /\/share\/fixture-share-token$/;
-const EXPIRES = /^Expires in \d+ days?/;
+const EXPIRES = /^Expires in 7 days \(/;
 const TEAMMATE_URL = /\/share\/teammate-share-token$/;
 
 guardFixtureRequests();

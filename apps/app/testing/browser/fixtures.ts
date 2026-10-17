@@ -1,6 +1,7 @@
+import { FIXTURE_NOW as now } from "./fixture-time";
+
 const listEndpoint =
   /^\/v1\/workspaces\/workspace_[ab]\/(posts|connections|tags|members|automations\/instagram\/dm)$/;
-const now = "2026-10-02T12:00:00.000Z";
 const list = (data: unknown[] = []) => ({
   data,
   total: data.length,
