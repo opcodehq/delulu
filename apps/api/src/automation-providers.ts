@@ -41,7 +41,7 @@ const connectionCredentials = Effect.fn("AutomationProvider.credentials")(
       accessToken: string;
       cipherVersion: "v1";
     }>`SELECT platform, profile_id, access_token, cipher_version
-        FROM connections WHERE id = ${connectionId}`.pipe(
+        FROM active_connections WHERE id = ${connectionId}`.pipe(
       Effect.mapError(() => "Automation connection query failed" as const)
     );
     const row = rows[0];

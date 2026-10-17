@@ -7,6 +7,7 @@ import {
   PostGroupId,
   TokenCipher,
 } from "@delulu/core";
+import { makePostgresConnectionStore } from "@delulu/db";
 import { PgClient } from "@effect/sql-pg";
 import {
   Effect,
@@ -104,6 +105,118 @@ beforeAll(() => {
 });
 
 describe("M2 PostService and JobService", () => {
+  const postStatuses = ["published", "scheduled"] as const;
+  it.each(postStatuses)("retains %s posts", async (status) => {
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const identity = yield* IdentityService;
+        const connections = yield* ConnectionsService;
+        const sql = yield* SqlClient.SqlClient;
+        const owner = yield* identity.resolve({ sub: crypto.randomUUID() });
+        const stranger = yield* identity.resolve({
+          sub: crypto.randomUUID(),
+        });
+        const workspaceId = owner.personalWorkspace!.id;
+        const profileId = crypto.randomUUID();
+        const input = {
+          socialType: "INSTAGRAM" as const,
+          profileId,
+          accessToken: "access-secret",
+          refreshToken: "refresh-secret",
+        };
+        yield* connections.upsertFromOAuth(workspaceId, input);
+        const account = (yield* connections.list(workspaceId, 10, 0)).data[0]!;
+        const members = yield* sql<{
+          id: string;
+        }>`SELECT id FROM workspace_members
+          WHERE workspace_id = ${workspaceId} AND user_id = ${owner.user.id}`;
+        const postId = crypto.randomUUID();
+        yield* sql`INSERT INTO posts (id, workspace_id, status, content, created_by_member_id, source)
+          VALUES (${postId}, ${workspaceId}, ${status}::post_status,
+            '{"groups":[{"id":"group","isDefault":true,"segments":[]}]}', ${members[0].id}, 'app')`;
+        yield* sql`INSERT INTO post_targets (id, post_id, connection_id, group_id, status)
+          VALUES (${crypto.randomUUID()}, ${postId}, ${account.id}, 'group', ${status === "published" ? "published" : "pending"}::target_status)`;
+        const automationId = crypto.randomUUID();
+        yield* sql`INSERT INTO automations (id, workspace_id, connection_id, platform, category)
+          VALUES (${automationId}, ${workspaceId}, ${account.id}, 'INSTAGRAM', 'auto_dm')`;
+
+        const denied = yield* connections
+          .remove(stranger.personalWorkspace!.id, account.id)
+          .pipe(Effect.result);
+        expect(denied._tag).toBe("Failure");
+        expect((yield* connections.list(workspaceId, 10, 0)).total).toBe(1);
+        yield* connections.remove(workspaceId, account.id);
+        expect((yield* connections.list(workspaceId, 10, 0)).total).toBe(0);
+        expect((yield* connections.list(workspaceId, 10, 0)).data).toEqual([]);
+        const retained = yield* sql<{
+          accessToken: string;
+          refreshToken: string | null;
+        }>`
+          SELECT access_token, refresh_token FROM connections WHERE id = ${account.id}`;
+        expect(retained).toEqual([{ accessToken: "", refreshToken: null }]);
+        expect(
+          yield* sql`SELECT id FROM post_targets WHERE post_id = ${postId}`
+        ).toHaveLength(1);
+        expect(
+          yield* sql`SELECT id FROM automations WHERE id = ${automationId}`
+        ).toHaveLength(1);
+        const store = yield* makePostgresConnectionStore;
+        expect(
+          yield* store.getSocialProviderWithDecryptedTokens(account.id)
+        ).toBeNull();
+        const rotation = yield* store
+          .updateSocialProvider({
+            socialProviderId: account.id,
+            accessToken: "stale-refresh",
+          })
+          .pipe(Effect.result);
+        expect(rotation._tag).toBe("Failure");
+        yield* connections.remove(workspaceId, account.id);
+        yield* connections.upsertFromOAuth(workspaceId, input);
+        const restored = yield* connections.list(workspaceId, 10, 0);
+        expect(restored.total).toBe(1);
+        expect(restored.data[0]?.id).toBe(account.id);
+        expect(
+          (yield* store.getSocialProviderWithDecryptedTokens(account.id))
+            ?.accessToken
+        ).toBe("access-secret");
+      }).pipe(
+        Effect.provide(
+          Layer.mergeAll(
+            AppLayer,
+            Layer.succeed(
+              TokenCipher,
+              TokenCipher.of(makeTokenCipher("integration-encryption-secret"))
+            )
+          )
+        )
+      )
+    );
+  });
+
+  it("disconnects an account with no dependent records", async () => {
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const identity = yield* IdentityService;
+        const connections = yield* ConnectionsService;
+        const owner = yield* identity.resolve({ sub: crypto.randomUUID() });
+        const workspaceId = owner.personalWorkspace!.id;
+        yield* connections.upsertFromOAuth(workspaceId, {
+          socialType: "INSTAGRAM",
+          profileId: crypto.randomUUID(),
+          accessToken: "access-secret",
+        });
+        const account = (yield* connections.list(workspaceId, 10, 0)).data[0]!;
+        yield* connections.remove(workspaceId, account.id);
+        expect((yield* connections.list(workspaceId, 10, 0)).total).toBe(0);
+        const missing = yield* connections
+          .remove(workspaceId, "missing")
+          .pipe(Effect.result);
+        expect(missing._tag).toBe("Failure");
+      }).pipe(Effect.provide(AppLayer))
+    );
+  });
+
   it("atomically creates a scheduled post, target, and idempotent publish job", async () => {
     const externalSubmissionId = `submission-${crypto.randomUUID()}`;
     const program = Effect.gen(function* () {

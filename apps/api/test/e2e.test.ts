@@ -234,6 +234,60 @@ const postDodoWebhook = async (id: string, body: unknown) => {
 };
 
 describe("apps/api worker (e2e over toWebHandler)", () => {
+  it("DELETE disconnects an account with post history and returns decodable success", async () => {
+    const token = `test-token:disconnect_${crypto.randomUUID()}`;
+    const current = await get("/v1/me", token);
+    expect(current.status).toBe(200);
+    const owner = (await current.json()) as {
+      personalWorkspace: { id: string };
+    };
+    const workspaceId = owner.personalWorkspace.id;
+    const connectionId = `connection_${crypto.randomUUID()}`;
+    const postId = `post_${crypto.randomUUID()}`;
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient;
+        const members = yield* sql<{
+          id: string;
+        }>`SELECT id FROM workspace_members
+          WHERE workspace_id = ${workspaceId}`;
+        yield* sql`INSERT INTO connections (id, workspace_id, platform, profile_id, access_token)
+          VALUES (${connectionId}, ${workspaceId}, 'INSTAGRAM', ${crypto.randomUUID()}, 'opaque')`;
+        yield* sql`INSERT INTO posts (id, workspace_id, status, content, created_by_member_id, source)
+          VALUES (${postId}, ${workspaceId}, 'published',
+            '{"groups":[{"id":"group","isDefault":true,"segments":[{"text":"Published post","media":[]}]}]}', ${members[0].id}, 'app')`;
+        yield* sql`INSERT INTO post_targets (id, post_id, connection_id, group_id, status, settings)
+          VALUES (${crypto.randomUUID()}, ${postId}, ${connectionId}, 'group', 'published',
+            '{"platform":"INSTAGRAM","values":{"shareToFeed":true,"shareToStory":false,"trialReels":false,"graduationStrategy":"MANUAL"}}')`;
+      }).pipe(Effect.provide(TestPg))
+    );
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const response = await handler(
+        new Request(
+          `${ISSUER}/v1/workspaces/${workspaceId}/connections/${connectionId}`,
+          { method: "DELETE", headers: { authorization: `Bearer ${token}` } }
+        )
+      );
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ deleted: true });
+    }
+    const listed = await get(
+      `/v1/workspaces/${workspaceId}/connections`,
+      token
+    );
+    expect(listed.status).toBe(200);
+    expect(await listed.json()).toMatchObject({ data: [], total: 0 });
+    const post = await get(
+      `/v1/workspaces/${workspaceId}/posts/${postId}`,
+      token
+    );
+    expect(post.status).toBe(200);
+    expect(await post.json()).toMatchObject({
+      id: postId,
+      targets: [{ connectionId }],
+    });
+  });
+
   it("allows browser preflight only from the configured app origin", async () => {
     const allowed = await handler(
       new Request(`${ISSUER}/v1/me`, {

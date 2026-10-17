@@ -27,7 +27,7 @@ export const makePostgresConnectionStore = Effect.gen(function* () {
             username,
             expires_at AS "expiresAt",
             metadata->>'linkedinTargetType' AS "linkedinTargetType"
-          FROM connections
+          FROM active_connections
           WHERE id = ${id}`;
         const row = rows[0];
         if (!row) {
@@ -79,7 +79,7 @@ export const makePostgresConnectionStore = Effect.gen(function* () {
         const refresh = update.refreshToken
           ? yield* cipher.encrypt(update.refreshToken)
           : null;
-        const updated = yield* sql<{ id: string }>`UPDATE connections SET
+        const updated = yield* sql<{ id: string }>`UPDATE active_connections SET
           access_token = COALESCE(${access?.ciphertext ?? null}, access_token),
           refresh_token = COALESCE(${refresh?.ciphertext ?? null}, refresh_token),
           expires_at = COALESCE(${update.expiresIn ? new Date(update.expiresIn) : null}, expires_at)

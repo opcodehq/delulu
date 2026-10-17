@@ -71,7 +71,7 @@ export class AutomationSessionService extends Context.Service<
         }),
         Result: AutomationSession,
         execute: ({ profileId, platformUserId }) =>
-          sql`SELECT s.* FROM automation_sessions s JOIN automations a ON a.id = s.automation_id JOIN connections c ON c.id = a.connection_id WHERE c.profile_id = ${profileId} AND s.platform_user_id = ${platformUserId} AND s.status = 'active' ORDER BY s.last_activity_at DESC LIMIT 1`,
+          sql`SELECT s.* FROM automation_sessions s JOIN automations a ON a.id = s.automation_id JOIN active_connections c ON c.id = a.connection_id WHERE c.profile_id = ${profileId} AND s.platform_user_id = ${platformUserId} AND s.status = 'active' ORDER BY s.last_activity_at DESC LIMIT 1`,
       });
       const findActive = Effect.fn("AutomationSessionService.findActive")(
         function* (profileId: string, platformUserId: string) {

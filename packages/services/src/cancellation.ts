@@ -235,7 +235,7 @@ export class CancellationService extends Context.Service<
           (SELECT count(*) FROM posts p JOIN owned o ON o.id = p.workspace_id)::text AS posts,
           (SELECT count(*) FROM posts p JOIN owned o ON o.id = p.workspace_id WHERE p.status IN ('scheduled','publishing'))::text AS scheduled_posts,
           (SELECT count(*) FROM automations a JOIN owned o ON o.id = a.workspace_id)::text AS automations,
-          (SELECT count(*) FROM connections c JOIN owned o ON o.id = c.workspace_id)::text AS connections,
+          (SELECT count(*) FROM active_connections c JOIN owned o ON o.id = c.workspace_id)::text AS connections,
           (SELECT count(*) FROM api_keys k JOIN owned o ON o.id = k.workspace_id)::text AS api_keys,
           (SELECT count(*) FROM media m JOIN owned o ON o.id = m.workspace_id)::text AS media_items,
           (SELECT COALESCE(sum(m.size_bytes),0) FROM media m JOIN owned o ON o.id = m.workspace_id)::text AS media_bytes,

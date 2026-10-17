@@ -101,7 +101,9 @@ export class SetupService extends Context.Service<
         userId: UserId
       ) {
         const [connections, subscriptions, users] = yield* Effect.all([
-          sql<{ platform: string }>`SELECT DISTINCT platform FROM connections
+          sql<{
+            platform: string;
+          }>`SELECT DISTINCT platform FROM active_connections
             WHERE workspace_id = ${workspaceId} ORDER BY platform`,
           sql<{ plan: string; status: string }>`SELECT s.plan, s.status
             FROM workspaces w JOIN subscriptions s
@@ -217,7 +219,7 @@ export class SetupService extends Context.Service<
             onboardingOptional: Record<string, string>;
           }>`SELECT external_id, onboarding_optional
             FROM users WHERE id = ${userId}`,
-          sql<{ platform: string }>`SELECT platform FROM connections
+          sql<{ platform: string }>`SELECT platform FROM active_connections
             WHERE workspace_id = ${workspaceId}`,
           sql<{ plan: string; status: string }>`SELECT s.plan, s.status
             FROM workspaces w JOIN subscriptions s
