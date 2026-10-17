@@ -590,7 +590,11 @@ export class AutomationService extends Context.Service<
         }),
         Result: Automation,
         execute: ({ ids, profileId }) =>
-          sql`SELECT DISTINCT a.* FROM automations a JOIN automation_trigger_index t ON t.automation_id = a.id WHERE ${freshRead} AND a.id IN ${sql.in(ids)} AND a.enabled = true AND t.enabled = true AND t.profile_id = ${profileId}`,
+          sql`SELECT DISTINCT a.* FROM automations a
+            JOIN automation_trigger_index t ON t.automation_id = a.id
+            JOIN active_connections c ON c.id = a.connection_id AND c.workspace_id = a.workspace_id
+            WHERE ${freshRead} AND a.id IN ${sql.in(ids)} AND a.enabled = true
+              AND t.enabled = true AND t.profile_id = ${profileId} AND c.profile_id = ${profileId}`,
       });
       const findForTrigger = Effect.fn("AutomationService.findForTrigger")(
         function* (profileId: string, mediaId: string) {

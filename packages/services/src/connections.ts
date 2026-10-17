@@ -434,7 +434,7 @@ export class ConnectionsService extends Context.Service<
       readonly connectionId: string;
       readonly sourceWorkspaceId: WorkspaceId;
       readonly destinationWorkspaceId: WorkspaceId;
-    }) => Effect.Effect<void, NotFoundError>;
+    }) => Effect.Effect<void, ConflictError | NotFoundError>;
     readonly confirmOAuthTransfer: (input: {
       readonly connectionId: string;
       readonly destinationWorkspaceId: WorkspaceId;
@@ -907,8 +907,21 @@ export class ConnectionsService extends Context.Service<
           const rows = yield* sql<{ id: string }>`UPDATE connections
           SET workspace_id = ${input.destinationWorkspaceId}, disconnected_at = NULL
           WHERE id = ${input.connectionId} AND workspace_id = ${input.sourceWorkspaceId}
+            AND access_token <> ''
           RETURNING id`.pipe(Effect.orDie);
           if (rows.length === 0) {
+            const source = yield* sql<{ id: string }>`SELECT id FROM connections
+              WHERE CURRENT_TIMESTAMP IS NOT NULL AND id = ${input.connectionId}
+                AND workspace_id = ${input.sourceWorkspaceId}`.pipe(
+              Effect.orDie
+            );
+            if (source.length > 0) {
+              return yield* new ConflictError({
+                message:
+                  "Connection credentials were cleared. Restart authorization to transfer this account.",
+                resource: "connection",
+              });
+            }
             return yield* new NotFoundError({
               message: "Source connection not found",
               resource: "connection",
