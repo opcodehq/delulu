@@ -228,7 +228,7 @@ export class AgentContentBridge extends WorkerEntrypoint<Env> {
       }
       const [connections, memories, files, recentPosts] = yield* Effect.all([
         sql<Record<string, unknown>>`SELECT id, platform, username, display_name
-          FROM connections WHERE workspace_id = ${input.workspaceId}
+          FROM active_connections WHERE workspace_id = ${input.workspaceId}
           ORDER BY created_at DESC`,
         sql<Record<string, unknown>>`SELECT id, category, value, provenance,
           confidence, status, requires_confirmation, updated_at

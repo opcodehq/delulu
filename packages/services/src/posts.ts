@@ -337,7 +337,7 @@ export class PostService extends Context.Service<
             : yield* SqlSchema.findAll({
                 Request: Schema.Void,
                 Result: ConnectionPlatform,
-                execute: () => sql`SELECT id, platform FROM connections
+                execute: () => sql`SELECT id, platform FROM active_connections
                 WHERE workspace_id = ${workspaceId} AND id IN ${sql.in(connectionIds)}`,
               })(undefined).pipe(Effect.orDie);
         const platformById = new Map(rows.map((row) => [row.id, row.platform]));

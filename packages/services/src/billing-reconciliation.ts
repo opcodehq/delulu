@@ -37,7 +37,7 @@ export class BillingReconciliation extends Context.Service<
                 WHERE billing_owner_user_id = ${input.billingOwnerUserId}
               ), actual AS (
                 SELECT selected.billing_owner_user_id,
-                  (SELECT count(*) FROM connections c JOIN workspaces w ON w.id = c.workspace_id
+                  (SELECT count(*) FROM active_connections c JOIN workspaces w ON w.id = c.workspace_id
                     WHERE w.billing_owner_user_id = selected.billing_owner_user_id AND w.deleted_at IS NULL)::bigint AS social_accounts,
                   (SELECT count(*) FROM posts p JOIN workspaces w ON w.id = p.workspace_id
                     WHERE w.billing_owner_user_id = selected.billing_owner_user_id AND w.deleted_at IS NULL

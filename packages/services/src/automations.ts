@@ -273,7 +273,7 @@ export class AutomationService extends Context.Service<
         function* (automation: Automation) {
           const connection = yield* sql<{
             profileId: string;
-          }>`SELECT profile_id FROM connections WHERE id = ${automation.connectionId} AND workspace_id = ${automation.workspaceId}`;
+          }>`SELECT profile_id FROM active_connections WHERE id = ${automation.connectionId} AND workspace_id = ${automation.workspaceId}`;
           if (!connection[0]) {
             return yield* persistenceError(
               "index",
@@ -352,7 +352,7 @@ export class AutomationService extends Context.Service<
         }
         const connection = yield* sql<{
           platform: string;
-        }>`SELECT platform FROM connections
+        }>`SELECT platform FROM active_connections
             WHERE id = ${input.connectionId}
               AND workspace_id = ${workspaceId}`.pipe(
           Effect.mapError((cause) =>

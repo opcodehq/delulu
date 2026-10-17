@@ -500,12 +500,12 @@ export class ConnectionsService extends Context.Service<
             metadata->>'linkedinTargetType' AS account_type,
             (refresh_token IS NOT NULL) AS has_refresh,
             metadata->>'refreshTokenExpiresIn' AS refresh_expires_at
-          FROM connections WHERE workspace_id = ${workspaceId} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`.pipe(
+          FROM active_connections WHERE workspace_id = ${workspaceId} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`.pipe(
           Effect.orDie
         );
         const totals = yield* sql<{
           count: string;
-        }>`SELECT count(*)::text AS count FROM connections WHERE workspace_id = ${workspaceId}`.pipe(
+        }>`SELECT count(*)::text AS count FROM active_connections WHERE workspace_id = ${workspaceId}`.pipe(
           Effect.orDie
         );
         return {
@@ -521,7 +521,9 @@ export class ConnectionsService extends Context.Service<
       ) {
         const rows = yield* sql<{
           id: string;
-        }>`DELETE FROM connections WHERE id = ${id} AND workspace_id = ${workspaceId} RETURNING id`.pipe(
+        }>`UPDATE connections SET disconnected_at = COALESCE(disconnected_at, now()),
+          access_token = '', refresh_token = NULL, expires_at = NULL
+          WHERE id = ${id} AND workspace_id = ${workspaceId} RETURNING id`.pipe(
           Effect.orDie
         );
         if (rows.length === 0) {
@@ -550,7 +552,7 @@ export class ConnectionsService extends Context.Service<
             accessToken: string;
             cipherVersion: "v1";
           }>`SELECT platform, profile_id, access_token, cipher_version
-            FROM connections
+            FROM active_connections
             WHERE id = ${input.connectionId}
               AND workspace_id = ${input.workspaceId}`.pipe(
             Effect.mapError(
@@ -629,7 +631,7 @@ export class ConnectionsService extends Context.Service<
         const rows = yield* sql<{
           platform: string;
           profileId: string;
-        }>`SELECT platform, profile_id FROM connections
+        }>`SELECT platform, profile_id FROM active_connections
           WHERE id = ${input.connectionId}
             AND workspace_id = ${input.workspaceId}`.pipe(Effect.orDie);
         const row = rows[0];
@@ -765,9 +767,9 @@ export class ConnectionsService extends Context.Service<
             yield* sql`UPDATE connections SET access_token = ${access.ciphertext},
             refresh_token = ${refresh?.ciphertext ?? null}, expires_at = ${input.expiresIn ? new Date(input.expiresIn) : null},
             username = ${input.username ?? null}, display_name = ${input.fullName ?? null},
-            metadata = ${JSON.stringify(metadata)}::jsonb WHERE id = ${String(row.id)}`.pipe(
-              Effect.orDie
-            );
+            metadata = ${JSON.stringify(metadata)}::jsonb,
+            disconnected_at = CASE WHEN workspace_id = ${workspaceId} THEN NULL ELSE disconnected_at END
+            WHERE id = ${String(row.id)}`.pipe(Effect.orDie);
             if (sourceWorkspaceId !== workspaceId) {
               const transferToken = principal
                 ? yield* states.mintTransfer({
@@ -903,7 +905,7 @@ export class ConnectionsService extends Context.Service<
           readonly destinationWorkspaceId: WorkspaceId;
         }) {
           const rows = yield* sql<{ id: string }>`UPDATE connections
-          SET workspace_id = ${input.destinationWorkspaceId}
+          SET workspace_id = ${input.destinationWorkspaceId}, disconnected_at = NULL
           WHERE id = ${input.connectionId} AND workspace_id = ${input.sourceWorkspaceId}
           RETURNING id`.pipe(Effect.orDie);
           if (rows.length === 0) {

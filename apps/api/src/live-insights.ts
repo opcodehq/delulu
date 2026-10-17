@@ -100,7 +100,7 @@ export const LiveInsightsProviderLive = Layer.effect(
         accessToken: string;
         cipherVersion: "v1";
       }>`SELECT platform, profile_id, access_token, cipher_version
-          FROM connections WHERE id = ${connectionId}
+          FROM active_connections WHERE id = ${connectionId}
             AND workspace_id = ${workspaceId}`.pipe(
         Effect.mapError(() =>
           providerError("Unable to load the insights connection", true)

@@ -84,8 +84,8 @@ export class LifecycleService extends Context.Service<
             instagramConnections: string;
             instagramAutomations: string;
           }>`SELECT w.billing_owner_user_id, u.email,
-            (SELECT count(*)::text FROM connections c WHERE c.workspace_id = w.id) AS connections,
-            (SELECT count(*)::text FROM connections c WHERE c.workspace_id = w.id AND lower(c.platform) = 'instagram') AS instagram_connections,
+            (SELECT count(*)::text FROM active_connections c WHERE c.workspace_id = w.id) AS connections,
+            (SELECT count(*)::text FROM active_connections c WHERE c.workspace_id = w.id AND lower(c.platform) = 'instagram') AS instagram_connections,
             (SELECT count(*)::text FROM automations a WHERE a.workspace_id = w.id AND lower(a.platform) = 'instagram') AS instagram_automations
             FROM workspaces w JOIN users u ON u.id = w.billing_owner_user_id
             WHERE w.id = ${input.workspaceId}`.pipe(Effect.orDie);

@@ -131,9 +131,9 @@ export const MeHandlers = HttpApiBuilder.group(
                 expiringSoon: string;
                 pendingReviews: string;
               }>`SELECT
-                (SELECT count(*)::text FROM connections
+                (SELECT count(*)::text FROM active_connections
                   WHERE workspace_id = ${access.workspaceId}) AS account_count,
-                (SELECT count(*)::text FROM connections
+                (SELECT count(*)::text FROM active_connections
                   WHERE workspace_id = ${access.workspaceId}
                     AND expires_at IS NOT NULL
                     AND expires_at < now() + interval '7 days') AS expiring_soon,
