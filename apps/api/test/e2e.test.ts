@@ -608,7 +608,8 @@ describe("apps/api worker (e2e over toWebHandler)", () => {
     expect(await moved.json()).toEqual({ confirmed: true });
   });
 
-  it("accepts a provider-verified transfer without source workspace membership", async () => {
+  const transferStates = [false, true];
+  it.each(transferStates)("transfer revoked=%s", async (disconnected) => {
     const sourceSub = `clerk_source_${crypto.randomUUID()}`;
     const destinationSub = `clerk_destination_${crypto.randomUUID()}`;
     const sourceToken = `test-token:${sourceSub}`;
@@ -657,14 +658,37 @@ describe("apps/api worker (e2e over toWebHandler)", () => {
       }).pipe(Effect.provide(ConnectionState))
     );
 
+    if (disconnected) {
+      const removed = await handler(
+        new Request(
+          `${ISSUER}/v1/workspaces/${sourceWorkspaceId}/connections/${connectionId}`,
+          {
+            method: "DELETE",
+            headers: { authorization: `Bearer ${sourceToken}` },
+          }
+        )
+      );
+      expect(removed.status).toBe(200);
+    }
     const moved = await postJson(
       `/v1/workspaces/${destinationWorkspaceId}/connections/${connectionId}/transfer`,
       { transferToken },
       destinationToken
     );
     const movedBody = await moved.json();
-    expect(moved.status, JSON.stringify(movedBody)).toBe(200);
-    expect(movedBody).toEqual({ confirmed: true });
+    expect(moved.status, JSON.stringify(movedBody)).toBe(
+      disconnected ? 409 : 200
+    );
+    if (disconnected) {
+      expect(movedBody).toMatchObject({ error: { code: "ConflictError" } });
+      const listed = await get(
+        `/v1/workspaces/${destinationWorkspaceId}/connections`,
+        destinationToken
+      );
+      expect(await listed.json()).toMatchObject({ data: [], total: 0 });
+    } else {
+      expect(movedBody).toEqual({ confirmed: true });
+    }
   });
 
   it("GET /v1/workspaces/:id/billing/subscription treats a missing subscription as unpaid", async () => {

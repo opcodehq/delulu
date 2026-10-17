@@ -58,11 +58,22 @@ export class AutomationSessionService extends Context.Service<
     Effect.gen(function* () {
       const sql = yield* SqlClient.SqlClient;
       const kv = yield* AutomationKvService;
+      // Validate cached IDs against the same live ownership and connection state
+      // as a cache miss. CURRENT_TIMESTAMP prevents stale Hyperdrive SELECTs.
+      const activeSession = sql`SELECT s.* FROM automation_sessions s
+        JOIN automations a ON a.id = s.automation_id AND a.workspace_id = s.workspace_id
+        JOIN active_connections c ON c.id = a.connection_id AND c.workspace_id = a.workspace_id
+        WHERE CURRENT_TIMESTAMP IS NOT NULL AND s.status = 'active' AND a.enabled = true`;
       const byId = SqlSchema.findOneOption({
-        Request: Schema.String,
+        Request: Schema.Struct({
+          id: Schema.String,
+          profileId: Schema.String,
+          platformUserId: Schema.String,
+        }),
         Result: AutomationSession,
-        execute: (id) =>
-          sql`SELECT * FROM automation_sessions WHERE id = ${id} AND status = 'active'`,
+        execute: ({ id, profileId, platformUserId }) =>
+          sql`${activeSession} AND s.id = ${id} AND c.profile_id = ${profileId}
+            AND s.platform_user_id = ${platformUserId}`,
       });
       const fallback = SqlSchema.findOneOption({
         Request: Schema.Struct({
@@ -71,7 +82,8 @@ export class AutomationSessionService extends Context.Service<
         }),
         Result: AutomationSession,
         execute: ({ profileId, platformUserId }) =>
-          sql`SELECT s.* FROM automation_sessions s JOIN automations a ON a.id = s.automation_id JOIN active_connections c ON c.id = a.connection_id WHERE c.profile_id = ${profileId} AND s.platform_user_id = ${platformUserId} AND s.status = 'active' ORDER BY s.last_activity_at DESC LIMIT 1`,
+          sql`${activeSession} AND c.profile_id = ${profileId} AND s.platform_user_id = ${platformUserId}
+            ORDER BY s.last_activity_at DESC LIMIT 1`,
       });
       const findActive = Effect.fn("AutomationSessionService.findActive")(
         function* (profileId: string, platformUserId: string) {
@@ -79,9 +91,11 @@ export class AutomationSessionService extends Context.Service<
             .getSession(profileId, platformUserId)
             .pipe(Effect.catch(() => Effect.succeed(null)));
           if (cachedId) {
-            const cached = yield* byId(cachedId).pipe(
-              Effect.mapError((cause) => error("load", cause))
-            );
+            const cached = yield* byId({
+              id: cachedId,
+              profileId,
+              platformUserId,
+            }).pipe(Effect.mapError((cause) => error("load", cause)));
             if (Option.isSome(cached)) {
               return cached.value;
             }
@@ -131,9 +145,11 @@ export class AutomationSessionService extends Context.Service<
               })
             )
             .pipe(Effect.mapError((cause) => error("start", cause)));
-          const session = yield* byId(id).pipe(
-            Effect.mapError((cause) => error("reload", cause))
-          );
+          const session = yield* byId({
+            id,
+            profileId: input.profileId,
+            platformUserId: input.platformUserId,
+          }).pipe(Effect.mapError((cause) => error("reload", cause)));
           if (Option.isNone(session)) {
             return yield* error(
               "reload",
