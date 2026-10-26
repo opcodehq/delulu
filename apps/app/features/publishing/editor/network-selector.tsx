@@ -17,12 +17,14 @@ import {
 } from "@delulu/design-system/components/ui/tooltip";
 import { Icon } from "@delulu/design-system/providers/icon";
 import { ArrowDown01Icon, PencilEdit02Icon } from "@delulu/icons";
+import { customContentFor } from "@/features/publishing/custom-content";
 import { SocialIcon } from "@/features/publishing/editor/sidebar/social-icon";
 import { getPlatformsInDefault } from "@/features/publishing/platform-rules";
 import {
   useSelectedSocialProviders,
   useStore,
 } from "@/features/publishing/store";
+import { twitterRejoinSetting } from "@/features/publishing/twitter-group";
 
 export function AlternativeContentSelector() {
   const { post, setPost } = useStore((state) => ({
@@ -63,7 +65,18 @@ export function AlternativeContentSelector() {
     }
 
     if (isSelected) {
-      // Remove provider
+      // A returning X account adopts the shared content's X settings, so its
+      // old custom settings cannot replace the group's.
+      const state = useStore.getState();
+      const rejoin = twitterRejoinSetting(
+        provider.socialId,
+        state.selectedSocialProviders,
+        post.alternativeContent,
+        state.providerSettings
+      );
+      if (rejoin) {
+        state.setProviderSettings(provider.socialId, rejoin);
+      }
       setPost({
         ...post,
         alternativeContent: post.alternativeContent.filter(
@@ -71,35 +84,12 @@ export function AlternativeContentSelector() {
         ),
       });
     } else {
-      // Add provider with default content - deep copy ALL content items (supports threads)
+      // The channel starts from a full copy of the shared content.
       setPost({
         ...post,
         alternativeContent: [
           ...post.alternativeContent,
-          {
-            socialProvider: provider,
-            content: post.content.map((contentItem, index) => ({
-              id: "",
-              order: index,
-              name: provider.name,
-              // Deep copy media to prevent reference sharing
-              media: contentItem.media.map((m) => ({
-                mediaType: m.mediaType,
-                url: m.url,
-                bucketKey: m.bucketKey,
-                bucketUrl: m.bucketUrl,
-                altText: m.altText,
-                thumbnailBucketUrl: m.thumbnailBucketUrl,
-                thumbnailBucketKey: m.thumbnailBucketKey,
-                thumbnailMediaId: m.thumbnailMediaId,
-                thumbnailTimestamp: m.thumbnailTimestamp,
-              })),
-              text: contentItem.text,
-              title: contentItem.title, // Copy YouTube title
-              tags: [...(contentItem.tags || [])], // Deep copy tags
-              socialId: provider.socialId,
-            })),
-          },
+          customContentFor(provider, post.content),
         ],
       });
     }

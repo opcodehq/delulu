@@ -43,7 +43,11 @@ export function TwitterEditorFixture() {
   return (
     <main className="space-y-4 p-4">
       <h1 className="sr-only">Twitter editor</h1>
-      <ContentModule socialId="global" socialType="DEFAULT" />
+      <ContentModule
+        onOpenChannel={(id) => Reflect.set(window, "openedChannel", id)}
+        socialId="global"
+        socialType="DEFAULT"
+      />
     </main>
   );
 }

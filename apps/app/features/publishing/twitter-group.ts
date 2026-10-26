@@ -78,3 +78,34 @@ export function twitterGroupWrites(
         ];
   });
 }
+
+/**
+ * Settings an X account adopts when its custom content is removed and it
+ * returns to the shared content. Undefined when no X account remains there to
+ * define the group, so the returning account keeps its own settings.
+ */
+export function twitterRejoinSetting(
+  providerId: string,
+  selected: readonly Provider[],
+  alternativeContent: AlternativeContent,
+  providerSettings: Readonly<Record<string, ProviderSetting>>
+): ProviderSetting | undefined {
+  const returning = selected.find(
+    (provider) => provider.socialId === providerId
+  );
+  if (returning?.socialType !== SocialTypes.TWITTER) {
+    return undefined;
+  }
+  const staying = twitterGroupProviderIds(selected, alternativeContent, {
+    isGlobal: true,
+    socialId: "global",
+  }).filter((id) => id !== providerId);
+  if (staying.length === 0) {
+    return undefined;
+  }
+  return {
+    socialProviderId: providerId,
+    type: "TWITTER",
+    settings: twitterGroupSettings(staying, providerSettings),
+  };
+}

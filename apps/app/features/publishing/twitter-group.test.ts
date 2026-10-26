@@ -4,6 +4,7 @@ import {
   twitterGroupProviderIds,
   twitterGroupSettings,
   twitterGroupWrites,
+  twitterRejoinSetting,
 } from "@/features/publishing/twitter-group";
 
 const article = {
@@ -71,5 +72,44 @@ describe("X content groups", () => {
       x_b: twitter("x_b", { ...article }),
     };
     expect(twitterGroupWrites(["x_a", "x_b"], stored)).toEqual([]);
+  });
+});
+
+describe("an X account returning to the shared content", () => {
+  const stale = { replyRestriction: "mentioned", quoteTweetId: "123" };
+
+  it("adopts the group's settings instead of imposing its old ones", () => {
+    // x_custom is first in the list, so the old rule would let it win.
+    const selected = [providers[2], providers[0], providers[1]];
+    const stored = {
+      x_custom: twitter("x_custom", stale),
+      x_a: twitter("x_a", article),
+      x_b: twitter("x_b", article),
+    };
+    const rejoin = twitterRejoinSetting("x_custom", selected, custom, stored);
+    expect(rejoin).toEqual(twitter("x_custom", article));
+
+    const after = { ...stored, x_custom: rejoin as ProviderSetting };
+    const ids = twitterGroupProviderIds(selected, [], {
+      isGlobal: true,
+      socialId: "global",
+    });
+    expect(twitterGroupSettings(ids, after)).toEqual(article);
+    expect(twitterGroupWrites(ids, after)).toEqual([]);
+  });
+
+  it("keeps its own settings when no X account stayed behind", () => {
+    const selected = [providers[2], providers[3]];
+    expect(
+      twitterRejoinSetting("x_custom", selected, custom, {
+        x_custom: twitter("x_custom", stale),
+      })
+    ).toBeUndefined();
+  });
+
+  it("ignores other platforms", () => {
+    expect(
+      twitterRejoinSetting("threads", providers, custom, {})
+    ).toBeUndefined();
   });
 });

@@ -12,6 +12,10 @@ import { cn } from "@delulu/design-system/lib/utils";
 import { Icon } from "@delulu/design-system/providers/icon";
 import { Add01Icon, Remove01Icon } from "@delulu/icons";
 import { useCallback, useMemo, useRef, useState } from "react";
+import {
+  customContentFor,
+  foldThread,
+} from "@/features/publishing/custom-content";
 import { MediaUploader } from "@/features/publishing/editor/media-uploader";
 import {
   TwitterArticleTitle,
@@ -52,9 +56,15 @@ function logVideoUploadLayout(
 interface ContentModuleProps {
   socialId: string;
   socialType: SocialType;
+  /** Opens a channel's own editor, e.g. after X moves to its own Article. */
+  onOpenChannel?: (socialId: string) => void;
 }
 
-export function ContentModule({ socialId, socialType }: ContentModuleProps) {
+export function ContentModule({
+  socialId,
+  socialType,
+  onOpenChannel,
+}: ContentModuleProps) {
   const { post, setPost } = useStore((state) => ({
     post: state.post,
     setPost: state.setPost,
@@ -340,35 +350,44 @@ export function ContentModule({ socialId, socialType }: ContentModuleProps) {
     });
     setQuoteOpen(false);
     // An Article has one body, so fold an existing thread into it.
-    const merge = <T extends { text: string; media: unknown[] }>(
-      items: T[]
-    ): T[] =>
-      items.length <= 1
-        ? items
-        : [
-            {
-              ...items[0],
-              text: items
-                .map((item) => item.text.trim())
-                .filter(Boolean)
-                .join("\n\n"),
-              media: items.flatMap((item) => item.media),
-            },
-          ];
-    if (isGlobal) {
-      setPost((currentPost) => ({
-        ...currentPost,
-        content: merge(currentPost.content),
-      }));
-    } else {
+    if (!isGlobal) {
       setPost((currentPost) => ({
         ...currentPost,
         alternativeContent: currentPost.alternativeContent.map((item) =>
           item.socialProvider.socialId === socialId
-            ? { ...item, content: merge(item.content) }
+            ? { ...item, content: foldThread(item.content) }
             : item
         ),
       }));
+      return;
+    }
+    const sharedWithOthers = platformsInDefault.some(
+      (platform) => platform !== SocialTypes.TWITTER
+    );
+    if (!(sharedWithOthers && content.length > 1)) {
+      setPost((currentPost) => ({
+        ...currentPost,
+        content: foldThread(currentPost.content),
+      }));
+      return;
+    }
+    // Other channels still publish the shared thread, so each X account gets
+    // its own copy to fold, and the editor opens the first one.
+    const xProviders = selectedSocialProviders.filter((provider) =>
+      twitter.providerIds.includes(provider.socialId)
+    );
+    setPost((currentPost) => ({
+      ...currentPost,
+      alternativeContent: [
+        ...currentPost.alternativeContent,
+        ...xProviders.map((provider) => {
+          const custom = customContentFor(provider, currentPost.content);
+          return { ...custom, content: foldThread(custom.content) };
+        }),
+      ],
+    }));
+    if (xProviders[0]) {
+      onOpenChannel?.(xProviders[0].socialId);
     }
   };
   const hasTwitter = twitter.providerIds.length > 0;

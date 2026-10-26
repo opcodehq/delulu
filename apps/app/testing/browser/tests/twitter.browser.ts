@@ -29,6 +29,13 @@ test.afterEach(async ({ page }) => {
 
 interface Store {
   getState: () => {
+    post: {
+      content: { text: string }[];
+      alternativeContent: {
+        socialProvider: { socialId: string };
+        content: { text: string }[];
+      }[];
+    };
     setPost: (update: (post: never) => unknown) => void;
     setSelectedSocialProviders: (providers: unknown[]) => void;
     selectedSocialProviders: unknown[];
@@ -107,6 +114,51 @@ test("an Article sharing content with video platforms keeps its title", async ({
   await attachVideo(page);
   await page.getByLabel("Article title").fill("Shared clip");
   await twitterSettings(page).toMatchObject({ articleTitle: "Shared clip" });
+});
+
+test("an Article keeps the thread other channels still publish", async ({
+  page,
+}) => {
+  await openComposer(page);
+  await page.evaluate(() => {
+    const state = (Reflect.get(window, "composerStore") as Store).getState();
+    state.setSelectedSocialProviders([
+      ...state.selectedSocialProviders,
+      {
+        socialId: "connection_threads",
+        socialType: "THREADS",
+        name: "Threads",
+      },
+    ]);
+  });
+  await page
+    .getByRole("button", { name: "Add another post to thread" })
+    .click();
+  await page.getByLabel("Post 2", { exact: true }).fill("Second paragraph");
+  await page.getByRole("radio", { name: "Article" }).click();
+
+  const post = await page.evaluate(() => {
+    const state = (Reflect.get(window, "composerStore") as Store).getState();
+    return {
+      shared: state.post.content.map((item) => item.text),
+      custom: state.post.alternativeContent.map((item) => ({
+        id: item.socialProvider.socialId,
+        texts: item.content.map((segment) => segment.text),
+      })),
+      opened: Reflect.get(window, "openedChannel"),
+    };
+  });
+  expect(post).toEqual({
+    shared: ["My article body", "Second paragraph"],
+    custom: [
+      {
+        id: "connection_twitter",
+        texts: ["My article body\n\nSecond paragraph"],
+      },
+    ],
+    opened: "connection_twitter",
+  });
+  await twitterSettings(page).toMatchObject({ format: "article" });
 });
 
 test("X quotes and reply audience are edited inline in the composer", async ({
