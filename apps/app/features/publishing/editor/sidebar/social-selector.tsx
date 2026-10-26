@@ -35,6 +35,10 @@ import {
   useSelectedSocialProviders,
   useStore,
 } from "@/features/publishing/store";
+import {
+  twitterGroupProviderIds,
+  twitterGroupWrites,
+} from "@/features/publishing/twitter-group";
 import { AppLink as Link } from "@/shell/navigation/app-link";
 import { useApiClient } from "@/shell/providers/api-client";
 import { useWorkspace } from "@/shell/providers/workspace";
@@ -80,6 +84,18 @@ function addProvider(account: AccountLike) {
       type: "INSTAGRAM",
       settings: DEFAULT_INSTAGRAM_SETTINGS,
     });
+  }
+  if (socialType === "TWITTER") {
+    // A new account joins the shared content, so it takes that group's X
+    // format, even when the shared editor tab is not mounted.
+    const ids = twitterGroupProviderIds(
+      state.selectedSocialProviders,
+      state.post.alternativeContent,
+      { isGlobal: true, socialId: "global" }
+    );
+    for (const write of twitterGroupWrites(ids, state.providerSettings)) {
+      state.setProviderSettings(write.socialProviderId, write);
+    }
   }
 }
 

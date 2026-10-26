@@ -24,6 +24,7 @@ import { AnimatePresence, motion } from "motion/react";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { pickCoverImage } from "@/features/publishing/editor/cover-media";
 import {
   type ExistingMediaSelection,
   existingMediaFiles,
@@ -386,8 +387,19 @@ export function MediaUploader({
   const { acceptedMimeTypes, instruction, platformHint } = limits;
 
   const handleFileProcessing = useCallback(
-    async (incomingFiles: File[]) => {
+    async (pickedFiles: File[]) => {
       let newMediaFiles: MediaFile[] = [];
+      let incomingFiles = pickedFiles;
+      if (variant === "cover") {
+        const { cover, dropped } = pickCoverImage(
+          pickedFiles,
+          getMediaTypeFromFile
+        );
+        if (dropped) {
+          toast.error("A cover is a single image");
+        }
+        incomingFiles = cover;
+      }
       const validatedFiles: File[] = [];
 
       logVideoUploadLayout("upload start", {
@@ -581,6 +593,7 @@ export function MediaUploader({
       mediaFiles,
       socialId,
       socialType,
+      variant,
       orderId,
       isGlobal,
       uploadAndSaveMedia,
@@ -627,9 +640,20 @@ export function MediaUploader({
       const newMediaFiles = existingMediaFiles(selectedMedia);
 
       isUserAction.current = true;
+      if (variant === "cover") {
+        const { cover, dropped } = pickCoverImage(
+          newMediaFiles,
+          (media) => media.mediaType
+        );
+        if (dropped) {
+          toast.error("A cover is a single image");
+        }
+        setMediaFiles(cover);
+        return;
+      }
       setMediaFiles((prev) => [...prev, ...newMediaFiles]);
     },
-    []
+    [variant]
   );
 
   const getPreviewAspectRatio = (mediaType: "IMAGE" | "VIDEO" | "DOCUMENT") => {

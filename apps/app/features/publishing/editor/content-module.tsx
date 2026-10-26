@@ -371,13 +371,33 @@ export function ContentModule({ socialId, socialType }: ContentModuleProps) {
       }));
     }
   };
-  const twitterBar =
-    twitter.providerIds.length > 0 ? (
-      <TwitterComposerBar
-        onFormatChange={changeTwitterFormat}
-        twitter={twitter}
-      />
+  const hasTwitter = twitter.providerIds.length > 0;
+  const quoteButton =
+    hasTwitter && !twitter.isArticle && !showQuote ? (
+      <TwitterQuoteButton onClick={() => setQuoteOpen(true)} />
     ) : null;
+  const quoteCard = showQuote ? (
+    <TwitterQuoteCard
+      inputId={`twitter-quote-${socialId}`}
+      onRemove={() => {
+        twitter.update({ quoteTweetId: "" });
+        setQuoteOpen(false);
+      }}
+      twitter={twitter}
+    />
+  ) : null;
+  const articleTitle = twitter.isArticle ? (
+    <TwitterArticleTitle
+      inputId={`twitter-article-title-${socialId}`}
+      twitter={twitter}
+    />
+  ) : null;
+  // When only X accounts publish this content, an Article owns the layout and
+  // shows media as its cover. Shared content keeps the other platforms' layout.
+  const articleOwnsLayout =
+    twitter.isArticle &&
+    (!isGlobal ||
+      platformsInDefault.every((platform) => platform === SocialTypes.TWITTER));
 
   // Freeze layout during upload to prevent destroying MediaUploader state
   const frozenLayoutRef = useRef<boolean | null>(null);
@@ -390,6 +410,9 @@ export function ContentModule({ socialId, socialType }: ContentModuleProps) {
 
     // Compute what the layout WOULD be based on platform type or uploaded video
     const computedLayout = (() => {
+      if (articleOwnsLayout) {
+        return false;
+      }
       if (hasReadyVideoInContent) {
         return true;
       }
@@ -526,9 +549,17 @@ export function ContentModule({ socialId, socialType }: ContentModuleProps) {
         }
       />
     );
-    return twitterBar ? (
+    return hasTwitter ? (
       <>
-        <div className="mx-auto w-full max-w-[780px]">{twitterBar}</div>
+        <div className="mx-auto w-full max-w-[780px]">
+          <TwitterComposerBar
+            actions={quoteButton}
+            onFormatChange={changeTwitterFormat}
+            twitter={twitter}
+          />
+          {articleTitle && <div className="px-1 sm:px-2">{articleTitle}</div>}
+          {quoteCard}
+        </div>
         {videoLayout}
       </>
     ) : (
@@ -538,7 +569,12 @@ export function ContentModule({ socialId, socialType }: ContentModuleProps) {
 
   return (
     <div className="mx-auto w-full max-w-[780px]">
-      {twitterBar}
+      {hasTwitter && (
+        <TwitterComposerBar
+          onFormatChange={changeTwitterFormat}
+          twitter={twitter}
+        />
+      )}
       <div>
         {content.map((item, index) => (
           <div
@@ -560,10 +596,7 @@ export function ContentModule({ socialId, socialType }: ContentModuleProps) {
                       variant="cover"
                     />
                   </div>
-                  <TwitterArticleTitle
-                    inputId={`twitter-article-title-${socialId}`}
-                    twitter={twitter}
-                  />
+                  {articleTitle}
                 </>
               )}
               <div className="relative">
@@ -614,30 +647,15 @@ export function ContentModule({ socialId, socialType }: ContentModuleProps) {
                 )}
               </div>
             </div>
-            {showQuote && index === 0 && (
-              <TwitterQuoteCard
-                inputId={`twitter-quote-${socialId}`}
-                onRemove={() => {
-                  twitter.update({ quoteTweetId: "" });
-                  setQuoteOpen(false);
-                }}
-                twitter={twitter}
-              />
-            )}
+            {index === 0 && quoteCard}
             {!twitter.isArticle && (
               <MediaUploader
                 extraActions={
                   usesMultiPostLayout ||
                   content.length > 1 ||
-                  (index === 0 && twitter.providerIds.length > 0) ? (
+                  (index === 0 && quoteButton) ? (
                     <>
-                      {index === 0 &&
-                        twitter.providerIds.length > 0 &&
-                        !showQuote && (
-                          <TwitterQuoteButton
-                            onClick={() => setQuoteOpen(true)}
-                          />
-                        )}
+                      {index === 0 && quoteButton}
                       {usesMultiPostLayout && (
                         <Button
                           aria-label="Add another post to thread"

@@ -1,10 +1,6 @@
 "use client";
 
-import { DEFAULT_TWITTER_SETTINGS } from "@delulu/core/publishing/constants/settings";
-import {
-  SocialTypes,
-  type TwitterSettings,
-} from "@delulu/core/publishing/post";
+import type { TwitterSettings } from "@delulu/core/publishing/post";
 import { parseTwitterPostId } from "@delulu/core/publishing/twitter";
 import { Button } from "@delulu/design-system/components/ui/button";
 import {
@@ -27,12 +23,17 @@ import {
   QuoteDownIcon,
   UserCheck01Icon,
 } from "@delulu/icons";
-import { useMemo } from "react";
+import { type ReactNode, useEffect, useMemo } from "react";
 import { SocialIcon } from "@/features/publishing/editor/sidebar/social-icon";
 import {
   useSelectedSocialProviders,
   useStore,
 } from "@/features/publishing/store";
+import {
+  twitterGroupProviderIds,
+  twitterGroupSettings,
+  twitterGroupWrites,
+} from "@/features/publishing/twitter-group";
 
 type ReplyRestriction = TwitterSettings["replyRestriction"];
 
@@ -69,11 +70,7 @@ export interface TwitterComposer {
   readonly update: (values: Partial<TwitterSettings>) => void;
 }
 
-/**
- * X settings for the accounts that publish one editor content group. Accounts
- * sharing content share a format, because Articles and threads need different
- * content shapes.
- */
+/** X settings for the accounts that publish one editor content group. */
 export function useTwitterComposer(
   socialId: string,
   isGlobal: boolean
@@ -84,26 +81,19 @@ export function useTwitterComposer(
   const setProviderSettings = useStore((state) => state.setProviderSettings);
   const providerIds = useMemo(
     () =>
-      selectedProviders
-        .filter(
-          (provider) =>
-            provider.socialType === SocialTypes.TWITTER &&
-            (isGlobal
-              ? !alternativeContent.some(
-                  (item) => item.socialProvider.socialId === provider.socialId
-                )
-              : provider.socialId === socialId)
-        )
-        .map((provider) => provider.socialId),
+      twitterGroupProviderIds(selectedProviders, alternativeContent, {
+        isGlobal,
+        socialId,
+      }),
     [alternativeContent, isGlobal, selectedProviders, socialId]
   );
-  const configured = providerIds[0]
-    ? providerSettings[providerIds[0]]
-    : undefined;
-  const settings =
-    configured?.type === "TWITTER"
-      ? configured.settings
-      : DEFAULT_TWITTER_SETTINGS;
+  const settings = twitterGroupSettings(providerIds, providerSettings);
+  // Accounts can return to this group from their own content; align them.
+  useEffect(() => {
+    for (const write of twitterGroupWrites(providerIds, providerSettings)) {
+      setProviderSettings(write.socialProviderId, write);
+    }
+  }, [providerIds, providerSettings, setProviderSettings]);
   const update = (values: Partial<TwitterSettings>) => {
     for (const providerId of providerIds) {
       setProviderSettings(providerId, {
@@ -125,9 +115,12 @@ export function useTwitterComposer(
 export function TwitterComposerBar({
   twitter,
   onFormatChange,
+  actions,
 }: {
   twitter: TwitterComposer;
   onFormatChange: (format: "post" | "article") => void;
+  /** Extra X actions for layouts without a post toolbar. */
+  actions?: ReactNode;
 }) {
   const reply =
     REPLY_OPTIONS.find(
@@ -157,6 +150,7 @@ export function TwitterComposerBar({
           </ToggleGroupItem>
         ))}
       </ToggleGroup>
+      {actions}
       {!twitter.isArticle && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

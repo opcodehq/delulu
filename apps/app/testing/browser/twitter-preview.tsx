@@ -27,7 +27,8 @@ export function TwitterEditorFixture() {
       ],
       alternativeContent: [],
     });
-    // Tests read composer state here instead of from on-screen debug output.
+    // Tests drive composer state here instead of through on-screen controls.
+    Reflect.set(window, "composerStore", useStore);
     Reflect.set(
       window,
       "twitterSettings",
@@ -42,7 +43,7 @@ export function TwitterEditorFixture() {
   return (
     <main className="space-y-4 p-4">
       <h1 className="sr-only">Twitter editor</h1>
-      <ContentModule socialId="default" socialType="DEFAULT" />
+      <ContentModule socialId="global" socialType="DEFAULT" />
     </main>
   );
 }

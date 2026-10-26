@@ -27,10 +27,92 @@ test.afterEach(async ({ page }) => {
   ).toEqual([]);
 });
 
+interface Store {
+  getState: () => {
+    setPost: (update: (post: never) => unknown) => void;
+    setSelectedSocialProviders: (providers: unknown[]) => void;
+    selectedSocialProviders: unknown[];
+  };
+}
+
+/** Opens the X composer fixture once its state is ready. */
+const openComposer = async (page: Page) => {
+  await page.goto("/__twitter");
+  await expect(page.getByRole("group", { name: "X format" })).toBeVisible();
+};
+
+/** Attaches a ready video to the first post, as an upload would. */
+const attachVideo = (page: Page) =>
+  page.evaluate(() => {
+    const store = Reflect.get(window, "composerStore") as Store;
+    store.getState().setPost(((post: { content: { media: unknown[] }[] }) => ({
+      ...post,
+      content: post.content.map((item, index) =>
+        index === 0
+          ? { ...item, media: [{ mediaType: "VIDEO", url: "/clip.mp4" }] }
+          : item
+      ),
+    })) as never);
+  });
+
+test("a quote stays visible and removable after a video is added", async ({
+  page,
+}) => {
+  await openComposer(page);
+  await page.getByRole("button", { name: "Quote a post" }).click();
+  await page.getByLabel("Post to quote").fill("1234567890123456789");
+  await attachVideo(page);
+  await expect(page.getByLabel("Post to quote")).toHaveValue(
+    "1234567890123456789"
+  );
+  await page.getByRole("button", { name: "Remove quote" }).click();
+  await twitterSettings(page).toMatchObject({ quoteTweetId: "" });
+  await page.getByRole("button", { name: "Quote a post" }).click();
+  await expect(page.getByLabel("Post to quote")).toBeFocused();
+});
+
+test("an X-only Article keeps its title and shows media as the cover", async ({
+  page,
+}) => {
+  await openComposer(page);
+  await attachVideo(page);
+  await page.getByRole("radio", { name: "Article" }).click();
+  await page.getByLabel("Article title").fill("With a clip");
+  await expect(
+    page.getByRole("button", { name: "Remove media" })
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add cover" })).toHaveCount(0);
+  await twitterSettings(page).toMatchObject({
+    format: "article",
+    articleTitle: "With a clip",
+  });
+});
+
+test("an Article sharing content with video platforms keeps its title", async ({
+  page,
+}) => {
+  await openComposer(page);
+  await page.evaluate(() => {
+    const state = (Reflect.get(window, "composerStore") as Store).getState();
+    state.setSelectedSocialProviders([
+      ...state.selectedSocialProviders,
+      {
+        socialId: "connection_threads",
+        socialType: "THREADS",
+        name: "Threads",
+      },
+    ]);
+  });
+  await page.getByRole("radio", { name: "Article" }).click();
+  await attachVideo(page);
+  await page.getByLabel("Article title").fill("Shared clip");
+  await twitterSettings(page).toMatchObject({ articleTitle: "Shared clip" });
+});
+
 test("X quotes and reply audience are edited inline in the composer", async ({
   page,
 }, info) => {
-  await page.goto("/__twitter");
+  await openComposer(page);
   await expect(page.getByLabel("Post to quote")).toHaveCount(0);
   await page.getByRole("button", { name: "Quote a post" }).click();
   const quote = page.getByLabel("Post to quote");
@@ -80,7 +162,7 @@ test("X quotes and reply audience are edited inline in the composer", async ({
 test("switching X to Article folds the thread into one titled body", async ({
   page,
 }, info) => {
-  await page.goto("/__twitter");
+  await openComposer(page);
   await expect(page.getByLabel("Characters used")).toHaveText("15 / 280");
   await page
     .getByRole("button", { name: "Add another post to thread" })
