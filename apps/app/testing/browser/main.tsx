@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 import { lazy, Suspense } from "react";
+import AgentSettingsPage from "@/app/(authenticated)/agent/settings/page";
 import ExtensionAuthSuccessPage from "@/app/extension-auth-success/page";
 import { LinkedInAccountSelect } from "@/app/linkedin-account-select/linkedin-account-select";
 import "@/app/styles.css";
@@ -60,7 +61,9 @@ function App() {
           <ExtensionAuthSuccessPage />
         ) : (
           <AppShell>
-            {route === "/__dm" ? (
+            {route === "/agent/settings" ? (
+              <AgentSettingsPage />
+            ) : route === "/__dm" ? (
               <DmPreview />
             ) : route === "/__controls" ? (
               <ControlPreview />

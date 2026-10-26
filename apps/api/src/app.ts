@@ -18,6 +18,7 @@ import type {
   CalendarWebhookConfig,
   CancellationService,
   ChannelLinkGateway,
+  ChatGPTService,
   ClerkAdminConfig,
   ClerkAdminService,
   ClerkTokenVerifier,
@@ -104,6 +105,7 @@ export type AppServices =
   | AdminService
   | AgentRuntimeProvider
   | AgentWorkspaceService
+  | ChatGPTService
   | AgentChannelService
   | ChannelLinkGateway
   | ClerkAdminConfig

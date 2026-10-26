@@ -18,6 +18,7 @@ export interface ChannelRoute {
   gadgetKey: string;
   chatKey: string;
   principalKey: string;
+  codex?: { userId: string; generation: string };
 }
 
 export interface MessageRecord extends ChannelMessage {
@@ -57,6 +58,10 @@ export type DeliveryResult =
 
 export class ChannelConversation extends DurableObject<Env> {
   private draining?: Promise<void>;
+
+  protected async runtime(_record: MessageRecord) {
+    return this.env.AGENT_RUNTIME;
+  }
 
   protected async route(sender: string): Promise<ChannelRoute> {
     return {
@@ -310,7 +315,7 @@ export class ChannelConversation extends DurableObject<Env> {
         });
         continue;
       }
-      const runtime = this.env.AGENT_RUNTIME;
+      const runtime = await this.runtime(record);
       if (!runtime) {
         throw new Error("Agent runtime is not configured");
       }

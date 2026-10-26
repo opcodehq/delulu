@@ -23,6 +23,7 @@ export * from "./billing-webhooks";
 export * from "./calendar-webhook";
 export * from "./cancellation";
 export * from "./cancellation-policy";
+export * from "./chatgpt";
 export * from "./clerk";
 export * from "./clerk-admin";
 export * from "./clerk-sync";

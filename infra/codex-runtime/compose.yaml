@@ -1,0 +1,21 @@
+services:
+  codex-runtime:
+    build: .
+    restart: unless-stopped
+    init: true
+    environment:
+      CODEX_RUNTIME_ENABLED: ${CODEX_RUNTIME_ENABLED:-false}
+      CODEX_RUNTIME_SECRET: ${CODEX_RUNTIME_SECRET:?set a random service secret}
+    ports:
+      - "127.0.0.1:8788:8788"
+    volumes:
+      - codex-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 256
+    mem_limit: 2g
+volumes:
+  codex-data:

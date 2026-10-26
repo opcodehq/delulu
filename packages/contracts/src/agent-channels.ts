@@ -1,5 +1,6 @@
 import { Schema } from "effect";
 import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
+import { ChatGPTConnection, ChatGPTModels } from "./chatgpt";
 import { ConflictErrorResponse, ForbiddenErrorResponse } from "./errors";
 import { Authentication } from "./middleware";
 
@@ -96,5 +97,49 @@ export const AgentChannelsGroup = HttpApiGroup.make("agentChannels")
         error: [ConflictErrorResponse, ForbiddenErrorResponse],
       }
     )
+  )
+  .add(
+    HttpApiEndpoint.get("chatGPTStatus", "/v1/agent/chatgpt", {
+      success: ChatGPTConnection,
+      error: [ConflictErrorResponse, ForbiddenErrorResponse],
+    })
+  )
+  .add(
+    HttpApiEndpoint.post("chatGPTLogin", "/v1/agent/chatgpt/login", {
+      success: ChatGPTConnection,
+      error: [ConflictErrorResponse, ForbiddenErrorResponse],
+    })
+  )
+  .add(
+    HttpApiEndpoint.post("chatGPTCancel", "/v1/agent/chatgpt/cancel", {
+      success: Schema.Struct({ updated: Schema.Boolean }),
+      error: [ConflictErrorResponse, ForbiddenErrorResponse],
+    })
+  )
+  .add(
+    HttpApiEndpoint.delete("chatGPTDisconnect", "/v1/agent/chatgpt", {
+      success: Schema.Struct({ updated: Schema.Boolean }),
+      error: [ConflictErrorResponse, ForbiddenErrorResponse],
+    })
+  )
+  .add(
+    HttpApiEndpoint.get("chatGPTModels", "/v1/agent/chatgpt/models", {
+      success: ChatGPTModels,
+      error: [ConflictErrorResponse, ForbiddenErrorResponse],
+    })
+  )
+  .add(
+    HttpApiEndpoint.patch("chatGPTModel", "/v1/agent/chatgpt/model", {
+      payload: Schema.Struct({ model: Schema.String }),
+      success: Schema.Struct({ updated: Schema.Boolean }),
+      error: [ConflictErrorResponse, ForbiddenErrorResponse],
+    })
+  )
+  .add(
+    HttpApiEndpoint.patch("chatGPTRuntime", "/v1/agent/chatgpt/runtime", {
+      payload: Schema.Struct({ selected: Schema.Boolean }),
+      success: Schema.Struct({ updated: Schema.Boolean }),
+      error: [ConflictErrorResponse, ForbiddenErrorResponse],
+    })
   )
   .middleware(Authentication);

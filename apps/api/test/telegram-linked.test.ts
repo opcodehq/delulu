@@ -1,3 +1,4 @@
+import { createHash, generateKeyPairSync } from "node:crypto";
 import { IdentityService } from "@delulu/services";
 import { Effect, Layer } from "effect";
 import { SqlClient } from "effect/unstable/sql";
@@ -53,7 +54,10 @@ class Storage {
 }
 afterEach(() => vi.unstubAllGlobals());
 
-it("links through a private confirmation, routes authenticated chats, resets sessions, and rejects old buttons", async () => {
+it.each([
+  false,
+  true,
+])("links, deduplicates, changes chats and cancels approvals (Codex: %s)", async (codex) => {
   const env: Env = {
     DATABASE_URL:
       process.env.DATABASE_URL ??
@@ -63,6 +67,17 @@ it("links through a private confirmation, routes authenticated chats, resets ses
     TELEGRAM_INGRESS_ENABLED: "true",
     TELEGRAM_ACCOUNT_LINKING_ENABLED: "true",
     APP_BASE_URL: "https://app.example.test",
+    AS_SIGNING_KEY: generateKeyPairSync("ec", { namedCurve: "prime256v1" })
+      .privateKey.export({ type: "pkcs8", format: "pem" })
+      .toString(),
+    ENCRYPTION_SECRET: "codex-test-only",
+    ...(codex
+      ? {
+          CODEX_RUNTIME_ENABLED: "true",
+          CODEX_RUNTIME_URL: "https://runner.example.test",
+          CODEX_RUNTIME_SECRET: "s".repeat(32),
+        }
+      : {}),
   };
   const identity = await Effect.runPromise(
     Effect.gen(function* () {
@@ -91,9 +106,130 @@ it("links through a private confirmation, routes authenticated chats, resets ses
       >;
     };
   }> = [];
+  const runnerJobs = new Map<
+    string,
+    {
+      id: string;
+      state: string;
+      request: null;
+      events: { sequence: number; response: unknown }[];
+    }
+  >();
+  const digest = (value: string) =>
+    createHash("sha256").update(value).digest("hex");
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (url: string, init: RequestInit) => {
+    vi.fn(async (target: string | URL, init: RequestInit) => {
+      const url = String(target);
+      if (url === "https://runner.example.test/rpc") {
+        const { operation, userId, input } = JSON.parse(String(init.body));
+        expect(userId).toBe(identity.userId);
+        expect(new Headers(init.headers).get("authorization")).toBe(
+          `Bearer ${env.CODEX_RUNTIME_SECRET}`
+        );
+        if (operation === "peek") {
+          return Response.json({
+            enabled: true,
+            selected: true,
+            state: "connected",
+            generation: "connected",
+            model: null,
+            account: null,
+            plan: null,
+            limits: null,
+            error: null,
+            login: null,
+          });
+        }
+        if (operation === "submit") {
+          expect(input.workspaceId).toBe(identity.workspaceId);
+          const id = digest(
+            JSON.stringify([
+              digest(userId),
+              input.scope,
+              input.generation,
+              input.messageKey,
+            ])
+          );
+          submissions.push({
+            callerEmail: identity.verifiedEmail,
+            gadgetKey: `workspace:${input.workspaceId}`,
+            chatKey: input.scope,
+          });
+          const job = {
+            id,
+            state: requireApproval ? "waiting_approval" : "completed",
+            request: null,
+            events: [
+              {
+                sequence: 1,
+                response: {
+                  text: "Hello from your workspace.",
+                  ...(requireApproval
+                    ? {
+                        actions: [
+                          {
+                            id: "17",
+                            kind: "remember",
+                            summary: "Remember a preference",
+                            risk: "consequential",
+                          },
+                        ],
+                      }
+                    : {}),
+                  usage: {
+                    provider: "chatgpt",
+                    model: "test",
+                    inputTokens: 0,
+                    outputTokens: 0,
+                    cachedInputTokens: 0,
+                    costMicros: 0,
+                  },
+                },
+              },
+            ],
+          };
+          runnerJobs.set(id, job);
+          return Response.json(job);
+        }
+        if (operation === "poll") {
+          const job = runnerJobs.get(input.id)!;
+          return Response.json({
+            ...job,
+            events: job.events.filter((event) => event.sequence > input.after),
+          });
+        }
+        if (operation === "claimAction") {
+          decisions.push(input);
+          return Response.json({
+            kind: "remember",
+            workspaceId: identity.workspaceId,
+            value: {
+              category: "preference",
+              text: "Keep posts concise.",
+              scope: "personal",
+            },
+          });
+        }
+        if (operation === "resolveAction") {
+          expect(input.result.ok).toBe(true);
+          const job = runnerJobs.get(input.id)!;
+          job.state = "completed";
+          job.events.push({
+            sequence: 2,
+            response: { text: "Preference saved." },
+          });
+          return Response.json({ updated: true });
+        }
+        if (operation === "interrupt") {
+          if (interruptFailures-- > 0) {
+            return Response.json({ error: "Unavailable" }, { status: 503 });
+          }
+          runnerJobs.get(input.id)!.state = "cancelled";
+          return Response.json({ updated: true });
+        }
+        throw new Error(`Unexpected runner operation: ${operation}`);
+      }
       if (url.endsWith("/sendMessage")) {
         sent.push(JSON.parse(String(init.body)));
       }
@@ -124,6 +260,9 @@ it("links through a private confirmation, routes authenticated chats, resets ses
           onGadgetResponse(response: unknown): Promise<void>;
         };
       }) => {
+        if (codex) {
+          throw new Error("Subscription turn fell back to Cloudflare");
+        }
         submissions.push(input);
         await input.chatGatewayRpcTarget.onGadgetResponse({
           text: "Hello from your workspace.",
@@ -176,6 +315,9 @@ it("links through a private confirmation, routes authenticated chats, resets ses
     while (jobs.length) {
       await Promise.all(jobs.splice(0));
     }
+    if (codex) {
+      await actor.alarm();
+    }
   };
   await actor.enqueue({ id: "1", sender: "123", text: "/start" });
   expect(submissions).toHaveLength(0);
@@ -220,18 +362,64 @@ it("links through a private confirmation, routes authenticated chats, resets ses
     actor.offerLink({ challenge, candidate: identity })
   ).rejects.toThrow();
   requireApproval = true;
+  if (codex) {
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient;
+        yield* sql`UPDATE agent_workspaces SET external_writes_enabled = true WHERE user_id = ${identity.userId}`;
+      }).pipe(Effect.provide(makePgLayer(env)))
+    );
+    await actor.enqueue({
+      id: "approve-task",
+      sender: "123",
+      text: "Remember my preference",
+    });
+    await drain();
+    const approval =
+      sent.at(-1)!.reply_markup!.inline_keyboard[0]![0]!.callback_data!;
+    const approve = {
+      id: "approve-control",
+      sender: "123",
+      text: "",
+      callback: { id: "approve", data: approval },
+    };
+    await actor.enqueue(approve);
+    await drain();
+    await actor.enqueue(approve);
+    expect(sent.some((message) => message.text === "Preference saved.")).toBe(
+      true
+    );
+    expect(decisions).toHaveLength(1);
+    const count = await Effect.runPromise(
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient;
+        return yield* sql<{
+          count: string;
+        }>`SELECT count(*)::text AS count FROM agent_external_effects WHERE caller_email = ${identity.verifiedEmail} AND status = 'completed'`;
+      }).pipe(Effect.provide(makePgLayer(env)))
+    );
+    expect(count[0]?.count).toBe("1");
+  }
   await actor.enqueue({ id: "7", sender: "123", text: "schedule a draft" });
   await drain();
   expect(await storage.get("pending:7")).toBeDefined();
   interruptFailures = 1;
   await expect(
     actor.enqueue({ id: "8", sender: "123", text: "/stop" })
-  ).rejects.toThrow("Transient runtime failure");
+  ).rejects.toThrow(
+    codex ? "ChatGPT request unavailable" : "Transient runtime failure"
+  );
   expect(await storage.get("control:8")).toBeUndefined();
   await actor.enqueue({ id: "8", sender: "123", text: "/stop" });
   expect(await storage.get("control:8")).toBeDefined();
   expect(await storage.get("pending:7")).toBeUndefined();
   expect(decisions).toHaveLength(1);
+  if (codex) {
+    expect([...runnerJobs.values()].at(-1)?.state).toBe("cancelled");
+    expect(
+      sent.some((message) => message.text === "Hello from your workspace.")
+    ).toBe(true);
+  }
   const connectionId = await Effect.runPromise(
     Effect.gen(function* () {
       const sql = yield* SqlClient.SqlClient;
@@ -256,5 +444,5 @@ it("links through a private confirmation, routes authenticated chats, resets ses
   });
   await actor.enqueue({ id: "9", sender: "123", text: "hello again" });
   await drain();
-  expect(submissions).toHaveLength(3);
+  expect(submissions).toHaveLength(codex ? 4 : 3);
 });

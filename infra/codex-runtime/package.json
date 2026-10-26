@@ -1,0 +1,15 @@
+{
+  "name": "@delulu/codex-runtime",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.14.0"
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@openai/codex": "0.159.3"
+  }
+}

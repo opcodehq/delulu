@@ -1,3 +1,4 @@
+export type { ChatGPTConnectionView } from "@delulu/contracts";
 export * from "./automation-write.js";
 export * from "./client.js";
 export * from "./effect.js";

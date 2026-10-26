@@ -16,6 +16,16 @@ env:
   NODE_VERSION: "22"
 
 jobs:
+  codex-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.14.1"
+      - run: npm ci --prefix infra/codex-runtime
+      - run: node --test infra/codex-runtime/test/*.test.mjs
+
   setup:
     runs-on: ubuntu-latest
     steps:

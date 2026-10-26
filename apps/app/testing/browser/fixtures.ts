@@ -17,6 +17,7 @@ const memberships = list(
   }))
 );
 export interface FixtureConfig {
+  chatGPT?: "disabled" | "disconnected" | "connected" | "expired";
   linkedInTargets?: {
     id: string;
     name: string;
@@ -42,6 +43,24 @@ export function installFixtures() {
   };
   const config = window.fixtureConfig;
   Object.assign(window, { fixtureUnhandled: unhandled });
+  let chatGPT = {
+    enabled: config.chatGPT !== "disabled",
+    state: config.chatGPT === "connected" ? "connected" : "disconnected",
+    selected: config.chatGPT === "connected",
+    generation: "fixture",
+    account: config.chatGPT === "connected" ? "person@example.test" : null,
+    plan: config.chatGPT === "connected" ? "plus" : null,
+    model: null as string | null,
+    error: null as string | null,
+    login: null as {
+      id: string;
+      code: string;
+      url: string;
+      expiresAt: number;
+    } | null,
+    limits: null,
+  };
+  let loginPolls = 0;
   const realFetch = window.fetch.bind(window);
   window.fetch = async (input, init) => {
     const url = new URL(
@@ -81,7 +100,66 @@ export function installFixtures() {
     }
     let body: unknown;
     let status = 200;
-    if (method !== "GET") {
+    if (url.pathname === "/v1/agent/chatgpt" && method === "GET") {
+      if (chatGPT.state === "pending" && ++loginPolls > 0) {
+        chatGPT = {
+          ...chatGPT,
+          state: config.chatGPT === "expired" ? "expired" : "connected",
+          selected: config.chatGPT !== "expired",
+          login: null,
+          account: "person@example.test",
+          plan: "plus",
+          error:
+            config.chatGPT === "expired" ? "Sign-in expired. Try again." : null,
+        };
+      }
+      body = chatGPT;
+    } else if (
+      url.pathname === "/v1/agent/chatgpt/login" &&
+      method === "POST"
+    ) {
+      loginPolls = 0;
+      chatGPT = {
+        ...chatGPT,
+        state: "pending",
+        login: {
+          id: "login",
+          code: "ABCD-1234",
+          url: "https://auth.openai.com/codex/device",
+          expiresAt: Date.now() + 600_000,
+        },
+      };
+      body = chatGPT;
+    } else if (
+      url.pathname === "/v1/agent/chatgpt/models" &&
+      method === "GET"
+    ) {
+      body = [{ id: "test-model", name: "Test model", isDefault: true }];
+    } else if (
+      url.pathname === "/v1/agent/chatgpt/runtime" &&
+      method === "PATCH"
+    ) {
+      chatGPT = { ...chatGPT, selected: !chatGPT.selected };
+      body = { updated: true };
+    } else if (
+      url.pathname === "/v1/agent/chatgpt/model" &&
+      method === "PATCH"
+    ) {
+      chatGPT = { ...chatGPT, model: "test-model" };
+      body = { updated: true };
+    } else if (
+      (url.pathname === "/v1/agent/chatgpt" && method === "DELETE") ||
+      (url.pathname === "/v1/agent/chatgpt/cancel" && method === "POST")
+    ) {
+      chatGPT = {
+        ...chatGPT,
+        state: "disconnected",
+        login: null,
+        account: null,
+        plan: null,
+      };
+      body = { updated: true };
+    } else if (method !== "GET") {
       unhandled.push(`${method} ${url.pathname}`);
       status = 501;
       body = { message: `Missing fixture: ${method} ${url.pathname}` };

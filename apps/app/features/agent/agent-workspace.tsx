@@ -16,6 +16,7 @@ import { cn } from "@delulu/design-system/lib/utils";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AgentSkills } from "@/features/agent/agent-skills";
+import { ChatGPTConnection } from "@/features/agent/chatgpt-connection";
 import { useApiClient } from "@/shell/providers/api-client";
 import { useWorkspace } from "@/shell/providers/workspace";
 import {
@@ -247,6 +248,7 @@ export function AgentWorkspace() {
 
   return (
     <div className="space-y-4">
+      <ChatGPTConnection />
       <AgentSkills key={id} workspaceId={id} />
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_280px]">
         <Card>

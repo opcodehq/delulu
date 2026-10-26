@@ -3,6 +3,7 @@ import {
   splitTelegramText,
   telegramCall,
 } from "@delulu/communication-telegram";
+import { ChatGPTConnection } from "@delulu/contracts";
 import { type AuthContext, UserId, WorkspaceId } from "@delulu/core";
 import {
   AgentChannelService,
@@ -27,7 +28,9 @@ import {
   type DeliveryResult,
   type MessageRecord,
 } from "./channel-conversation";
-import type { Env } from "./env";
+import { CodexJob, ContentActionInput, codexCall } from "./codex-channel";
+import { ContentBridge } from "./content-bridge";
+import type { AgentRuntimeGatewayBinding, Env } from "./env";
 import { prepareTelegramMedia } from "./telegram-media";
 import {
   approvalLabel,
@@ -229,12 +232,21 @@ export class TelegramLinkedConversation extends ChannelConversation {
       throw new Error("Connection required");
     }
     const route = await this.route(message.sender);
+    if (route.codex && message.media) {
+      throw new ChannelInputError(
+        "Send a text message when using ChatGPT. Media preprocessing is not included in this subscription connection."
+      );
+    }
     await this.ctx.storage.put(`admission:${message.id}`, {
       turnId: this.turnId({ ...message, route }),
     });
     await this.ctx.storage.setAlarm(Date.now() + 30_000);
     const admissionError = await Effect.runPromise(
-      reserveChannelTurn(principal, this.turnId({ ...message, route })).pipe(
+      reserveChannelTurn(
+        principal,
+        this.turnId({ ...message, route }),
+        Boolean(route.codex && !message.media)
+      ).pipe(
         Effect.match({
           onFailure: (error) => error.message,
           onSuccess: () => null,
@@ -248,9 +260,19 @@ export class TelegramLinkedConversation extends ChannelConversation {
   }
   protected async abandoned(record: MessageRecord) {
     await Effect.runPromise(
-      settleChannelTurn(this.turnId(record)).pipe(
-        Effect.provide(makePgLayer(this.env))
-      )
+      settleChannelTurn(
+        this.turnId(record),
+        record.route?.codex && !record.media
+          ? {
+              provider: "chatgpt",
+              model: "subscription",
+              costMicros: 0,
+              inputTokens: 0,
+              outputTokens: 0,
+              cachedInputTokens: 0,
+            }
+          : undefined
+      ).pipe(Effect.provide(makePgLayer(this.env)))
     );
   }
   async completeResponse(id: string, response: AgentRuntimeResponse) {
@@ -383,6 +405,12 @@ export class TelegramLinkedConversation extends ChannelConversation {
     const pending = await this.ctx.storage.list<number>({ prefix: "pending:" });
     for (const [key, expiresAt] of pending) {
       if (expiresAt > Date.now()) {
+        const waiting = await this.ctx.storage.get<MessageRecord>(
+          `message:${key.slice("pending:".length)}`
+        );
+        if (waiting?.route?.codex && (await this.permits(waiting))) {
+          await this.pollCodex(waiting);
+        }
         continue;
       }
       const id = key.slice("pending:".length);
@@ -395,15 +423,23 @@ export class TelegramLinkedConversation extends ChannelConversation {
           if (approval.state !== "pending") {
             continue;
           }
-          await this.env.AGENT_RUNTIME!.resolveExternalAction({
-            callerEmail: record.route.callerEmail,
-            gadgetKey: record.route.gadgetKey,
-            actionId: approvalKey.slice(`approval:${id}:`.length),
-            decision: "rejected",
-          });
+          if (!record.route.codex) {
+            await (await this.runtime(record))!.resolveExternalAction({
+              callerEmail: record.route.callerEmail,
+              gadgetKey: record.route.gadgetKey,
+              actionId: approvalKey.slice(`approval:${id}:`.length),
+              decision: "rejected",
+            });
+          }
           await this.ctx.storage.put(approvalKey, {
             ...approval,
             state: "expired",
+          });
+        }
+        if (record.route.codex) {
+          await (await this.runtime(record))!.interruptExternalRun({
+            ...record.route,
+            messageKey: record.id,
           });
         }
         await this.abandoned(record);
@@ -435,10 +471,33 @@ export class TelegramLinkedConversation extends ChannelConversation {
       (await this.ctx.storage.get<number>(
         `session:${principal.generation}:${principal.workspaceId}`
       )) ?? 1;
+    const selectionKey = `codex-selection:${principal.userId}`;
+    let selection = await this.ctx.storage.get<{
+      selected: boolean;
+      generation: string;
+    }>(selectionKey);
+    if (this.env.CODEX_RUNTIME_URL) {
+      const connection = Schema.decodeUnknownSync(ChatGPTConnection)(
+        await codexCall(this.env, principal.userId, "peek")
+      );
+      selection = {
+        selected: connection.selected,
+        generation: connection.generation,
+      };
+      await this.ctx.storage.put(selectionKey, selection);
+    }
     return {
+      ...(selection?.selected
+        ? {
+            codex: {
+              userId: principal.userId,
+              generation: selection.generation,
+            },
+          }
+        : {}),
       callerEmail: principal.verifiedEmail,
       gadgetKey: `workspace:${principal.workspaceId}`,
-      chatKey: `telegram:${principal.id}:${principal.generation}:${principal.workspaceId}:${version}`,
+      chatKey: `telegram:${principal.id}:${principal.generation}:${principal.workspaceId}:${version}${selection?.selected ? `:codex:${selection.generation}` : selection && selection.generation !== "default" ? `:cloudflare:${selection.generation}` : ""}`,
       principalKey: `${principal.id}:${principal.generation}`,
     };
   }
@@ -525,15 +584,17 @@ export class TelegramLinkedConversation extends ChannelConversation {
         if (approval.state !== "pending") {
           continue;
         }
-        await this.env.AGENT_RUNTIME!.resolveExternalAction({
-          callerEmail: record.route.callerEmail,
-          gadgetKey: record.route.gadgetKey,
-          actionId: key.slice(`approval:${record.id}:`.length),
-          decision: "rejected",
-        });
+        if (!record.route.codex) {
+          await (await this.runtime(record))!.resolveExternalAction({
+            callerEmail: record.route.callerEmail,
+            gadgetKey: record.route.gadgetKey,
+            actionId: key.slice(`approval:${record.id}:`.length),
+            decision: "rejected",
+          });
+        }
         await this.ctx.storage.put(key, { ...approval, state: "rejected" });
       }
-      await this.env.AGENT_RUNTIME!.interruptExternalRun({
+      await (await this.runtime(record))!.interruptExternalRun({
         ...record.route,
         messageKey: record.id,
       });
@@ -814,7 +875,7 @@ export class TelegramLinkedConversation extends ChannelConversation {
           awaitingContinuation: true,
         });
         try {
-          await this.env.AGENT_RUNTIME!.resolveExternalAction({
+          await (await this.runtime(record))!.resolveExternalAction({
             callerEmail: record.route.callerEmail,
             gadgetKey: record.route.gadgetKey,
             actionId: action.runtimeActionId,
@@ -923,6 +984,13 @@ export class TelegramLinkedConversation extends ChannelConversation {
           `Connected as ${principal.verifiedEmail}.\nMonthly agent allowance: ${usage}% used (including reserved tasks).`,
           {
             inline_keyboard: [
+              [
+                {
+                  text: "ChatGPT connection",
+                  url: new URL("/agent/settings#chatgpt", this.env.APP_BASE_URL)
+                    .href,
+                },
+              ],
               ...(
                 await this.directConnectionButtons(
                   message.sender,
@@ -992,7 +1060,181 @@ export class TelegramLinkedConversation extends ChannelConversation {
       );
     });
   }
+  private async codexJobId(record: MessageRecord) {
+    return hash(
+      JSON.stringify([
+        await hash(record.route!.codex!.userId),
+        record.route!.chatKey,
+        record.route!.codex!.generation,
+        record.id,
+      ])
+    );
+  }
+  protected async runtime(
+    record: MessageRecord
+  ): Promise<AgentRuntimeGatewayBinding | undefined> {
+    const route = record.route;
+    if (!route?.codex) {
+      return super.runtime(record);
+    }
+    const { userId, generation } = route.codex;
+    const id = await this.codexJobId(record);
+    const scope = route.chatKey;
+    const identity = { id, scope };
+    return {
+      ensureExternalUser: async () => undefined,
+      submitExternalMessage: async (input) => {
+        try {
+          if (!(await this.permits(record))) {
+            return {
+              accepted: false,
+              message: "Your workspace access changed.",
+            };
+          }
+          const job = Schema.decodeUnknownSync(CodexJob)(
+            await codexCall(this.env, userId, "submit", {
+              scope,
+              generation,
+              messageKey: record.id,
+              workspaceId: route.gadgetKey.slice("workspace:".length),
+              prompt: input.prompt,
+            })
+          );
+          if (job.id !== id) {
+            throw new Error("Unexpected task identity");
+          }
+          if (!(await this.ctx.storage.get(`codex-job:${record.id}`))) {
+            await this.ctx.storage.put(`codex-job:${record.id}`, {
+              id,
+              after: 0,
+            });
+          }
+          return { accepted: true, chatPath: scope };
+        } catch (error) {
+          return {
+            accepted: false,
+            message:
+              error instanceof Error
+                ? error.message
+                : "ChatGPT unavailable. Reconnect in Delulu agent settings.",
+          };
+        }
+      },
+      interruptExternalRun: async () => {
+        if (await this.ctx.storage.get(`codex-job:${record.id}`)) {
+          await codexCall(this.env, userId, "interrupt", identity);
+        }
+      },
+      resolveExternalAction: async ({ actionId, decision }) => {
+        if (!(await this.permits(record))) {
+          throw new Error("Workspace access changed");
+        }
+        const action = Schema.decodeUnknownSync(ContentActionInput)(
+          await codexCall(this.env, userId, "claimAction", {
+            ...identity,
+            actionId,
+            decision,
+          })
+        );
+        if (action.workspaceId !== route.gadgetKey.slice("workspace:".length)) {
+          throw new Error("Workspace access denied");
+        }
+        let result: { ok: boolean; result?: unknown; error?: string } = {
+          ok: false,
+          error: "User rejected the action.",
+        };
+        if (decision === "approved") {
+          try {
+            result = {
+              ok: true,
+              result: await new ContentBridge(this.env).executeContentAction({
+                callerEmail: route.callerEmail,
+                channelGrant: route.principalKey,
+                action,
+                idempotencyKey: `codex:${id}:${actionId}`,
+              }),
+            };
+          } catch {
+            result = {
+              ok: false,
+              error:
+                "The action outcome is uncertain or failed. Do not repeat it automatically; check the workspace.",
+            };
+          }
+        }
+        await codexCall(this.env, userId, "resolveAction", {
+          ...identity,
+          actionId,
+          result,
+        });
+      },
+    };
+  }
+  private async pollCodex(record: MessageRecord) {
+    const route = record.route!;
+    const reference = await this.ctx.storage.get<{ id: string; after: number }>(
+      `codex-job:${record.id}`
+    );
+    if (!(reference && route.codex)) {
+      return;
+    }
+    if (this.env.CODEX_RUNTIME_ENABLED !== "true") {
+      await (await this.runtime(record))
+        ?.interruptExternalRun({ ...route, messageKey: record.id })
+        .catch(() => undefined);
+      await this.finishLinkedResponse(record.id, {
+        text: "ChatGPT runtime is disabled. No paid API fallback was used.",
+      });
+      return;
+    }
+    const connection = Schema.decodeUnknownSync(ChatGPTConnection)(
+      await codexCall(this.env, route.codex.userId, "peek")
+    );
+    if (
+      connection.state !== "connected" ||
+      connection.generation !== route.codex.generation
+    ) {
+      await (await this.runtime(record))
+        ?.interruptExternalRun({ ...route, messageKey: record.id })
+        .catch(() => undefined);
+      await this.finishLinkedResponse(record.id, {
+        text: "Your ChatGPT connection changed. Reconnect in Delulu agent settings, then send a new message.",
+      });
+      return;
+    }
+    const job = Schema.decodeUnknownSync(CodexJob)(
+      await codexCall(this.env, route.codex.userId, "poll", {
+        id: reference.id,
+        scope: route.chatKey,
+        after: reference.after,
+      })
+    );
+    if (job.request) {
+      const context = await new ContentBridge(this.env).getContentContext({
+        callerEmail: route.callerEmail,
+        workspaceId: route.gadgetKey.slice("workspace:".length),
+        channelGrant: route.principalKey,
+      });
+      await codexCall(this.env, route.codex.userId, "context", {
+        id: job.id,
+        scope: route.chatKey,
+        requestId: job.request.id,
+        value: context,
+      });
+    }
+    const event = job.events[0];
+    if (event) {
+      await this.finishLinkedResponse(record.id, event.response);
+      await this.ctx.storage.put(`codex-job:${record.id}`, {
+        ...reference,
+        after: event.sequence,
+      });
+    }
+  }
   protected async showProcessing(record: MessageRecord) {
+    if (record.route?.codex) {
+      await this.pollCodex(record);
+    }
     const next = (await this.ctx.storage.get<number>("typing-next")) ?? 0;
     if (next <= Date.now()) {
       const result = await telegramCall(

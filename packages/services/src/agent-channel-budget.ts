@@ -45,9 +45,11 @@ export const lockAgentBudget = Effect.fn("lockAgentBudget")(function* (
 /** No turn contents enter this admission or usage path. Unknown runs retain reservations. */
 export const reserveChannelTurn = Effect.fn("reserveChannelTurn")(function* (
   principal: ChannelPrincipal,
-  id: string
+  id: string,
+  subscriptionFunded = false
 ) {
   const sql = yield* SqlClient.SqlClient;
+  const reservation = subscriptionFunded ? 0 : RESERVATION;
   yield* sql
     .withTransaction(
       Effect.gen(function* () {
@@ -113,10 +115,11 @@ export const reserveChannelTurn = Effect.fn("reserveChannelTurn")(function* (
       )::text AS count`;
         if (
           Number(counts[0]?.count ?? 0) >= 2 ||
-          Number(totals[0]?.monthly ?? 0) + RESERVATION >
-            Math.min(5_000_000, Number(agent.monthlyBudgetMicros)) ||
-          Number(totals[0]?.daily ?? 0) + RESERVATION >
-            Math.min(1_000_000, Number(agent.dailyBudgetMicros))
+          (!subscriptionFunded &&
+            (Number(totals[0]?.monthly ?? 0) + reservation >
+              Math.min(5_000_000, Number(agent.monthlyBudgetMicros)) ||
+              Number(totals[0]?.daily ?? 0) + reservation >
+                Math.min(1_000_000, Number(agent.dailyBudgetMicros))))
         ) {
           return yield* new ConflictError({
             message:
@@ -125,9 +128,9 @@ export const reserveChannelTurn = Effect.fn("reserveChannelTurn")(function* (
           });
         }
         yield* sql`INSERT INTO agent_channel_turns (id, user_id, workspace_id, agent_workspace_id, billing_owner_user_id, reserved_micros, state, expires_at)
-      VALUES (${id}, ${principal.userId}, ${principal.workspaceId}, ${agent.id}, ${owner}, ${RESERVATION}, 'active', now() + interval '20 minutes')`;
+      VALUES (${id}, ${principal.userId}, ${principal.workspaceId}, ${agent.id}, ${owner}, ${reservation}, 'active', now() + interval '20 minutes')`;
         yield* sql`INSERT INTO agent_usage_ledger (id, billing_owner_user_id, agent_workspace_id, entry_type, idempotency_key, cost_micros)
-      VALUES (${crypto.randomUUID()}, ${owner}, ${agent.id}, 'reservation', ${`channel:${id}:reserve`}, ${RESERVATION})`;
+      VALUES (${crypto.randomUUID()}, ${owner}, ${agent.id}, 'reservation', ${`channel:${id}:reserve`}, ${reservation})`;
       })
     )
     .pipe(Effect.catchTag("SqlError", Effect.die));

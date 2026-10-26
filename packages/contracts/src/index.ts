@@ -67,3 +67,5 @@ export const Api = HttpApi.make("deluluApi")
     OpenApi.Description,
     "Typed API contract shared by every backend consumer."
   );
+
+export * from "./chatgpt";

@@ -134,6 +134,20 @@ it("shares admission across channel connections and versions custom skills", asy
       }>`SELECT count(*)::text AS count FROM agent_usage_ledger WHERE idempotency_key = ${`channel:${ids[0]!}:release`}`;
       expect(releases[0]?.count).toBe("1");
       yield* reserveChannelTurn(principal, ids[2]!);
+      yield* settleChannelTurn(ids[1]!, actualUsage);
+      yield* settleChannelTurn(ids[2]!, actualUsage);
+      yield* sql`UPDATE agent_workspaces SET monthly_budget_micros = 1, daily_budget_micros = 1 WHERE user_id = ${user.user.id} AND workspace_id = ${workspaceId}`;
+      const subscriptionTurn = crypto.randomUUID();
+      yield* reserveChannelTurn(principal, subscriptionTurn, true);
+      const subscriptionRows = yield* sql<{
+        reservedMicros: string;
+      }>`SELECT reserved_micros::text FROM agent_channel_turns WHERE id = ${subscriptionTurn}`;
+      expect(subscriptionRows[0]?.reservedMicros).toBe("0");
+      yield* settleChannelTurn(subscriptionTurn, {
+        ...actualUsage,
+        provider: "chatgpt",
+        costMicros: 0,
+      });
       const skill = yield* saveInstructionSkill(user.user.id, workspaceId, {
         title: "Concise",
         instructions: "Use short sentences.",

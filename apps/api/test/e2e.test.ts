@@ -234,6 +234,33 @@ const postDodoWebhook = async (id: string, body: unknown) => {
 };
 
 describe("apps/api worker (e2e over toWebHandler)", () => {
+  it("requires Clerk authentication and beta eligibility for ChatGPT connection APIs", async () => {
+    expect((await get("/v1/agent/chatgpt")).status).toBe(401);
+    expect((await postJson("/v1/agent/chatgpt/login", {})).status).toBe(401);
+    const subject = `chatgpt-${crypto.randomUUID()}`;
+    const token = `test-token:${subject}`;
+    await get("/v1/me", token);
+    expect((await postJson("/v1/agent/chatgpt/login", {}, token)).status).toBe(
+      403
+    );
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const sql = yield* SqlClient.SqlClient;
+        yield* sql`UPDATE users SET email = ${`${subject}@example.test`} WHERE external_id = ${subject}`;
+        yield* sql`INSERT INTO agent_beta_invites (user_id) SELECT id FROM users WHERE external_id = ${subject}`;
+      }).pipe(Effect.provide(TestPg))
+    );
+    const status = await get("/v1/agent/chatgpt", token);
+    expect(status.status).toBe(200);
+    expect(await status.json()).toMatchObject({
+      enabled: false,
+      selected: false,
+      login: null,
+    });
+    expect((await postJson("/v1/agent/chatgpt/login", {}, token)).status).toBe(
+      409
+    );
+  });
   it("allows browser preflight only from the configured app origin", async () => {
     const allowed = await handler(
       new Request(`${ISSUER}/v1/me`, {

@@ -112,3 +112,19 @@ universal CI thresholds.
 Both are repository-local in `.agents/skills/`. They guide agents to write and
 run verification; executable Playwright/Vitest checks enforce results in CI.
 Neither skill authorizes staging, publishing, merging or deployment.
+
+## Optional ChatGPT runner
+
+The standalone Linux runner uses Node 24.14.1+ independently of the API workspace:
+
+```sh
+npm ci --prefix infra/codex-runtime
+node --test infra/codex-runtime/test/*.test.mjs
+```
+
+Its CI job installs the pinned Codex version and runs real SQLite tests plus an
+unauthenticated app-server startup smoke test. It never logs in or invokes a
+model. The existing API/Postgres and browser suites cover the adapter and settings.
+See [runner setup](../infra/codex-runtime/README.md) and
+[verification scope](../infra/codex-runtime/VERIFICATION.md) for deployment and
+live-provider limitations.

@@ -4,6 +4,9 @@ import {
   AgentChannelService,
   ChannelLinkGateway,
   ClerkAdminConfig,
+  chatGPTModels,
+  chatGPTRequest,
+  chatGPTStatus,
   deleteInstructionSkill,
   listInstructionSkills,
   saveInstructionSkill,
@@ -63,7 +66,55 @@ export const AgentChannelHandlers = HttpApiBuilder.group(
         });
         return { updated: true };
       });
+    const chatGPTUser = Effect.gen(function* () {
+      const auth = yield* session;
+      if (!(yield* channels.eligible(auth.userId)).length) {
+        return yield* new ForbiddenError({
+          message: "Agent beta access is required",
+        });
+      }
+      return auth.userId;
+    });
     return handlers
+      .handle("chatGPTStatus", () =>
+        Effect.gen(function* () {
+          return yield* chatGPTStatus((yield* session).userId);
+        })
+      )
+      .handle("chatGPTLogin", () =>
+        Effect.gen(function* () {
+          return yield* chatGPTStatus(yield* chatGPTUser, true);
+        })
+      )
+      .handle("chatGPTModels", () =>
+        Effect.gen(function* () {
+          return yield* chatGPTModels(yield* chatGPTUser);
+        })
+      )
+      .handle("chatGPTCancel", () =>
+        Effect.gen(function* () {
+          yield* chatGPTRequest((yield* session).userId, "cancelLogin");
+          return { updated: true };
+        })
+      )
+      .handle("chatGPTDisconnect", () =>
+        Effect.gen(function* () {
+          yield* chatGPTRequest((yield* session).userId, "disconnect");
+          return { updated: true };
+        })
+      )
+      .handle("chatGPTRuntime", ({ payload }) =>
+        Effect.gen(function* () {
+          yield* chatGPTRequest(yield* chatGPTUser, "selectRuntime", payload);
+          return { updated: true };
+        })
+      )
+      .handle("chatGPTModel", ({ payload }) =>
+        Effect.gen(function* () {
+          yield* chatGPTRequest(yield* chatGPTUser, "selectModel", payload);
+          return { updated: true };
+        })
+      )
       .handle("links", () =>
         Effect.gen(function* () {
           const auth = yield* session;

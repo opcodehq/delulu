@@ -90,6 +90,9 @@ export interface AgentRuntimeGatewayBinding {
  * `DATABASE_URL` and the in-memory rate limiter.
  */
 export interface Env {
+  readonly CODEX_RUNTIME_ENABLED?: string;
+  readonly CODEX_RUNTIME_URL?: string;
+  readonly CODEX_RUNTIME_SECRET?: string;
   readonly JOBS?: JobNamespace;
   readonly SCHEDULER_URL?: string;
   readonly SCHEDULER_SECRET?: string;
