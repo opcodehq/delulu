@@ -23,6 +23,7 @@ import { ControlPreview } from "@/testing/browser/control-preview";
 import { DmPreview } from "@/testing/browser/dm-preview";
 import { installFixtures, pending, requests } from "@/testing/browser/fixtures";
 import { navigate, usePathname } from "@/testing/browser/navigation";
+import { TwitterEditorFixture } from "@/testing/browser/twitter-preview";
 
 installFixtures();
 document.body.dataset.density = "compact";
@@ -67,7 +68,9 @@ function App() {
           <ExtensionAuthSuccessPage />
         ) : (
           <AppShell>
-            {route === "/__dm" ? (
+            {route === "/__twitter" ? (
+              <TwitterEditorFixture />
+            ) : route === "/__dm" ? (
               <DmPreview />
             ) : route === "/__controls" ? (
               <ControlPreview />

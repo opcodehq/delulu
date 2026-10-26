@@ -18,6 +18,7 @@ import {
   type WorkspaceId,
   type WorkspaceRole,
 } from "@delulu/core";
+import { validateTwitterContent } from "@delulu/core/publishing/twitter";
 import { Context, DateTime, Effect, Layer, Option, Schema } from "effect";
 import { SqlClient, SqlSchema } from "effect/unstable/sql";
 import { JobService } from "./jobs";
@@ -353,6 +354,20 @@ export class PostService extends Context.Service<
               path: `targets[${index}].settings.platform`,
               message: "Provider settings do not match the connection platform",
             });
+          }
+          if (
+            target.settings.platform === "TWITTER" &&
+            value.intent !== "draft"
+          ) {
+            const segments =
+              value.groups.find((group) => group.id === target.groupId)
+                ?.segments ?? [];
+            for (const message of validateTwitterContent(
+              target.settings.values,
+              segments
+            )) {
+              issues.push({ path: `targets[${index}].settings`, message });
+            }
           }
           if (
             target.scheduledAt !== null &&

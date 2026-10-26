@@ -11,8 +11,15 @@ import {
 import { cn } from "@delulu/design-system/lib/utils";
 import { Icon } from "@delulu/design-system/providers/icon";
 import { Add01Icon, Remove01Icon } from "@delulu/icons";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { MediaUploader } from "@/features/publishing/editor/media-uploader";
+import {
+  TwitterArticleTitle,
+  TwitterComposerBar,
+  TwitterQuoteButton,
+  TwitterQuoteCard,
+  useTwitterComposer,
+} from "@/features/publishing/editor/twitter-composer";
 import { VideoContentLayout } from "@/features/publishing/editor/video-content-layout";
 import {
   getDefaultCharacterLimit,
@@ -56,6 +63,12 @@ export function ContentModule({ socialId, socialType }: ContentModuleProps) {
   const isMediaUploading = useIsMediaUploading();
 
   const isGlobal = socialType === SocialTypes.DEFAULT;
+  const twitter = useTwitterComposer(socialId, isGlobal);
+  const [quoteOpen, setQuoteOpen] = useState(false);
+  const showQuote =
+    !twitter.isArticle &&
+    twitter.providerIds.length > 0 &&
+    (quoteOpen || Boolean(twitter.settings.quoteTweetId));
 
   // Determine which platforms are in default (for intelligent defaults) - memoized
   const platformsInDefault = useMemo(
@@ -77,12 +90,20 @@ export function ContentModule({ socialId, socialType }: ContentModuleProps) {
         : socialType,
     [isGlobal, platformsInDefault, socialType]
   );
-  const usesMultiPostLayout = shouldUseMultiPostLayout(
-    socialType,
-    platformsInDefault
-  );
+  const usesMultiPostLayout =
+    !twitter.isArticle &&
+    shouldUseMultiPostLayout(socialType, platformsInDefault);
   const characterLimit = isGlobal
-    ? getDefaultCharacterLimit(platformsInDefault)
+    ? getDefaultCharacterLimit(
+        twitter.isArticle
+          ? getPlatformsInDefault(
+              selectedSocialProviders.filter(
+                (provider) => !twitter.providerIds.includes(provider.socialId)
+              ),
+              post.alternativeContent
+            )
+          : platformsInDefault
+      )
     : usesMultiPostLayout
       ? PLATFORM_CHARACTER_LIMITS[socialType]
       : undefined;
@@ -307,6 +328,57 @@ export function ContentModule({ socialId, socialType }: ContentModuleProps) {
     [isGlobal, setPost, socialId]
   );
 
+  const changeTwitterFormat = (format: "post" | "article") => {
+    if (format === "post") {
+      twitter.update({ format: "post" });
+      return;
+    }
+    twitter.update({
+      format: "article",
+      quoteTweetId: "",
+      replyRestriction: "everyone",
+    });
+    setQuoteOpen(false);
+    // An Article has one body, so fold an existing thread into it.
+    const merge = <T extends { text: string; media: unknown[] }>(
+      items: T[]
+    ): T[] =>
+      items.length <= 1
+        ? items
+        : [
+            {
+              ...items[0],
+              text: items
+                .map((item) => item.text.trim())
+                .filter(Boolean)
+                .join("\n\n"),
+              media: items.flatMap((item) => item.media),
+            },
+          ];
+    if (isGlobal) {
+      setPost((currentPost) => ({
+        ...currentPost,
+        content: merge(currentPost.content),
+      }));
+    } else {
+      setPost((currentPost) => ({
+        ...currentPost,
+        alternativeContent: currentPost.alternativeContent.map((item) =>
+          item.socialProvider.socialId === socialId
+            ? { ...item, content: merge(item.content) }
+            : item
+        ),
+      }));
+    }
+  };
+  const twitterBar =
+    twitter.providerIds.length > 0 ? (
+      <TwitterComposerBar
+        onFormatChange={changeTwitterFormat}
+        twitter={twitter}
+      />
+    ) : null;
+
   // Freeze layout during upload to prevent destroying MediaUploader state
   const frozenLayoutRef = useRef<boolean | null>(null);
 
@@ -393,7 +465,7 @@ export function ContentModule({ socialId, socialType }: ContentModuleProps) {
       ? shouldShowYouTubeTitle(platformsInDefault)
       : socialType === SocialTypes.YOUTUBE;
 
-    return (
+    const videoLayout = (
       <VideoContentLayout
         characterLimit={characterLimit}
         onRemoveVideo={() => handleRemoveVideo(0)}
@@ -454,10 +526,19 @@ export function ContentModule({ socialId, socialType }: ContentModuleProps) {
         }
       />
     );
+    return twitterBar ? (
+      <>
+        <div className="mx-auto w-full max-w-[780px]">{twitterBar}</div>
+        {videoLayout}
+      </>
+    ) : (
+      videoLayout
+    );
   }
 
   return (
     <div className="mx-auto w-full max-w-[780px]">
+      {twitterBar}
       <div>
         {content.map((item, index) => (
           <div
@@ -469,6 +550,22 @@ export function ContentModule({ socialId, socialType }: ContentModuleProps) {
             key={item.order}
           >
             <div className="px-1 pt-2 sm:px-2">
+              {twitter.isArticle && index === 0 && (
+                <>
+                  <div className="mb-4">
+                    <MediaUploader
+                      orderId={item.order}
+                      socialId={socialId}
+                      socialType={effectiveSocialType}
+                      variant="cover"
+                    />
+                  </div>
+                  <TwitterArticleTitle
+                    inputId={`twitter-article-title-${socialId}`}
+                    twitter={twitter}
+                  />
+                </>
+              )}
               <div className="relative">
                 <label
                   className="sr-only"
@@ -488,19 +585,22 @@ export function ContentModule({ socialId, socialType }: ContentModuleProps) {
                   id={`post-content-${socialId}-${item.order}`}
                   onChange={(e) => handleTextChange(e.target.value, item.order)}
                   placeholder={
-                    isGlobal
-                      ? getDefaultPlaceholder(platformsInDefault)
-                      : socialType === SocialTypes.TWITTER
-                        ? "What's happening?"
-                        : socialType === SocialTypes.THREADS
-                          ? "What's on your mind?"
-                          : "Write your post…"
+                    twitter.isArticle
+                      ? "Start writing…"
+                      : isGlobal
+                        ? getDefaultPlaceholder(platformsInDefault)
+                        : socialType === SocialTypes.TWITTER
+                          ? "What's happening?"
+                          : socialType === SocialTypes.THREADS
+                            ? "What's on your mind?"
+                            : "Write your post…"
                   }
                   value={item.text}
                 />
 
                 {characterLimit && (
-                  <div
+                  <output
+                    aria-label="Characters used"
                     className={cn(
                       "absolute right-0 bottom-3 font-medium text-xs tabular-nums",
                       characterLimit - item.text.length < 0
@@ -510,50 +610,73 @@ export function ContentModule({ socialId, socialType }: ContentModuleProps) {
                   >
                     {item.text.length.toLocaleString()} /{" "}
                     {characterLimit.toLocaleString()}
-                  </div>
+                  </output>
                 )}
               </div>
             </div>
-            <MediaUploader
-              extraActions={
-                usesMultiPostLayout || content.length > 1 ? (
-                  <>
-                    {usesMultiPostLayout && (
-                      <Button
-                        aria-label="Add another post to thread"
-                        className="text-muted-foreground hover:text-foreground [@media(pointer:coarse)]:h-11"
-                        onClick={() => addThreadPost(item.order)}
-                        variant="ghost"
-                      >
-                        <Icon icon={Add01Icon} size={15} />
-                        <span className="hidden sm:inline">Add to thread</span>
-                      </Button>
-                    )}
-                    {content.length > 1 && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            aria-label={`Remove post ${item.order + 1}`}
-                            className="size-9 rounded-md text-muted-foreground hover:text-destructive [@media(pointer:coarse)]:size-11"
-                            onClick={() => removeThreadPost(item.order)}
-                            size="icon"
-                            variant="ghost"
-                          >
-                            <Icon icon={Remove01Icon} size={15} />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" sideOffset={6}>
-                          Remove this post
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                  </>
-                ) : undefined
-              }
-              orderId={item.order}
-              socialId={socialId}
-              socialType={effectiveSocialType}
-            />
+            {showQuote && index === 0 && (
+              <TwitterQuoteCard
+                inputId={`twitter-quote-${socialId}`}
+                onRemove={() => {
+                  twitter.update({ quoteTweetId: "" });
+                  setQuoteOpen(false);
+                }}
+                twitter={twitter}
+              />
+            )}
+            {!twitter.isArticle && (
+              <MediaUploader
+                extraActions={
+                  usesMultiPostLayout ||
+                  content.length > 1 ||
+                  (index === 0 && twitter.providerIds.length > 0) ? (
+                    <>
+                      {index === 0 &&
+                        twitter.providerIds.length > 0 &&
+                        !showQuote && (
+                          <TwitterQuoteButton
+                            onClick={() => setQuoteOpen(true)}
+                          />
+                        )}
+                      {usesMultiPostLayout && (
+                        <Button
+                          aria-label="Add another post to thread"
+                          className="text-muted-foreground hover:text-foreground [@media(pointer:coarse)]:h-11"
+                          onClick={() => addThreadPost(item.order)}
+                          variant="ghost"
+                        >
+                          <Icon icon={Add01Icon} size={15} />
+                          <span className="hidden sm:inline">
+                            Add to thread
+                          </span>
+                        </Button>
+                      )}
+                      {content.length > 1 && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              aria-label={`Remove post ${item.order + 1}`}
+                              className="size-9 rounded-md text-muted-foreground hover:text-destructive [@media(pointer:coarse)]:size-11"
+                              onClick={() => removeThreadPost(item.order)}
+                              size="icon"
+                              variant="ghost"
+                            >
+                              <Icon icon={Remove01Icon} size={15} />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" sideOffset={6}>
+                            Remove this post
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </>
+                  ) : undefined
+                }
+                orderId={item.order}
+                socialId={socialId}
+                socialType={effectiveSocialType}
+              />
+            )}
           </div>
         ))}
       </div>
