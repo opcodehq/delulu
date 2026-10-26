@@ -3,9 +3,12 @@
  */
 import {
   type ApiClient,
+  applyTwitterPostOptions,
   createApiClient,
   makeSimplePostWrite,
   runEffect,
+  type SimplePostConnection,
+  type TwitterPostOptions,
 } from "@delulu/client";
 
 const TRAILING_SLASH = /\/$/;
@@ -115,7 +118,7 @@ export class DeluluApiClient {
     );
     const payload = makeSimplePostWrite({
       caption: data.content.map((segment) => segment.text).join("\n\n"),
-      connections,
+      connections: applyTwitterPostOptions(connections, data.x),
       mediaIds: data.content.flatMap((segment) =>
         segment.media.map((media) => media.id)
       ),
@@ -142,10 +145,18 @@ export class DeluluApiClient {
     const connectionIds = data.socialProviderIds ?? [
       ...new Set(current.targets.map((target) => target.connectionId)),
     ];
-    const connections = await this.selectedConnections(
-      workspaceId,
-      connectionIds
-    );
+    const selected = await this.selectedConnections(workspaceId, connectionIds);
+    // Keep each target's saved settings so an edit does not reset them. A new
+    // privacy value rebuilds non-X settings, which is where privacy lives.
+    const connections = selected.map((connection): SimplePostConnection => {
+      const saved = current.targets.find(
+        (target) => target.connectionId === connection.id
+      )?.settings;
+      return saved &&
+        (data.privacyStatus === undefined || saved.platform === "TWITTER")
+        ? { id: connection.id, platform: connection.platform, settings: saved }
+        : connection;
+    });
     const currentCaption = current.groups
       .flatMap((group) => group.segments.map((segment) => segment.text))
       .join("\n\n");
@@ -158,11 +169,11 @@ export class DeluluApiClient {
       caption:
         data.content?.map((segment) => segment.text).join("\n\n") ??
         currentCaption,
-      connections,
       mediaIds:
         data.content?.flatMap((segment) =>
           segment.media.map((media) => media.id)
         ) ?? currentMediaIds,
+      connections: applyTwitterPostOptions(connections, data.x),
       scheduledAt:
         data.status === "SAVED"
           ? null
@@ -337,4 +348,5 @@ interface McpPostInput {
   readonly status: "SAVED" | "SCHEDULED";
   readonly scheduledAt?: number;
   readonly privacyStatus?: string;
+  readonly x?: TwitterPostOptions;
 }

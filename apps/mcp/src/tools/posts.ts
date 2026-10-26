@@ -8,6 +8,27 @@ function resolveClient(client: ClientSource, extra: unknown) {
   return typeof client === "function" ? client(extra) : client;
 }
 
+const xOptions = z
+  .object({
+    quotePost: z
+      .string()
+      .optional()
+      .describe("X post URL or numeric ID to quote from the first post"),
+    replyRestriction: z
+      .enum(["everyone", "following", "mentioned"])
+      .optional()
+      .describe("Who can reply to the X post"),
+    articleTitle: z
+      .string()
+      .max(100)
+      .optional()
+      .describe(
+        "Publish a native X Article with this title. The content becomes the Article body and the first image its cover; quotes and reply limits do not apply."
+      ),
+  })
+  .optional()
+  .describe("X (Twitter) options. Applied only to selected X accounts.");
+
 export function registerPostTools(server: McpServer, client: ClientSource) {
   server.tool(
     "list_posts",
@@ -103,6 +124,7 @@ export function registerPostTools(server: McpServer, client: ClientSource) {
         .enum(["draft", "schedule", "publish_now"])
         .default("draft")
         .describe("Explicit post delivery intent"),
+      x: xOptions,
     },
     async (params, extra) => {
       const resolved = resolveClient(client, extra);
@@ -151,6 +173,7 @@ export function registerPostTools(server: McpServer, client: ClientSource) {
         .optional()
         .describe("Updated schedule time (Unix timestamp)"),
       workspaceId: z.string().optional().describe("Workspace ID"),
+      x: xOptions,
     },
     async (params, extra) => {
       const { id, ...data } = params;

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   type PostFlowAdapter,
   type PostFlowResult,
+  parseTwitterOptions,
   submitPost,
   validateTrialReelOptions,
 } from "./post-flow.js";
@@ -334,5 +335,108 @@ describe("submitPost", () => {
       exitCode: 2,
     });
     expect(listAccounts).not.toHaveBeenCalled();
+  });
+});
+
+describe("X options", () => {
+  const accounts = async () => [
+    { id: "connection_twitter01", platform: "TWITTER", username: "writer" },
+    { id: "connection_linkedin1", platform: "LINKEDIN", username: "swaraj" },
+  ];
+
+  it("parses quote, replies and Article flags", () => {
+    expect(parseTwitterOptions({})).toBeUndefined();
+    expect(parseTwitterOptions({ quote: "123", replies: "Following" })).toEqual(
+      { quotePost: "123", replyRestriction: "following" }
+    );
+    expect(() => parseTwitterOptions({ replies: "friends" })).toThrow(
+      expect.objectContaining({ code: "INVALID_X_OPTIONS", exitCode: 2 })
+    );
+  });
+
+  it("applies a quote and reply audience to X targets only", async () => {
+    const create = vi.fn(async () => post("draft"));
+    await submitPost(
+      {
+        caption: "Quoting this",
+        accountSelectors: ["twitter", "linkedin"],
+        intent: "draft",
+        twitter: {
+          quotePost: "https://x.com/wiz/status/1234567890123456789",
+          replyRestriction: "mentioned",
+        },
+      },
+      adapterFor({ listAccounts: accounts, create })
+    );
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        connections: [
+          {
+            id: "connection_twitter01",
+            platform: "TWITTER",
+            settings: {
+              platform: "TWITTER",
+              values: {
+                replyRestriction: "mentioned",
+                quoteTweetId: "https://x.com/wiz/status/1234567890123456789",
+              },
+            },
+          },
+          { id: "connection_linkedin1", platform: "LINKEDIN" },
+        ],
+      })
+    );
+  });
+
+  it("publishes an Article title as an X Article", async () => {
+    const create = vi.fn(async () => post("draft"));
+    await submitPost(
+      {
+        caption: "Body",
+        accountSelectors: ["twitter"],
+        intent: "draft",
+        twitter: { articleTitle: "Long read" },
+      },
+      adapterFor({ listAccounts: accounts, create })
+    );
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        connections: [
+          expect.objectContaining({
+            settings: {
+              platform: "TWITTER",
+              values: {
+                replyRestriction: "everyone",
+                quoteTweetId: "",
+                format: "article",
+                articleTitle: "Long read",
+              },
+            },
+          }),
+        ],
+      })
+    );
+  });
+
+  it("rejects X options without an X target before uploading", async () => {
+    const addMedia = vi.fn(async () => ({
+      id: "media_uploaded123",
+      mediaType: "IMAGE",
+    }));
+    const create = vi.fn(async () => post("draft"));
+    await expect(
+      submitPost(
+        {
+          caption: "No X here",
+          accountSelectors: ["linkedin"],
+          mediaSources: ["image.png"],
+          intent: "draft",
+          twitter: { quotePost: "123" },
+        },
+        adapterFor({ listAccounts: accounts, addMedia, create })
+      )
+    ).rejects.toMatchObject({ code: "INVALID_X_OPTIONS", exitCode: 2 });
+    expect(addMedia).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
   });
 });

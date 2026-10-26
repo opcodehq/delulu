@@ -469,12 +469,18 @@ importers:
         specifier: 'catalog:'
         version: 3.25.76
     devDependencies:
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.0-beta.97
       tsx:
         specifier: ^4.19.0
         version: 4.20.3
       typescript:
         specifier: 'catalog:'
         version: 5.8.3
+      vitest:
+        specifier: ^3.1.1
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.13.3)(jiti@2.7.0)(jsdom@26.1.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.32.0)(terser@5.43.1)(tsx@4.20.3)(yaml@2.9.0)
 
   apps/sorted:
     dependencies:
@@ -6285,6 +6291,7 @@ packages:
   '@opentelemetry/sdk-trace-base@2.10.0':
     resolution: {integrity: sha512-GuYQQT7QD2EeO8lcZLRQzcbOyhqAzL+6WWTKTU9mSUBYBazkEDl+VrQcXQhbB08OWM9anD1aHleVadzulpOaUQ==}
     engines: {node: ^18.19.0 || >=20.6.0}
+    deprecated: Use @opentelemetry/sdk-trace package
     peerDependencies:
       '@opentelemetry/api': '>=1.3.0 <1.10.0'
 

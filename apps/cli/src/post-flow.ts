@@ -1,3 +1,8 @@
+import {
+  applyTwitterPostOptions,
+  type SimplePostConnection,
+  type TwitterPostOptions,
+} from "@delulu/client";
 import { CliError } from "./cli-error.js";
 
 export type PostIntent = "draft" | "schedule" | "publish_now";
@@ -21,19 +26,7 @@ export interface PostFlowResult {
   }[];
 }
 
-export interface PostConnectionInput {
-  readonly id: string;
-  readonly platform: string;
-  readonly settings?: {
-    readonly platform: "INSTAGRAM";
-    readonly values: {
-      readonly shareToFeed: true;
-      readonly shareToStory: false;
-      readonly trialReels: true;
-      readonly graduationStrategy: "MANUAL" | "SS_PERFORMANCE";
-    };
-  };
-}
+export type PostConnectionInput = SimplePostConnection;
 
 export interface PostMediaInput {
   readonly id: string;
@@ -131,6 +124,7 @@ export interface SubmitPostInput {
   readonly privacy?: string;
   readonly trialReel?: boolean;
   readonly graduationStrategy?: string;
+  readonly twitter?: TwitterPostOptions;
   readonly waitForTerminal?: boolean;
   readonly timeoutMs?: number;
   readonly pollIntervalMs?: number;
@@ -179,6 +173,49 @@ export const validateTrialReelOptions = (input: {
     message: "--graduation-strategy must be manual or performance",
     exitCode: 2,
   });
+};
+
+const replyRestrictions = ["everyone", "following", "mentioned"] as const;
+
+/** Parses the X flags of `delulu post` without network access. */
+export const parseTwitterOptions = (input: {
+  readonly quote?: string;
+  readonly replies?: string;
+  readonly article?: string;
+}): TwitterPostOptions | undefined => {
+  const replies = input.replies?.trim().toLowerCase();
+  const replyRestriction = replyRestrictions.find((value) => value === replies);
+  if (replies !== undefined && replyRestriction === undefined) {
+    throw new CliError({
+      code: "INVALID_X_OPTIONS",
+      message: "--replies must be everyone, following, or mentioned",
+      exitCode: 2,
+    });
+  }
+  const options: TwitterPostOptions = {
+    replyRestriction,
+    quotePost: input.quote,
+    articleTitle: input.article,
+  };
+  return Object.values(options).some((value) => value !== undefined)
+    ? options
+    : undefined;
+};
+
+const withTwitterOptions = (
+  connections: readonly PostConnectionInput[],
+  options: TwitterPostOptions | undefined
+) => {
+  try {
+    return applyTwitterPostOptions(connections, options);
+  } catch (cause) {
+    throw new CliError({
+      code: "INVALID_X_OPTIONS",
+      message: cause instanceof Error ? cause.message : String(cause),
+      exitCode: 2,
+      next: ["delulu accounts"],
+    });
+  }
 };
 
 export const splitValues = (values: readonly string[] = []) =>
@@ -337,7 +374,7 @@ export const submitPost = async (
     input.accountSelectors ?? []
   );
   validateTrialReelTargets(trialReel, accounts);
-  const connections = accounts.map((account): PostConnectionInput => {
+  const baseConnections = accounts.map((account): PostConnectionInput => {
     const connection = { id: account.id, platform: account.platform };
     if (!trialReel || account.platform.toUpperCase() !== "INSTAGRAM") {
       return connection;
@@ -355,6 +392,7 @@ export const submitPost = async (
       },
     };
   });
+  const connections = withTwitterOptions(baseConnections, input.twitter);
   const media = await Promise.all(
     splitValues(input.mediaSources).map((source) =>
       adapter.addMedia(source, input.altText)

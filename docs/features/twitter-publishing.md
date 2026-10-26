@@ -7,6 +7,23 @@ quote action in the first post's toolbar. Settings are saved per account; X
 accounts that share one content group share the same format and quote, because
 Articles and threads need different content shapes.
 
+## CLI and MCP
+
+Both use the shared `applyTwitterPostOptions` helper in `@delulu/client`, so
+the options and their errors are the same:
+
+| Option | CLI | MCP (`create_post`, `update_post`) |
+| --- | --- | --- |
+| Quote a post | `--quote <url-or-id>` | `x.quotePost` |
+| Who can reply | `--replies everyone\|following\|mentioned` | `x.replyRestriction` |
+| Native Article | `--article <title>` | `x.articleTitle` |
+
+The options apply only to X targets; other platforms in the same post are
+unchanged, and the request is rejected when no X account is selected. An
+Article title switches the target to an Article and clears any quote and reply
+limit, as the composer does. MCP `update_post` keeps each target's saved
+settings and merges `x` changes onto them.
+
 ## Quote posts
 
 Use a numeric post ID or an HTTPS post URL from `x.com` or `twitter.com`.
@@ -35,7 +52,11 @@ stop automatic retries. No live provider calls are made by local tests.
 ## Verification
 
 - Core tests cover quote URL validation, ID precision and settings contracts.
-- Client tests verify composer payload settings survive encoding.
+- Client tests verify composer payload settings survive encoding and cover the
+  shared CLI/MCP option rules.
+- CLI tests cover flag parsing and that X settings reach only X targets before
+  any upload. MCP tests call `create_post` through an in-memory MCP client and
+  check `update_post` keeps saved settings; both use a fake API, not a server.
 - Connections tests cover first-segment quotes, reply settings, Article covers,
   draft recovery, invalid combinations and uncertain-write handling.
 - Postgres services tests cover settings round trips, incomplete drafts and

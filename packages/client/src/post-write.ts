@@ -1,5 +1,6 @@
 import { PostWrite } from "@delulu/contracts";
 import { MediaId, makeId, PostGroupId } from "@delulu/core";
+import { parseTwitterPostId } from "@delulu/core/publishing/twitter";
 import { Schema } from "effect";
 
 export interface SimplePostConnection {
@@ -7,6 +8,88 @@ export interface SimplePostConnection {
   readonly platform: string;
   readonly settings?: (typeof PostWrite.Type)["targets"][number]["settings"];
 }
+
+type TargetSettings = (typeof PostWrite.Type)["targets"][number]["settings"];
+type TwitterTargetValues = Extract<
+  TargetSettings,
+  { readonly platform: "TWITTER" }
+>["values"];
+
+/** X publishing options shared by the CLI and MCP tools. */
+export interface TwitterPostOptions {
+  readonly replyRestriction?: TwitterTargetValues["replyRestriction"];
+  /** X post URL or numeric ID to quote from the first post. */
+  readonly quotePost?: string;
+  /** Publishes a native X Article with this title instead of a post. */
+  readonly articleTitle?: string;
+}
+
+export const hasTwitterPostOptions = (
+  options: TwitterPostOptions | undefined
+): options is TwitterPostOptions =>
+  options !== undefined &&
+  Object.values(options).some((value) => value !== undefined);
+
+const isTwitter = (connection: { readonly platform: string }) =>
+  connection.platform.toUpperCase() === "TWITTER";
+
+/**
+ * Merges X options onto the X targets, keeping any settings they already
+ * have. Throws when the options cannot apply to the selected targets.
+ */
+export const applyTwitterPostOptions = <
+  Connection extends SimplePostConnection,
+>(
+  connections: readonly Connection[],
+  options: TwitterPostOptions | undefined
+): Connection[] => {
+  if (!hasTwitterPostOptions(options)) {
+    return [...connections];
+  }
+  if (!connections.some(isTwitter)) {
+    throw new Error("X options need at least one X account target");
+  }
+  const quote = options.quotePost?.trim();
+  if (quote && !parseTwitterPostId(quote)) {
+    throw new Error(
+      "The quoted post must be an X post ID or https://x.com/.../status/... URL"
+    );
+  }
+  if (options.articleTitle !== undefined && !options.articleTitle.trim()) {
+    throw new Error("X Article titles cannot be empty");
+  }
+  return connections.map((connection) => {
+    if (!isTwitter(connection)) {
+      return connection;
+    }
+    const current: TwitterTargetValues =
+      connection.settings?.platform === "TWITTER"
+        ? connection.settings.values
+        : { replyRestriction: "everyone" };
+    // Switching to an Article drops post-only settings, as the composer does.
+    const base: TwitterTargetValues =
+      options.articleTitle === undefined
+        ? current
+        : { ...current, quoteTweetId: "", replyRestriction: "everyone" };
+    const values: TwitterTargetValues = {
+      ...base,
+      ...(options.replyRestriction === undefined
+        ? {}
+        : { replyRestriction: options.replyRestriction }),
+      ...(options.quotePost === undefined ? {} : { quoteTweetId: quote }),
+      ...(options.articleTitle === undefined
+        ? {}
+        : { format: "article", articleTitle: options.articleTitle.trim() }),
+    };
+    if (values.format === "article" && values.quoteTweetId) {
+      throw new Error("X Articles cannot quote a post");
+    }
+    if (values.format === "article" && values.replyRestriction !== "everyone") {
+      throw new Error("Reply restrictions are only available for X posts");
+    }
+    return { ...connection, settings: { platform: "TWITTER", values } };
+  });
+};
 
 export interface SimplePostMedia {
   readonly id: string;
