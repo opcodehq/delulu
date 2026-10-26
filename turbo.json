@@ -25,6 +25,9 @@
     "delulu-cli#test": {
       "dependsOn": ["^test", "@delulu/client#build"]
     },
+    "@delulu/mcp#test": {
+      "dependsOn": ["^test", "@delulu/client#build"]
+    },
     "analyze": {
       "dependsOn": ["^analyze"]
     },
