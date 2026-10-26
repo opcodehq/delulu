@@ -266,6 +266,8 @@ test("button density preserves variants and content sizing", async ({
   page,
 }, info) => {
   await page.goto("/__controls");
+  // The shell remounts the page when the workspace resolves; measure after it.
+  await ready(page, "Control fixtures");
   const mobile = info.project.name === "mobile-dark";
   const sizes = [
     ["Standard", 32, 36],
