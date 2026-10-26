@@ -1,6 +1,6 @@
 ---
 name: manage-social-publishing
-description: Set up and operate Delulu Social through its agent-first CLI or hosted MCP tools. Use for account authorization, workspace selection, social account connection or removal, paid onboarding, usage checks, media upload or import, drafting, multi-account publishing, Instagram Trial Reels, scheduling, listing or inspecting posts, editing, deleting, retrying failed targets, review workflows, publishing results, and Instagram DM automations.
+description: Set up and operate Delulu Social through its agent-first CLI or hosted MCP tools. Use for account authorization, workspace selection, social account connection or removal, paid onboarding, usage checks, media upload or import, drafting, multi-account publishing, Instagram Trial Reels, X quote posts and Articles, scheduling, listing or inspecting posts, editing, deleting, retrying failed targets, review workflows, publishing results, and Instagram DM automations.
 ---
 
 # Manage Social Publishing
@@ -91,6 +91,8 @@ delulu post "Caption" --to linkedin:connection_123 --media video.mp4 --draft
 delulu post "Caption" --to linkedin:connection_123 --at "2026-07-18T10:00:00Z"
 delulu post "Caption" --to linkedin:connection_123 --to x:connection_456 --now
 delulu post "Caption" --to instagram:connection_789 --media video.mp4 --trial-reel --now
+delulu post "Take" --to x:connection_456 --quote https://x.com/user/status/123 --replies following --draft
+delulu post --file article.md --to x:connection_456 --article "Title" --media cover.png --draft
 ```
 
 - Default to a draft only when the user has not requested a delivery intent.
@@ -106,6 +108,14 @@ delulu post "Caption" --to instagram:connection_789 --media video.mp4 --trial-re
   `--graduation-strategy performance` only when the user wants Instagram to
   share the reel based on its performance. Trial Reel settings apply only to
   selected Instagram targets in a multi-account post.
+- For X, `--quote <url-or-id>` makes the first post quote another post and
+  `--replies everyone|following|mentioned` limits replies. `--article <title>`
+  publishes a native X Article instead: the content is the body, one optional
+  image is the cover, and quotes or reply limits are rejected. With MCP, pass
+  the same options as `x: { quotePost, replyRestriction, articleTitle }` on
+  `create_post` or `update_post`. X options apply only to X targets and are
+  rejected when no X account is selected. Articles need X Articles access on
+  the connected account.
 - With MCP, call `create_post` exactly once using explicit `draft`, `schedule`,
   or `publish_now` intent. Do not call `publish_post_now` after creating with
   `publish_now`; reserve it for an existing prepared post.

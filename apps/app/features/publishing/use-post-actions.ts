@@ -2,6 +2,7 @@ import {
   type ComposerPostConnection,
   makeComposerPostWrite,
 } from "@delulu/client";
+import { validateTwitterContent } from "@delulu/core/publishing/twitter";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -131,6 +132,13 @@ export function usePostActions() {
       const alternative = post.alternativeContent.find(
         (content) => content.socialProvider.socialId === connection.id
       );
+      if (!isDraft && configured?.type === "TWITTER") {
+        const content = alternative?.content ?? post.content;
+        const errors = validateTwitterContent(configured.settings, content);
+        if (errors.length) {
+          throw new Error(errors.join("; "));
+        }
+      }
       return {
         id: connection.id,
         platform: connection.platform,

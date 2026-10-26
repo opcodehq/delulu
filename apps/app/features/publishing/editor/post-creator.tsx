@@ -332,6 +332,7 @@ export function PostCreator({ postId }: PostCreatorProps = {}) {
                 <div className="px-4 py-4 sm:px-6 sm:py-5">
                   <TabsContent className="mt-0" value="global">
                     <ContentModule
+                      onOpenChannel={setActiveModuleId}
                       socialId="global"
                       socialType={SocialTypes.DEFAULT}
                     />

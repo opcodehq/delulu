@@ -18,7 +18,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@delulu/client": "workspace:*",
@@ -26,7 +27,9 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "effect": "catalog:",
     "tsx": "^4.19.0",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "^3.1.1"
   }
 }

@@ -1,6 +1,7 @@
 import { Effect, Schema } from "effect";
 import { Model } from "effect/unstable/schema";
 import { ConnectionId, PostGroupId, PostId, PostTargetId } from "../kernel/ids";
+import { parseTwitterPostId } from "../publishing/twitter";
 import {
   domainErrorFields,
   entityFields,
@@ -77,6 +78,20 @@ export const PlatformSettings = Schema.Union([
     "TWITTER",
     Schema.Struct({
       replyRestriction: Schema.Literals(["everyone", "following", "mentioned"]),
+      format: Schema.optional(Schema.Literals(["post", "article"])),
+      quoteTweetId: Schema.optional(
+        Schema.String.check(
+          Schema.makeFilter(
+            (value) =>
+              !value.trim() ||
+              Boolean(parseTwitterPostId(value)) ||
+              "Enter a valid X post ID or post URL"
+          )
+        )
+      ),
+      articleTitle: Schema.optional(
+        Schema.String.check(Schema.isMaxLength(100))
+      ),
     })
   ),
   settings(

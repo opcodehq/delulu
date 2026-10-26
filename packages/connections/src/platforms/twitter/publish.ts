@@ -2,7 +2,12 @@ import {
   getValidMediaUrls,
   type MediaType,
   type SocialPublishInputType,
+  type TwitterSettings,
 } from "@delulu/core/publishing/post";
+import {
+  parseTwitterPostId,
+  validateTwitterContent,
+} from "@delulu/core/publishing/twitter";
 import { Client } from "@xdevplatform/xdk";
 import axios from "axios";
 import { Duration, Effect } from "effect";
@@ -28,6 +33,7 @@ import type {
 } from "../../types";
 import { PROVIDER } from "./constants";
 
+const PARAGRAPH_BREAK = /\r?\n/;
 const POLL_MAX_ATTEMPTS = 30;
 const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -36,6 +42,18 @@ interface TwitterProfile {
   accessToken: string;
   username?: string;
 }
+
+const twitterResult = (
+  profile: TwitterProfile,
+  postId: string,
+  platformPostId: string
+): PostResult => ({
+  platformPostId,
+  postId,
+  platformId: profile.id,
+  platformPostUrl: `https://x.com/${profile.username ?? "unknown"}/status/${platformPostId}`,
+  postedAt: new Date(),
+});
 
 interface Tweet {
   text: string;
@@ -310,12 +328,21 @@ const validateAndSortTweets = (
 const postTweet = (
   tweet: Tweet,
   client: Client,
-  replyToTweetId?: string
+  replyToTweetId?: string,
+  settings?: TwitterSettings
 ): Effect.Effect<string, ConnectionError> =>
   Effect.gen(function* () {
     const mediaIds = yield* uploadTweetMedia(tweet.media, client);
     const tweetData = {
       text: tweet.text,
+      ...(!replyToTweetId && settings?.quoteTweetId?.trim()
+        ? { quoteTweetId: parseTwitterPostId(settings.quoteTweetId) }
+        : {}),
+      ...(settings?.replyRestriction === "following"
+        ? { replySettings: "following" as const }
+        : settings?.replyRestriction === "mentioned"
+          ? { replySettings: "mentionedUsers" as const }
+          : {}),
       ...(replyToTweetId
         ? { reply: { inReplyToTweetId: replyToTweetId } }
         : {}),
@@ -338,6 +365,7 @@ const publishTwitterThread = (
   tweets: Tweet[],
   profile: TwitterProfile,
   postId: string,
+  settings: TwitterSettings,
   providerState?: Record<string, unknown>,
   persistProviderState?: (state: Record<string, unknown>) => Promise<void>
 ): Effect.Effect<PostResult, ConnectionError> =>
@@ -372,7 +400,7 @@ const publishTwitterThread = (
         break;
       }
       const previousId = publishedSegmentIds[index - 1];
-      const tweetId = yield* postTweet(tweet, client, previousId);
+      const tweetId = yield* postTweet(tweet, client, previousId, settings);
       publishedSegmentIds.push(tweetId);
       if (persistProviderState) {
         yield* Effect.tryPromise({
@@ -392,34 +420,137 @@ const publishTwitterThread = (
       );
     }
 
-    return {
-      platformPostId: firstTweetId,
-      postId,
-      platformId: profile.id,
-      platformPostUrl: `https://x.com/${profile.username ?? "unknown"}/status/${firstTweetId}`,
-      postedAt: new Date(),
-    } satisfies PostResult;
+    return twitterResult(profile, postId, firstTweetId);
   });
 
 // ── Orchestration ────────────────────────────────────────────────────────────
 
-const publishContent = (
+const publishTwitterArticle = Effect.fn("publishTwitterArticle")(function* (
+  content: SocialPublishInputType,
+  settings: TwitterSettings,
+  profile: TwitterProfile,
+  providerState?: Record<string, unknown>,
+  persistProviderState?: (state: Record<string, unknown>) => Promise<void>
+): Effect.fn.Return<PostResult, ConnectionError> {
+  if (!persistProviderState) {
+    return yield* publishRejected(
+      PROVIDER,
+      "Durable Article progress is unavailable"
+    );
+  }
+  const segment = content.content[0];
+  if (!segment) {
+    return yield* publishRejected(PROVIDER, "No Article body to publish");
+  }
+  const client = new Client({ accessToken: profile.accessToken });
+  const storedArticleId = providerState?.articleId;
+  if (
+    storedArticleId !== undefined &&
+    (typeof storedArticleId !== "string" || !storedArticleId)
+  ) {
+    return yield* publishRejected(
+      PROVIDER,
+      "Stored Article progress is invalid"
+    );
+  }
+  const storedPostId = providerState?.articlePostId;
+  if (storedPostId !== undefined) {
+    if (typeof storedPostId !== "string" || !storedPostId || !storedArticleId) {
+      return yield* publishRejected(
+        PROVIDER,
+        "Stored Article result is invalid"
+      );
+    }
+    return twitterResult(profile, content.postId, storedPostId);
+  }
+  let articleId =
+    typeof storedArticleId === "string" ? storedArticleId : undefined;
+  if (!articleId) {
+    const mediaIds = yield* uploadTweetMedia(segment.media, client);
+    const draft = yield* Effect.tryPromise({
+      try: () =>
+        client.articles.articleCreateDraft({
+          title: (settings.articleTitle ?? "").trim(),
+          contentState: {
+            blocks: segment.text
+              .split(PARAGRAPH_BREAK)
+              .map((text) => ({ text, type: "unstyled" as const })),
+            entities: [],
+          },
+          ...(mediaIds[0]
+            ? {
+                coverMedia: {
+                  mediaId: mediaIds[0],
+                  mediaCategory: "tweet_image",
+                },
+              }
+            : {}),
+        }),
+      catch: (error) => fromUnknownCreate(PROVIDER, error),
+    });
+    if (!draft.data?.id) {
+      return yield* publishRejected(
+        PROVIDER,
+        "Article draft creation returned no ID"
+      );
+    }
+    articleId = draft.data.id;
+    const draftId = articleId;
+    yield* Effect.tryPromise({
+      try: () => persistProviderState({ ...providerState, articleId: draftId }),
+      catch: () => ambiguousPublish(PROVIDER),
+    });
+  }
+  const publishId = articleId;
+  const published = yield* Effect.tryPromise({
+    try: () => client.articles.articlePublish(publishId),
+    catch: (error) => fromUnknownCreate(PROVIDER, error),
+  });
+  if (!published.data?.postId) {
+    return yield* ambiguousPublish(PROVIDER);
+  }
+  const articlePostId = published.data.postId;
+  yield* Effect.tryPromise({
+    try: () =>
+      persistProviderState({ ...providerState, articleId, articlePostId }),
+    catch: () => ambiguousPublish(PROVIDER),
+  });
+  return twitterResult(profile, content.postId, articlePostId);
+});
+
+const publishContent = Effect.fn("publishTwitterContent")(function* (
   content: SocialPublishInputType,
   profile: TwitterProfile,
   providerState?: Record<string, unknown>,
   persistProviderState?: (state: Record<string, unknown>) => Promise<void>
-): Effect.Effect<PostResult, ConnectionError> =>
-  validateAndSortTweets(content.content).pipe(
-    Effect.flatMap((tweets) =>
-      publishTwitterThread(
-        tweets,
-        profile,
-        content.postId,
-        providerState,
-        persistProviderState
-      )
-    )
+): Effect.fn.Return<PostResult, ConnectionError> {
+  const settings =
+    content.providerSettings?.type === "TWITTER"
+      ? content.providerSettings.settings
+      : { replyRestriction: "everyone" as const };
+  const errors = validateTwitterContent(settings, content.content);
+  if (errors.length) {
+    return yield* publishRejected(PROVIDER, errors.join("; "));
+  }
+  if (settings.format === "article") {
+    return yield* publishTwitterArticle(
+      content,
+      settings,
+      profile,
+      providerState,
+      persistProviderState
+    );
+  }
+  const tweets = yield* validateAndSortTweets(content.content);
+  return yield* publishTwitterThread(
+    tweets,
+    profile,
+    content.postId,
+    settings,
+    providerState,
+    persistProviderState
   );
+});
 
 export const twitterPublisher: PlatformPublisher = {
   id: "TWITTER",

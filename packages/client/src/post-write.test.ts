@@ -1,7 +1,11 @@
 import { PostGroupId } from "@delulu/core";
 import { Schema } from "effect";
 import { describe, expect, it } from "vitest";
-import { makeComposerPostWrite, makeSimplePostWrite } from "./post-write.js";
+import {
+  applyTwitterPostOptions,
+  makeComposerPostWrite,
+  makeSimplePostWrite,
+} from "./post-write.js";
 
 describe("makeSimplePostWrite", () => {
   it("generates group ids accepted by the backend domain schema", () => {
@@ -131,5 +135,94 @@ describe("makeComposerPostWrite", () => {
     ]);
     expect(post.source).toBe("app");
     expect(post.intent).toBe("draft");
+  });
+});
+
+it.each([
+  {
+    replyRestriction: "following" as const,
+    quoteTweetId: "https://x.com/wiz/status/1234567890123456789",
+  },
+  {
+    replyRestriction: "everyone" as const,
+    format: "article" as const,
+    articleTitle: "Native Article",
+  },
+])("retains X publishing settings in composer payload: %j", (values) => {
+  const settings = { platform: "TWITTER" as const, values };
+  const post = makeComposerPostWrite({
+    segments: [{ text: "Article body", media: [] }],
+    connections: [
+      { id: "connection_aaaaaaaaaaaa", platform: "TWITTER", settings },
+    ],
+    intent: "draft",
+  });
+  expect(post.targets[0]?.settings).toEqual(settings);
+});
+
+describe("applyTwitterPostOptions", () => {
+  const x = { id: "connection_aaaaaaaaaaaa", platform: "TWITTER" };
+  const threads = { id: "connection_bbbbbbbbbbbb", platform: "THREADS" };
+
+  it("sets quote and reply audience on X targets only", () => {
+    const post = makeSimplePostWrite({
+      caption: "Hot take",
+      connections: applyTwitterPostOptions([x, threads], {
+        quotePost: "https://x.com/wiz/status/1234567890123456789",
+        replyRestriction: "mentioned",
+      }),
+    });
+    expect(post.targets[0]?.settings).toEqual({
+      platform: "TWITTER",
+      values: {
+        replyRestriction: "mentioned",
+        quoteTweetId: "https://x.com/wiz/status/1234567890123456789",
+      },
+    });
+    expect(post.targets[1]?.settings.platform).toBe("THREADS");
+  });
+
+  it("turns an existing quote post into an Article", () => {
+    const [connection] = applyTwitterPostOptions(
+      [
+        {
+          ...x,
+          settings: {
+            platform: "TWITTER",
+            values: { replyRestriction: "following", quoteTweetId: "123" },
+          },
+        },
+      ],
+      { articleTitle: "  Long read  " }
+    );
+    expect(connection?.settings).toEqual({
+      platform: "TWITTER",
+      values: {
+        replyRestriction: "everyone",
+        quoteTweetId: "",
+        format: "article",
+        articleTitle: "Long read",
+      },
+    });
+  });
+
+  it("leaves targets untouched without X options", () => {
+    expect(applyTwitterPostOptions([threads], {})).toEqual([threads]);
+  });
+
+  it.each([
+    [[threads], { quotePost: "123" }, "at least one X account"],
+    [[x], { quotePost: "https://evil.test/status/1" }, "X post ID"],
+    [[x], { articleTitle: " " }, "cannot be empty"],
+    [[x], { articleTitle: "A", quotePost: "123" }, "cannot quote"],
+    [
+      [x],
+      { articleTitle: "A", replyRestriction: "following" },
+      "only available",
+    ],
+  ] as const)("rejects %j with %j", (connections, options, message) => {
+    expect(() => applyTwitterPostOptions(connections, options)).toThrow(
+      message
+    );
   });
 });

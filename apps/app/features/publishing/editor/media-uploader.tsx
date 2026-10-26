@@ -24,6 +24,7 @@ import { AnimatePresence, motion } from "motion/react";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { pickCoverImage } from "@/features/publishing/editor/cover-media";
 import {
   type ExistingMediaSelection,
   existingMediaFiles,
@@ -88,8 +89,9 @@ interface MediaUploaderProps {
   /**
    * `toolbar`: action row under a text editor, media grid above it.
    * `tile`: a single tall drop zone for video-first layouts.
+   * `cover`: one wide image slot, used for Article covers.
    */
-  variant?: "toolbar" | "tile";
+  variant?: "toolbar" | "tile" | "cover";
   /** Overrides the tile's call to action, e.g. when a shared platform needs video. */
   tileLabel?: string;
   extraActions?: React.ReactNode;
@@ -385,8 +387,19 @@ export function MediaUploader({
   const { acceptedMimeTypes, instruction, platformHint } = limits;
 
   const handleFileProcessing = useCallback(
-    async (incomingFiles: File[]) => {
+    async (pickedFiles: File[]) => {
       let newMediaFiles: MediaFile[] = [];
+      let incomingFiles = pickedFiles;
+      if (variant === "cover") {
+        const { cover, dropped } = pickCoverImage(
+          pickedFiles,
+          getMediaTypeFromFile
+        );
+        if (dropped) {
+          toast.error("A cover is a single image");
+        }
+        incomingFiles = cover;
+      }
       const validatedFiles: File[] = [];
 
       logVideoUploadLayout("upload start", {
@@ -580,6 +593,7 @@ export function MediaUploader({
       mediaFiles,
       socialId,
       socialType,
+      variant,
       orderId,
       isGlobal,
       uploadAndSaveMedia,
@@ -626,9 +640,20 @@ export function MediaUploader({
       const newMediaFiles = existingMediaFiles(selectedMedia);
 
       isUserAction.current = true;
+      if (variant === "cover") {
+        const { cover, dropped } = pickCoverImage(
+          newMediaFiles,
+          (media) => media.mediaType
+        );
+        if (dropped) {
+          toast.error("A cover is a single image");
+        }
+        setMediaFiles(cover);
+        return;
+      }
       setMediaFiles((prev) => [...prev, ...newMediaFiles]);
     },
-    []
+    [variant]
   );
 
   const getPreviewAspectRatio = (mediaType: "IMAGE" | "VIDEO" | "DOCUMENT") => {
@@ -727,15 +752,63 @@ export function MediaUploader({
   return (
     <div className="space-y-3">
       <input
-        accept={acceptedMimeTypes.join(",")}
+        accept={
+          variant === "cover"
+            ? acceptedMimeTypes
+                .filter((type) => type.startsWith("image/"))
+                .join(",")
+            : acceptedMimeTypes.join(",")
+        }
         className="hidden"
-        multiple={allowMultiple}
+        multiple={allowMultiple && variant !== "cover"}
         onChange={handleFileInput}
         ref={fileInputRef}
         type="file"
       />
 
-      {variant === "tile" ? (
+      {variant === "cover" ? (
+        mediaFiles.length > 0 ? (
+          <AnimatePresence>
+            {mediaFiles.map((media) => (
+              <MediaPreview
+                getPreviewAspectRatio={() => "aspect-[5/2] w-full"}
+                key={media.id}
+                media={media}
+                onRemove={removeFile}
+              />
+            ))}
+          </AnimatePresence>
+        ) : (
+          <div
+            className={cn(
+              "-mx-2 flex items-center gap-0.5 rounded-lg",
+              isDragOver && "bg-primary/5"
+            )}
+            {...dragHandlers}
+          >
+            <Button
+              className="text-muted-foreground hover:text-foreground [@media(pointer:coarse)]:h-11"
+              onClick={openFilePicker}
+              type="button"
+              variant="ghost"
+            >
+              <Icon icon={Image01Icon} size={16} />
+              Add cover
+            </Button>
+            <Button
+              aria-label="Choose cover from library"
+              className="text-muted-foreground hover:text-foreground [@media(pointer:coarse)]:size-11"
+              onClick={openLibrary}
+              size="icon"
+              title="Choose from library"
+              type="button"
+              variant="ghost"
+            >
+              <Icon icon={FolderLibraryIcon} size={16} />
+            </Button>
+          </div>
+        )
+      ) : variant === "tile" ? (
         mediaFiles.length > 0 ? (
           <>
             {mediaGrid}

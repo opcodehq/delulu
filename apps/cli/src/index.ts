@@ -31,6 +31,7 @@ import {
   canonicalAccountSelector,
   type PostAccount,
   type PostFlowResult,
+  parseTwitterOptions,
   resolveAccounts,
   splitValues,
   submitPost,
@@ -174,6 +175,8 @@ const helpExamples: Readonly<Record<string, readonly string[]>> = {
     'delulu post "Caption" --to linkedin --draft',
     'delulu post "Caption" --to linkedin --media video.mp4 --now',
     'delulu post "Caption" --to instagram --media video.mp4 --trial-reel --now',
+    'delulu post "Take" --to x --quote https://x.com/user/status/123 --replies following',
+    'delulu post --file article.md --to x --article "Article title" --draft',
   ],
   posts: ["delulu posts --status scheduled"],
   review: ["delulu review <post-id> --approve"],
@@ -1053,6 +1056,12 @@ program
     "--graduation-strategy <strategy>",
     "Trial Reel graduation: manual or performance (default: manual)"
   )
+  .option("--quote <post>", "X: quote this post URL or ID from the first post")
+  .option(
+    "--replies <who>",
+    "X: who can reply: everyone, following, or mentioned"
+  )
+  .option("--article <title>", "X: publish a native Article with this title")
   .option("--idempotency-key <key>", "Stable retry key")
   .option("--new", "Intentionally create a duplicate")
   .option("--no-wait", "Return after publishing is accepted")
@@ -1081,6 +1090,11 @@ program
         graduationStrategy: command.graduationStrategy,
         mediaSources: command.media,
       });
+      const twitter = parseTwitterOptions({
+        quote: command.quote,
+        replies: command.replies,
+        article: command.article,
+      });
       const timeout = positiveNumber(command.timeout, "--timeout");
       const id = await workspaceId();
       const intent = command.now
@@ -1098,6 +1112,7 @@ program
         privacy: command.privacy,
         trialReel: Boolean(command.trialReel),
         graduationStrategy: command.graduationStrategy,
+        twitter,
       };
       const completedReplay = await findOperation({
         command: "post",
@@ -1178,6 +1193,7 @@ program
             privacy: command.privacy,
             trialReel: Boolean(command.trialReel),
             graduationStrategy: command.graduationStrategy,
+            twitter,
             idempotencyKey: operation.idempotencyKey,
             waitForTerminal: command.wait,
             timeoutMs: timeout * 1000,
