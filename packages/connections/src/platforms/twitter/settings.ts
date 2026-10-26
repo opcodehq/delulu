@@ -6,6 +6,23 @@ export const twitterSettings: PlatformSettings = {
   requiresConfiguration: false,
   fields: [
     {
+      key: "format",
+      label: "Format",
+      type: "select",
+      options: [
+        { value: "post", label: "Post or thread" },
+        { value: "article", label: "Article" },
+      ],
+    },
+    {
+      key: "quoteTweetId",
+      label: "Post to quote",
+      type: "text",
+      description:
+        "An X post ID or URL. Only the first post in a thread quotes it.",
+    },
+    { key: "articleTitle", label: "Article title", type: "text" },
+    {
       key: "replyRestriction",
       label: "Who can reply",
       type: "select",

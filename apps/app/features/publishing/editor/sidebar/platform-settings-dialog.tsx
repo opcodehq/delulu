@@ -4,11 +4,13 @@ import type { SocialType } from "@delulu/core/publishing/post";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@delulu/design-system/components/ui/dialog";
 import { InstagramSettingsDisplay } from "@/features/publishing/editor/sidebar/instagram-settings";
 import { TikTokSettingsDisplay } from "@/features/publishing/editor/sidebar/tiktok-settings";
+import { TwitterSettingsDisplay } from "@/features/publishing/editor/sidebar/twitter-settings";
 import { usePost } from "@/features/publishing/store";
 
 interface PlatformSettingsDialogProps {
@@ -33,6 +35,8 @@ export function PlatformSettingsDialog({
   );
   const renderSettings = () => {
     switch (platform) {
+      case "TWITTER":
+        return <TwitterSettingsDisplay providerId={socialId} />;
       case "TIKTOK":
         return (
           <TikTokSettingsDisplay hasVideo={hasVideo} providerId={socialId} />
@@ -52,9 +56,12 @@ export function PlatformSettingsDialog({
 
   return (
     <Dialog modal={false} onOpenChange={onClose} open={isOpen}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="[&>button]:grid [&>button]:size-11 [&>button]:place-items-center">
         <DialogHeader>
           <DialogTitle>{platformName} Settings</DialogTitle>
+          <DialogDescription>
+            Configure how this account publishes your content.
+          </DialogDescription>
         </DialogHeader>
         <div className="max-h-[70vh] space-y-4 overflow-y-auto">
           {renderSettings()}

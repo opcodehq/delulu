@@ -133,3 +133,25 @@ describe("makeComposerPostWrite", () => {
     expect(post.intent).toBe("draft");
   });
 });
+
+it.each([
+  {
+    replyRestriction: "following" as const,
+    quoteTweetId: "https://x.com/wiz/status/1234567890123456789",
+  },
+  {
+    replyRestriction: "everyone" as const,
+    format: "article" as const,
+    articleTitle: "Native Article",
+  },
+])("retains X publishing settings in composer payload: %j", (values) => {
+  const settings = { platform: "TWITTER" as const, values };
+  const post = makeComposerPostWrite({
+    segments: [{ text: "Article body", media: [] }],
+    connections: [
+      { id: "connection_aaaaaaaaaaaa", platform: "TWITTER", settings },
+    ],
+    intent: "draft",
+  });
+  expect(post.targets[0]?.settings).toEqual(settings);
+});

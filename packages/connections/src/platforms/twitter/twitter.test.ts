@@ -6,6 +6,8 @@ import { twitterAuth } from "./auth";
 import { twitterPublisher } from "./publish";
 
 const xdk = vi.hoisted(() => ({
+  articleCreateDraft: vi.fn(),
+  articlePublish: vi.fn(),
   configs: [] as Record<string, unknown>[],
   create: vi.fn(),
   upload: vi.fn(),
@@ -20,6 +22,10 @@ vi.mock("axios", () => ({ default: vi.fn() }));
 vi.mock("@xdevplatform/xdk", () => ({
   Client: class {
     readonly posts = { create: xdk.create };
+    readonly articles = {
+      articleCreateDraft: xdk.articleCreateDraft,
+      articlePublish: xdk.articlePublish,
+    };
     readonly media = {
       upload: xdk.upload,
       initializeUpload: xdk.initializeUpload,
@@ -40,6 +46,8 @@ afterEach(() => {
   vi.restoreAllMocks();
   xdk.configs.length = 0;
   xdk.create.mockReset();
+  xdk.articleCreateDraft.mockReset();
+  xdk.articlePublish.mockReset();
   xdk.upload.mockReset();
   xdk.initializeUpload.mockReset();
   xdk.appendUpload.mockReset();
@@ -443,5 +451,255 @@ describe("X OAuth PKCE", () => {
     expect(temporaryStore.delete).toHaveBeenCalledWith(
       "oauth:twitter:pkce:signed-state"
     );
+  });
+});
+
+describe("X quotes and Articles", () => {
+  const content = (
+    settings: import("@delulu/core/publishing/post").TwitterSettings,
+    texts = ["First paragraph\nSecond paragraph"]
+  ) => ({
+    postId: "local-article",
+    socialProviderId: "connection_x",
+    providerSettings: {
+      type: "TWITTER" as const,
+      socialProviderId: "connection_x",
+      settings,
+    },
+    content: texts.map((text, order) => ({
+      order,
+      name: "Post",
+      text,
+      tags: [],
+      media: [] as import("@delulu/core/publishing/post").MediaType[],
+    })),
+  });
+  const publish = (ctx: Parameters<typeof twitterPublisher.publish>[0]) =>
+    Effect.runPromise(
+      twitterPublisher.publish(ctx).pipe(Effect.provide(currentStore()))
+    );
+  const article = {
+    replyRestriction: "everyone" as const,
+    format: "article" as const,
+    articleTitle: "My article",
+  };
+
+  it("quotes a URL only on the first segment and applies reply restrictions", async () => {
+    xdk.create
+      .mockResolvedValueOnce({ data: { id: "first" } })
+      .mockResolvedValueOnce({ data: { id: "second" } });
+    await publish({
+      socialProviderId: "connection_x",
+      content: content(
+        {
+          replyRestriction: "mentioned",
+          quoteTweetId: "https://x.com/wiz/status/1234567890123456789?s=20",
+        },
+        ["Comment", "Follow-up"]
+      ),
+      persistProviderState: vi.fn().mockResolvedValue(undefined),
+    });
+    expect(xdk.create).toHaveBeenNthCalledWith(1, {
+      text: "Comment",
+      quoteTweetId: "1234567890123456789",
+      replySettings: "mentionedUsers",
+    });
+    expect(xdk.create).toHaveBeenNthCalledWith(2, {
+      text: "Follow-up",
+      reply: { inReplyToTweetId: "first" },
+      replySettings: "mentionedUsers",
+    });
+  });
+
+  it("does not re-quote when resuming a thread", async () => {
+    xdk.create.mockResolvedValue({ data: { id: "second" } });
+    await publish({
+      socialProviderId: "connection_x",
+      content: content({ replyRestriction: "following", quoteTweetId: "123" }, [
+        "Comment",
+        "Follow-up",
+      ]),
+      providerState: { publishedSegmentIds: ["first"] },
+      persistProviderState: vi.fn().mockResolvedValue(undefined),
+    });
+    expect(xdk.create).toHaveBeenCalledTimes(1);
+    expect(xdk.create).toHaveBeenCalledWith({
+      text: "Follow-up",
+      reply: { inReplyToTweetId: "first" },
+      replySettings: "following",
+    });
+  });
+
+  it("saves Article draft progress before publishing a long body with a cover", async () => {
+    mockMedia("image");
+    xdk.upload.mockResolvedValue({ data: { id: "cover" } });
+    xdk.articleCreateDraft.mockResolvedValue({ data: { id: "draft" } });
+    const persist = vi.fn().mockResolvedValue(undefined);
+    xdk.articlePublish.mockImplementation(async () => {
+      expect(persist).toHaveBeenCalledWith({ articleId: "draft" });
+      return { data: { postId: "article-post" } };
+    });
+    const input = content(article, [
+      "Long paragraph ".repeat(40) + "\nSecond paragraph",
+    ]);
+    input.content[0]!.media.push({
+      mediaType: "IMAGE",
+      url: "https://media.test/cover.jpg",
+    });
+    const result = await publish({
+      socialProviderId: "connection_x",
+      content: input,
+      persistProviderState: persist,
+    });
+    expect(xdk.articleCreateDraft).toHaveBeenCalledWith({
+      title: "My article",
+      contentState: {
+        blocks: [
+          { text: "Long paragraph ".repeat(40), type: "unstyled" },
+          { text: "Second paragraph", type: "unstyled" },
+        ],
+        entities: [],
+      },
+      coverMedia: { mediaId: "cover", mediaCategory: "tweet_image" },
+    });
+    expect(xdk.articlePublish).toHaveBeenCalledWith("draft");
+    expect(xdk.create).not.toHaveBeenCalled();
+    expect(persist).toHaveBeenLastCalledWith({
+      articleId: "draft",
+      articlePostId: "article-post",
+    });
+    expect(result.platformPostId).toBe("article-post");
+    expect(result.platformPostUrl).toBe(
+      "https://x.com/tester/status/article-post"
+    );
+  });
+
+  it("reuses a saved Article draft on retry", async () => {
+    xdk.articlePublish.mockResolvedValue({ data: { postId: "article-post" } });
+    await publish({
+      socialProviderId: "connection_x",
+      content: content(article),
+      providerState: { articleId: "existing-draft" },
+      persistProviderState: vi.fn().mockResolvedValue(undefined),
+    });
+    expect(xdk.articleCreateDraft).not.toHaveBeenCalled();
+    expect(xdk.articlePublish).toHaveBeenCalledTimes(1);
+    expect(xdk.articlePublish).toHaveBeenCalledWith("existing-draft");
+  });
+
+  it.each([
+    { ...article, articleTitle: "" },
+    { ...article, quoteTweetId: "123" },
+    { ...article, replyRestriction: "following" as const },
+    {
+      replyRestriction: "everyone" as const,
+      quoteTweetId: "https://evil.test/wiz/status/123",
+    },
+  ])("rejects invalid settings before creating remote content: %j", async (settings) => {
+    await expect(
+      publish({
+        socialProviderId: "connection_x",
+        content: content(settings),
+        persistProviderState: vi.fn().mockResolvedValue(undefined),
+      })
+    ).rejects.toMatchObject({ retryable: false });
+    expect(xdk.create).not.toHaveBeenCalled();
+    expect(xdk.articleCreateDraft).not.toHaveBeenCalled();
+    expect(xdk.articlePublish).not.toHaveBeenCalled();
+  });
+
+  it("rejects Article threads, empty bodies, unsupported media and missing durable storage", async () => {
+    for (const input of [
+      content(article, ["One", "Two"]),
+      content(article, [" "]),
+      content(article),
+    ]) {
+      await expect(
+        publish({ socialProviderId: "connection_x", content: input })
+      ).rejects.toMatchObject({ retryable: false });
+    }
+    const input = content(article);
+    input.content[0]!.media.push({
+      mediaType: "VIDEO",
+      url: "https://media.test/video.mp4",
+    });
+    await expect(
+      publish({
+        socialProviderId: "connection_x",
+        content: input,
+        persistProviderState: vi.fn().mockResolvedValue(undefined),
+      })
+    ).rejects.toMatchObject({ retryable: false });
+    expect(xdk.articleCreateDraft).not.toHaveBeenCalled();
+  });
+
+  it("never publishes after failing to persist a newly created Article draft", async () => {
+    xdk.articleCreateDraft.mockResolvedValue({ data: { id: "draft" } });
+    await expect(
+      publish({
+        socialProviderId: "connection_x",
+        content: content(article),
+        persistProviderState: vi
+          .fn()
+          .mockRejectedValue(new Error("DB unavailable")),
+      })
+    ).rejects.toMatchObject({ code: "AMBIGUOUS_PUBLISH", retryable: false });
+    expect(xdk.articleCreateDraft).toHaveBeenCalledTimes(1);
+    expect(xdk.articlePublish).not.toHaveBeenCalled();
+  });
+
+  it("returns a durably published Article without creating another post", async () => {
+    const result = await publish({
+      socialProviderId: "connection_x",
+      content: content(article),
+      providerState: { articleId: "draft", articlePostId: "published-post" },
+      persistProviderState: vi.fn().mockResolvedValue(undefined),
+    });
+    expect(result.platformPostId).toBe("published-post");
+    expect(xdk.articleCreateDraft).not.toHaveBeenCalled();
+    expect(xdk.articlePublish).not.toHaveBeenCalled();
+  });
+
+  it("stops automatic retries if a published Article result cannot be saved", async () => {
+    xdk.articlePublish.mockResolvedValue({
+      data: { postId: "published-post" },
+    });
+    await expect(
+      publish({
+        socialProviderId: "connection_x",
+        content: content(article),
+        providerState: { articleId: "draft" },
+        persistProviderState: vi
+          .fn()
+          .mockRejectedValue(new Error("database unavailable")),
+      })
+    ).rejects.toMatchObject({ code: "AMBIGUOUS_PUBLISH", retryable: false });
+    expect(xdk.articlePublish).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry an unconfirmed Article draft creation", async () => {
+    xdk.articleCreateDraft.mockRejectedValue(new Error("connection reset"));
+    await expect(
+      publish({
+        socialProviderId: "connection_x",
+        content: content(article),
+        persistProviderState: vi.fn().mockResolvedValue(undefined),
+      })
+    ).rejects.toMatchObject({ code: "AMBIGUOUS_PUBLISH", retryable: false });
+    expect(xdk.articleCreateDraft).toHaveBeenCalledTimes(1);
+    expect(xdk.articlePublish).not.toHaveBeenCalled();
+  });
+
+  it("does not retry an unconfirmed Article publish", async () => {
+    xdk.articlePublish.mockRejectedValue(new Error("connection reset"));
+    await expect(
+      publish({
+        socialProviderId: "connection_x",
+        content: content(article),
+        providerState: { articleId: "draft" },
+        persistProviderState: vi.fn().mockResolvedValue(undefined),
+      })
+    ).rejects.toMatchObject({ code: "AMBIGUOUS_PUBLISH", retryable: false });
+    expect(xdk.articlePublish).toHaveBeenCalledTimes(1);
   });
 });

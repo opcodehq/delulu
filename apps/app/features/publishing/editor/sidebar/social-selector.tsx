@@ -192,7 +192,9 @@ export default function SocialSelector({
 }
 
 function hasSettings(platform: SocialType): boolean {
-  return platform === "TIKTOK" || platform === "INSTAGRAM";
+  return (
+    platform === "TIKTOK" || platform === "INSTAGRAM" || platform === "TWITTER"
+  );
 }
 
 function SocialSelectorChip({

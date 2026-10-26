@@ -55,6 +55,7 @@ export function ContentModule({ socialId, socialType }: ContentModuleProps) {
     setPost: state.setPost,
   }));
   const selectedSocialProviders = useSelectedSocialProviders();
+  const providerSettings = useStore((state) => state.providerSettings);
   const isMediaUploading = useIsMediaUploading();
 
   const isGlobal = socialType === SocialTypes.DEFAULT;
@@ -79,12 +80,31 @@ export function ContentModule({ socialId, socialType }: ContentModuleProps) {
         : socialType,
     [isGlobal, platformsInDefault, socialType]
   );
-  const usesMultiPostLayout = shouldUseMultiPostLayout(
-    socialType,
-    platformsInDefault
+  const articleProviders = selectedSocialProviders.filter((provider) => {
+    const setting = providerSettings[provider.socialId];
+    return setting?.type === "TWITTER" && setting.settings.format === "article";
+  });
+  const articleProviderIds = new Set(
+    articleProviders.map((provider) => provider.socialId)
   );
+  const hasArticle = articleProviders.some((provider) =>
+    isGlobal
+      ? !post.alternativeContent.some(
+          (item) => item.socialProvider.socialId === provider.socialId
+        )
+      : provider.socialId === socialId
+  );
+  const usesMultiPostLayout =
+    !hasArticle && shouldUseMultiPostLayout(socialType, platformsInDefault);
   const characterLimit = isGlobal
-    ? getDefaultCharacterLimit(platformsInDefault)
+    ? getDefaultCharacterLimit(
+        getPlatformsInDefault(
+          selectedSocialProviders.filter(
+            (provider) => !articleProviderIds.has(provider.socialId)
+          ),
+          post.alternativeContent
+        )
+      )
     : usesMultiPostLayout
       ? PLATFORM_CHARACTER_LIMITS[socialType]
       : undefined;
@@ -501,7 +521,8 @@ export function ContentModule({ socialId, socialType }: ContentModuleProps) {
                 />
 
                 {characterLimit && (
-                  <div
+                  <output
+                    aria-label="Characters remaining"
                     className={cn(
                       "absolute right-0 bottom-3 font-medium text-xs tabular-nums",
                       characterLimit - item.text.length < 0
@@ -510,7 +531,7 @@ export function ContentModule({ socialId, socialType }: ContentModuleProps) {
                     )}
                   >
                     {characterLimit - item.text.length}
-                  </div>
+                  </output>
                 )}
               </div>
             </div>

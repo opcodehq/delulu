@@ -686,3 +686,115 @@ describe("M2 PostService and JobService", () => {
     expect(mutations[2].job?.id).not.toBe(result.id);
   });
 });
+
+describe("X publishing settings persistence", () => {
+  it("preserves quotes and Articles, validates publishing, and permits incomplete drafts", async () => {
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const identity = yield* IdentityService;
+        const memberships = yield* MembershipService;
+        const posts = yield* PostService;
+        const connections = yield* makeConnectionRepository();
+        const resolved = yield* identity.resolve({
+          sub: `clerk_${crypto.randomUUID()}`,
+        });
+        const workspaceId = resolved.personalWorkspace!.id;
+        const member = Option.getOrThrow(
+          yield* memberships.resolve({ workspaceId, userId: resolved.user.id })
+        );
+        const actor = { memberId: member.memberId, role: member.role };
+        const connection = yield* connections.insert(
+          Connection.insert.make({
+            id: makeId(ConnectionId),
+            legacyConvexId: null,
+            workspaceId,
+            platform: "TWITTER",
+            profileId: crypto.randomUUID(),
+            username: "writer",
+            displayName: "Writer",
+            accessToken: "opaque",
+            refreshToken: null,
+            cipherVersion: "v1",
+            expiresAt: null,
+            metadata: {},
+          })
+        );
+        const groupId = makeId(PostGroupId);
+        for (const values of [
+          {
+            replyRestriction: "following" as const,
+            quoteTweetId: "https://x.com/wiz/status/1234567890123456789",
+          },
+          {
+            replyRestriction: "everyone" as const,
+            format: "article" as const,
+            articleTitle: "Article title",
+          },
+        ]) {
+          const value = {
+            groups: [
+              {
+                id: groupId,
+                isDefault: true,
+                segments: [{ text: "Body ".repeat(100), media: [] }],
+              },
+            ],
+            targets: [
+              {
+                connectionId: connection.id,
+                groupId,
+                settings: { platform: "TWITTER" as const, values },
+                scheduledAt: null,
+              },
+            ],
+            intent: "draft" as const,
+          };
+          const saved = yield* posts.create({ workspaceId, actor, value });
+          const read = yield* posts.get(workspaceId, saved.id);
+          expect(read.targets[0]?.settings).toEqual({
+            platform: "TWITTER",
+            values,
+          });
+        }
+        const incomplete = {
+          groups: [
+            {
+              id: groupId,
+              isDefault: true,
+              segments: [{ text: "", media: [] }],
+            },
+          ],
+          targets: [
+            {
+              connectionId: connection.id,
+              groupId,
+              settings: {
+                platform: "TWITTER" as const,
+                values: {
+                  replyRestriction: "everyone" as const,
+                  format: "article" as const,
+                },
+              },
+              scheduledAt: null,
+            },
+          ],
+          intent: "draft" as const,
+        };
+        const draft = yield* posts.create({
+          workspaceId,
+          actor,
+          value: incomplete,
+        });
+        expect(draft.status).toBe("draft");
+        const rejected = yield* posts
+          .create({
+            workspaceId,
+            actor,
+            value: { ...incomplete, intent: "publish_now" },
+          })
+          .pipe(Effect.flip);
+        expect(rejected._tag).toBe("ValidationError");
+      }).pipe(Effect.provide(AppLayer))
+    );
+  });
+});

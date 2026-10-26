@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { type TwitterSettings, twitterSettingsSchema } from "./twitter";
+
+export type { TwitterSettings } from "./twitter";
 
 export const videoTypes = ["MP4", "MOV", "MKV", "WEBM"];
 export const allowedImageTypes = ["JPEG", "GIF", "PNG", "HEIC", "WEBP"];
@@ -336,9 +339,7 @@ export const providerSettingSchema = z.discriminatedUnion("type", [
   z.object({
     socialProviderId: z.string(),
     type: z.literal(SocialTypes.TWITTER),
-    settings: z.object({
-      replyRestriction: z.enum(["everyone", "following", "mentioned"]),
-    }),
+    settings: twitterSettingsSchema,
   }),
   z.object({
     socialProviderId: z.string(),
@@ -396,10 +397,6 @@ export interface YouTubeSettings {
 
 export interface FacebookSettings {
   privacy: "PUBLIC" | "FRIENDS" | "ONLY_ME";
-}
-
-export interface TwitterSettings {
-  replyRestriction: "everyone" | "following" | "mentioned";
 }
 
 export interface LinkedInSettings {
